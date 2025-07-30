@@ -344,7 +344,7 @@
     left: 0;
     right: 0;
     bottom: 0;
-    background: rgba(0, 0, 0, 0.5);
+    background: var(--modal-backdrop);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -457,12 +457,12 @@
     flex: 1;
     overflow-y: auto;
     border-left: 3px solid var(--primary-color);
-    background-color: rgba(25, 118, 210, 0.05);
+    background-color: var(--primary-alpha-5);
   }
 
   .modal-content.custom-food-mode .modal-body {
-    border-left: 3px solid var(--secondary-color, #ffc107);
-    background-color: #fafafa;
+    border-left: 3px solid var(--secondary-color);
+    background-color: var(--custom-food-bg);
   }
 
   .form-group {
@@ -490,7 +490,7 @@
   .form-input:focus {
     outline: none;
     border-color: var(--primary-color);
-    box-shadow: 0 0 0 2px rgba(25, 118, 210, 0.1);
+    box-shadow: 0 0 0 2px var(--primary-alpha-10);
   }
 
   .form-input:disabled {
@@ -565,7 +565,7 @@
     color: var(--error-color, #f44336);
     font-size: 0.9rem;
     padding: 8px 12px;
-    background: rgba(244, 67, 54, 0.1);
+    background: var(--error-alpha-10);
     border-radius: 4px;
     margin-bottom: 16px;
   }

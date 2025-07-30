@@ -219,7 +219,7 @@
 
   .fab-container .fab:hover {
     transform: scale(1.1);
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+    box-shadow: var(--shadow-lg);
   }
 
   .fab-container .fab .fab-icon {

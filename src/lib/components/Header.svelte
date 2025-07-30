@@ -75,7 +75,7 @@
     position: sticky;
     top: 0;
     z-index: 100;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    box-shadow: var(--shadow);
   }
 
   .header-content {
@@ -101,7 +101,7 @@
   }
 
   .hamburger-btn:hover {
-    background-color: rgba(255, 255, 255, 0.1);
+    background-color: var(--hover-overlay);
   }
 
   .app-title {

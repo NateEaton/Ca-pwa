@@ -91,8 +91,8 @@
   }
 
   .food-entry.custom-food {
-    background: #fafafa;
-    border-left: 3px solid var(--secondary-color, #ffc107);
+    background: var(--custom-food-bg);
+    border-left: 3px solid var(--secondary-color);
   }
 
   .food-main {
@@ -178,12 +178,12 @@
 
   .action-btn.edit:hover {
     color: var(--primary-color);
-    background-color: rgba(25, 118, 210, 0.1);
+    background-color: var(--primary-alpha-10);
   }
 
   .action-btn.delete:hover {
     color: var(--error-color, #f44336);
-    background-color: rgba(244, 67, 54, 0.1);
+    background-color: var(--error-alpha-10);
   }
 
   .action-btn .material-icons {

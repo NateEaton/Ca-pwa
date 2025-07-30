@@ -8,7 +8,27 @@
 
   const calciumService = new CalciumService();
 
+  // Theme detection and management
+  function initializeTheme() {
+    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)");
+    
+    // Set initial theme
+    document.documentElement.setAttribute(
+      "data-theme",
+      prefersDark.matches ? "dark" : "light"
+    );
+    
+    // Listen for system theme changes
+    prefersDark.addEventListener("change", (e) => {
+      document.documentElement.setAttribute(
+        "data-theme",
+        e.matches ? "dark" : "light"
+      );
+    });
+  }
+
   onMount(async () => {
+    initializeTheme();
     await calciumService.initialize();
   });
 </script>

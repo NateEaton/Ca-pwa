@@ -16,6 +16,7 @@
   /* Text colors */
   --text-primary: #212121;
   --text-secondary: #757575;
+  --text-hint: #9e9e9e;
 
   /* Border and divider */
   --divider: #e0e0e0;
@@ -23,6 +24,17 @@
   /* Shadows */
   --shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   --shadow-lg: 0 4px 12px rgba(0, 0, 0, 0.15);
+
+  /* Modal and overlay colors */
+  --modal-backdrop: rgba(0, 0, 0, 0.5);
+  --primary-alpha-5: rgba(25, 118, 210, 0.05);
+  --primary-alpha-10: rgba(25, 118, 210, 0.1);
+  --error-alpha-10: rgba(244, 67, 54, 0.1);
+  --hover-overlay: rgba(255, 255, 255, 0.1);
+  
+  /* Custom food styling */
+  --custom-food-bg: #fafafa;
+  --secondary-color: #ffc107;
 
   /* Status colors */
   --success-color: #4CAF50;
@@ -36,9 +48,27 @@
   --background: #121212;
   --surface: #1e1e1e;
   --surface-variant: #2d2d2d;
+  
   --text-primary: #ffffff;
   --text-secondary: #b3b3b3;
+  --text-hint: #757575;
+  
   --divider: #333333;
+  
+  /* Dark mode shadows */
+  --shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 4px 12px rgba(0, 0, 0, 0.4);
+  
+  /* Dark mode overlays */
+  --modal-backdrop: rgba(0, 0, 0, 0.7);
+  --primary-alpha-5: rgba(42, 165, 245, 0.08);
+  --primary-alpha-10: rgba(42, 165, 245, 0.15);
+  --error-alpha-10: rgba(244, 67, 54, 0.2);
+  --hover-overlay: rgba(255, 255, 255, 0.08);
+  
+  /* Dark mode custom food styling */
+  --custom-food-bg: #2a2a2a;
+  --secondary-color: #ffb300;
 }
 
 /* Base styles */
@@ -72,4 +102,11 @@ body {
   -webkit-font-smoothing: antialiased;
   /* Ensure icons are vertically centered */
   vertical-align: middle;
+}
+
+/* Native form input styling for better dark mode support */
+input[type="date"], 
+input[type="time"], 
+input[type="datetime-local"] {
+  color-scheme: light dark;
 }
