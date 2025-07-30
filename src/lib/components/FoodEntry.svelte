@@ -91,8 +91,8 @@
   }
 
   .food-entry.custom-food {
-    background: rgba(255, 193, 7, 0.05);
-    border-left: 3px solid var(--warning-color, #ff9800);
+    background: #fafafa;
+    border-left: 3px solid var(--secondary-color, #ffc107);
   }
 
   .food-main {
@@ -111,6 +111,20 @@
     font-weight: 600;
     color: var(--text-primary);
     margin-bottom: 0.25rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .custom-badge {
+    background: var(--secondary-color, #ffc107);
+    color: var(--text-primary);
+    font-size: 0.75rem;
+    font-weight: 500;
+    padding: 0.125rem 0.5rem;
+    border-radius: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
   }
 
   .food-details {

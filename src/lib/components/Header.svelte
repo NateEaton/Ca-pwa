@@ -1,5 +1,8 @@
 <script>
+  import AboutDialog from './AboutDialog.svelte';
+  
   let showMenu = false;
+  let showAboutDialog = false;
 
   function toggleMenu() {
     showMenu = !showMenu;
@@ -7,6 +10,11 @@
 
   function closeMenu() {
     showMenu = false;
+  }
+
+  function handleAboutClick() {
+    closeMenu();
+    showAboutDialog = true;
   }
 
   // Close menu when clicking outside
@@ -49,13 +57,15 @@
         <span class="material-icons">assessment</span>
         <span>Generate Report</span>
       </button>
-      <button class="menu-item" on:click={closeMenu}>
+      <button class="menu-item" on:click={handleAboutClick}>
         <span class="material-icons">info</span>
         <span>About</span>
       </button>
     </div>
   {/if}
 </header>
+
+<AboutDialog bind:show={showAboutDialog} />
 
 <style>
   .header {
