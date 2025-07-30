@@ -1,6 +1,7 @@
 <script>
   import { createEventDispatcher } from "svelte";
-  import { CalciumService } from "$lib/services/CalciumService";
+  import { getCalciumServiceSync } from "$lib/services/CalciumServiceSingleton";
+  import { calciumState } from "$lib/stores/calcium";
   import { searchFoods } from "$lib/data/usdaCalciumData";
 
   export let show = false;
@@ -8,7 +9,6 @@
   export let editingIndex = -1;
 
   const dispatch = createEventDispatcher();
-  const calciumService = new CalciumService();
 
   let isCustomMode = false;
   let isSubmitting = false;
@@ -25,6 +25,7 @@
 
   // Current selected food data for unit conversion
   let currentFoodData = null;
+  let isSelectedFromSearch = false;
 
   // Reset form when modal opens or editing changes
   $: if (show) {
@@ -44,6 +45,7 @@
       // Add mode - reset everything
       isCustomMode = false;
       currentFoodData = null;
+      isSelectedFromSearch = false;
       foodName = "";
       calcium = "";
       servingQuantity = 1;
@@ -62,6 +64,7 @@
 
     // Clear fields when switching modes but don't call full resetForm
     currentFoodData = null;
+    isSelectedFromSearch = false;
     foodName = "";
     calcium = "";
     servingQuantity = 1;
@@ -95,7 +98,7 @@
     // Debounce search
     searchTimeout = setTimeout(() => {
       if (foodName.trim().length >= 2) {
-        searchResults = searchFoods(foodName.trim());
+        searchResults = searchFoods(foodName.trim(), $calciumState.customFoods);
         showSearchResults = searchResults.length > 0;
       } else {
         searchResults = [];
@@ -106,8 +109,14 @@
 
   function selectFood(food) {
     currentFoodData = food;
+    isSelectedFromSearch = true;
     foodName = food.name;
     calcium = food.calcium.toString();
+
+    // If this is a custom food, switch to custom mode
+    if (food.isCustom) {
+      isCustomMode = true;
+    }
 
     // Parse serving from USDA measure
     const servingMatch = food.measure.match(/^(\d+(?:\.\d+)?)\s*(.+)/);
@@ -173,6 +182,11 @@
     errorMessage = "";
 
     try {
+      const calciumService = getCalciumServiceSync();
+      if (!calciumService) {
+        throw new Error('CalciumService not initialized');
+      }
+
       const foodData = {
         name: foodName.trim(),
         calcium: calciumValue,
@@ -185,6 +199,21 @@
         await calciumService.updateFood(editingIndex, foodData);
         dispatch("foodUpdated");
       } else {
+        // Only save as custom food definition if it's truly new (not selected from search)
+        if (isCustomMode && !isSelectedFromSearch) {
+          console.log('About to save custom food in custom mode');
+          await calciumService.saveCustomFood({
+            name: foodName.trim(),
+            calcium: calciumValue,
+            measure: `${servingQuantity} ${servingUnit.trim()}`
+          });
+          console.log('Custom food save completed');
+        } else if (isSelectedFromSearch) {
+          console.log('Custom food selected from search, not saving as new definition');
+        } else {
+          console.log('Not in custom mode, skipping custom food save');
+        }
+        
         await calciumService.addFood(foodData);
         dispatch("foodAdded");
       }

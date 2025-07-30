@@ -55,7 +55,7 @@ safariConsole*.txt
 # a permenant part of project or something to push to Github
 /_notes/
 /tmp/
-/_tasks/
+#/_tasks/
 
 # Misc dev files
 .repomixignore

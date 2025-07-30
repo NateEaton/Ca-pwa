@@ -1,8 +1,12 @@
 <script>
   import AboutDialog from './AboutDialog.svelte';
+  import BackupModal from './BackupModal.svelte';
+  import RestoreModal from './RestoreModal.svelte';
   
   let showMenu = false;
   let showAboutDialog = false;
+  let showBackupModal = false;
+  let showRestoreModal = false;
 
   function toggleMenu() {
     showMenu = !showMenu;
@@ -15,6 +19,16 @@
   function handleAboutClick() {
     closeMenu();
     showAboutDialog = true;
+  }
+
+  function handleBackupClick() {
+    closeMenu();
+    showBackupModal = true;
+  }
+
+  function handleRestoreClick() {
+    closeMenu();
+    showRestoreModal = true;
   }
 
   // Close menu when clicking outside
@@ -45,11 +59,11 @@
 
   {#if showMenu}
     <div class="hamburger-menu">
-      <button class="menu-item" on:click={closeMenu}>
+      <button class="menu-item" on:click={handleBackupClick}>
         <span class="material-icons">backup</span>
         <span>Backup Data</span>
       </button>
-      <button class="menu-item" on:click={closeMenu}>
+      <button class="menu-item" on:click={handleRestoreClick}>
         <span class="material-icons">restore</span>
         <span>Restore Data</span>
       </button>
@@ -66,6 +80,8 @@
 </header>
 
 <AboutDialog bind:show={showAboutDialog} />
+<BackupModal bind:show={showBackupModal} />
+<RestoreModal bind:show={showRestoreModal} />
 
 <style>
   .header {

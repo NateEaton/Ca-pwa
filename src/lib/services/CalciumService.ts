@@ -276,12 +276,19 @@ export class CalciumService {
   }
 
   async saveCustomFood(foodData: { name: string; calcium: number; measure: string }): Promise<CustomFood | null> {
-    return await this.saveCustomFoodToIndexedDB(foodData);
+    console.log('Saving custom food:', foodData);
+    const result = await this.saveCustomFoodToIndexedDB(foodData);
+    console.log('Custom food saved:', result);
+    return result;
   }
 
   private async saveCustomFoodToIndexedDB(foodData: { name: string; calcium: number; measure: string }): Promise<CustomFood | null> {
-    if (!this.db) return null;
+    if (!this.db) {
+      console.error('No database connection for saving custom food');
+      return null;
+    }
 
+    console.log('Creating custom food object:', foodData);
     const customFood: Omit<CustomFood, 'id'> = {
       ...foodData,
       isCustom: true,
@@ -289,27 +296,38 @@ export class CalciumService {
     };
 
     return new Promise((resolve, reject) => {
-      const transaction = this.db!.transaction(['customFoods'], 'readwrite');
-      const store = transaction.objectStore('customFoods');
-      const request = store.add(customFood);
+      try {
+        const transaction = this.db!.transaction(['customFoods'], 'readwrite');
+        const store = transaction.objectStore('customFoods');
+        const request = store.add(customFood);
 
-      request.onsuccess = () => {
-        const savedFood: CustomFood = { ...customFood, id: request.result as number };
-        
-        calciumState.update(state => ({
-          ...state,
-          customFoods: [...state.customFoods, savedFood]
-        }));
-        
-        showToast('Custom food saved', 'success');
-        resolve(savedFood);
-      };
+        request.onsuccess = () => {
+          const savedFood: CustomFood = { ...customFood, id: request.result as number };
+          console.log('Successfully saved custom food to IndexedDB:', savedFood);
+          
+          calciumState.update(state => ({
+            ...state,
+            customFoods: [...state.customFoods, savedFood]
+          }));
+          
+          showToast('Custom food saved', 'success');
+          resolve(savedFood);
+        };
 
-      request.onerror = () => {
-        console.error('Error saving custom food:', request.error);
-        showToast('Failed to save custom food', 'error');
-        reject(request.error);
-      };
+        request.onerror = () => {
+          console.error('Error saving custom food to IndexedDB:', request.error);
+          showToast('Failed to save custom food', 'error');
+          reject(request.error);
+        };
+
+        transaction.onerror = () => {
+          console.error('Transaction error saving custom food:', transaction.error);
+          reject(transaction.error);
+        };
+      } catch (error) {
+        console.error('Exception in saveCustomFoodToIndexedDB:', error);
+        reject(error);
+      }
     });
   }
 
@@ -416,6 +434,7 @@ export class CalciumService {
   async generateBackup(): Promise<any> {
     const state = get(calciumState);
     
+    // Get journal entries from localStorage
     const journalEntries: Record<string, FoodEntry[]> = {};
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
@@ -429,6 +448,9 @@ export class CalciumService {
       }
     }
 
+    // Get custom foods directly from IndexedDB to ensure we have the latest
+    const customFoods = await this.getAllCustomFoods();
+
     return {
       metadata: {
         version: '2.0.0',
@@ -436,12 +458,101 @@ export class CalciumService {
         appVersion: 'Svelte Calcium Tracker'
       },
       preferences: state.settings,
-      customFoods: state.customFoods,
+      customFoods: customFoods,
       journalEntries
     };
   }
 
   async restoreFromBackup(backupData: any): Promise<void> {
-    throw new Error('Restore functionality not yet implemented');
+    try {
+      // Clear existing data
+      await this.clearAllData();
+      
+      // Restore preferences/settings
+      if (backupData.preferences) {
+        calciumState.update(state => ({
+          ...state,
+          settings: backupData.preferences
+        }));
+        this.saveSettings();
+      }
+      
+      // Restore custom foods to IndexedDB
+      if (backupData.customFoods && Array.isArray(backupData.customFoods)) {
+        for (const customFood of backupData.customFoods) {
+          await this.saveCustomFoodToIndexedDB(customFood);
+        }
+      }
+      
+      // Restore journal entries to localStorage
+      if (backupData.journalEntries) {
+        for (const [date, foods] of Object.entries(backupData.journalEntries)) {
+          if (Array.isArray(foods)) {
+            localStorage.setItem(`calcium_foods_${date}`, JSON.stringify(foods));
+          }
+        }
+      }
+      
+      // Reload data into stores
+      await this.loadSettings();
+      await this.loadCustomFoods();
+      await this.loadDailyFoods();
+      await this.applySortToFoods();
+      
+    } catch (error) {
+      console.error('Error restoring backup:', error);
+      throw new Error('Failed to restore backup data');
+    }
   }
+
+  private async clearAllData(): Promise<void> {
+    // Clear localStorage journal entries
+    const keysToRemove: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith('calcium_')) {
+        keysToRemove.push(key);
+      }
+    }
+    keysToRemove.forEach(key => localStorage.removeItem(key));
+    
+    // Clear IndexedDB custom foods
+    if (this.db) {
+      const transaction = this.db.transaction(['customFoods'], 'readwrite');
+      const store = transaction.objectStore('customFoods');
+      await new Promise<void>((resolve, reject) => {
+        const request = store.clear();
+        request.onsuccess = () => resolve();
+        request.onerror = () => reject(request.error);
+      });
+    }
+  }
+
+  private async getAllCustomFoods(): Promise<CustomFood[]> {
+    if (!this.db) {
+      console.log('No database connection for custom foods');
+      return [];
+    }
+
+    return new Promise((resolve) => {
+      const transaction = this.db!.transaction(['customFoods'], 'readonly');
+      const store = transaction.objectStore('customFoods');
+      const request = store.getAll();
+
+      request.onsuccess = () => {
+        const customFoods: CustomFood[] = (request.result || []).map((food: any) => ({
+          ...food,
+          isCustom: true
+        }));
+        console.log('Found custom foods for backup:', customFoods.length, customFoods);
+        resolve(customFoods);
+      };
+
+      request.onerror = () => {
+        console.error('Error loading custom foods for backup:', request.error);
+        resolve([]);
+      };
+    });
+  }
+
 }

@@ -1,12 +1,10 @@
 <script>
   import { onMount } from "svelte";
   import { calciumState } from "$lib/stores/calcium";
-  import { CalciumService } from "$lib/services/CalciumService";
+  import { getCalciumService } from "$lib/services/CalciumServiceSingleton";
   import Header from "$lib/components/Header.svelte";
   import Toast from "$lib/components/Toast.svelte";
   import "../app.css";
-
-  const calciumService = new CalciumService();
 
   // Theme detection and management
   function initializeTheme() {
@@ -29,7 +27,7 @@
 
   onMount(async () => {
     initializeTheme();
-    await calciumService.initialize();
+    await getCalciumService(); // This will create and initialize the singleton
   });
 </script>
 
