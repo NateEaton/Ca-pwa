@@ -1,4 +1,5 @@
 <script>
+  import { goto } from '$app/navigation';
   import AboutDialog from './AboutDialog.svelte';
   import BackupModal from './BackupModal.svelte';
   import RestoreModal from './RestoreModal.svelte';
@@ -30,6 +31,7 @@
     closeMenu();
     showRestoreModal = true;
   }
+
 
   // Close menu when clicking outside
   function handleOutsideClick(event) {

@@ -111,6 +111,12 @@
 
   <!-- FAB Container -->
   <div class="fab-container">
+    <button class="fab" id="statsFab" title="View Statistics" on:click={() => {}}>
+      <span class="fab-icon material-icons">analytics</span>
+    </button>
+    <button class="fab" id="dataFab" title="Browse Data" on:click={() => window.location.href = '/data'}>
+      <span class="fab-icon material-icons">table_chart</span>
+    </button>
     <button class="fab" id="addFab" title="Add Food" on:click={handleAddFood}>
       <span class="fab-icon material-icons">add</span>
     </button>
@@ -193,7 +199,7 @@
     max-width: 27.5rem;
     margin: 0 auto;
     display: flex;
-    justify-content: flex-end;
+    justify-content: space-between;
     align-items: center;
     pointer-events: none;
     gap: 0.75rem;
@@ -243,9 +249,11 @@
 
     .fab-container {
       bottom: max(0.75rem, env(safe-area-inset-bottom));
-      right: max(2rem, env(safe-area-inset-right));
-      left: auto;
+      right: max(1.25rem, env(safe-area-inset-right));
+      left: max(1.25rem, env(safe-area-inset-left));
       max-width: 100%;
+      gap: 8px;
+      padding: 0 8px;
     }
 
     .fab-container .fab .fab-icon {

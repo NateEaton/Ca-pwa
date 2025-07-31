@@ -1,10 +1,14 @@
 <script>
   import { onMount } from "svelte";
+  import { page } from "$app/stores";
   import { calciumState } from "$lib/stores/calcium";
   import { getCalciumService } from "$lib/services/CalciumServiceSingleton";
   import Header from "$lib/components/Header.svelte";
   import Toast from "$lib/components/Toast.svelte";
   import "../app.css";
+
+  // Don't show loading spinner on certain pages that have their own layout
+  $: isDataPage = $page.route?.id === '/data';
 
   // Theme detection and management
   function initializeTheme() {
@@ -35,10 +39,12 @@
   <Header />
 
   <main class="main-content">
-    {#if $calciumState.isLoading}
+    {#if $calciumState.isLoading && !isDataPage}
       <div class="loading">
         <div class="loading-spinner">
-          <span class="material-icons">hourglass_empty</span>
+          <div class="spinner-container">
+            <span class="material-icons">hourglass_empty</span>
+          </div>
         </div>
         <p>Loading your calcium data...</p>
       </div>
@@ -84,9 +90,37 @@
     animation: spin 2s linear infinite;
   }
 
-  .loading-spinner .material-icons {
+  .spinner-container {
+    position: relative;
+    display: inline-block;
+    width: 2rem;
+    height: 2rem;
+  }
+
+  .spinner-container .material-icons {
     font-size: 2rem;
     color: var(--primary-color);
+  }
+
+  /* Fallback CSS spinner that shows before/during font load */
+  .spinner-container::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 2rem;
+    height: 2rem;
+    border: 3px solid transparent;
+    border-top: 3px solid var(--primary-color);
+    border-radius: 50%;
+    /* This will be hidden once the icon loads and takes space */
+  }
+
+  /* Hide the CSS spinner when Material Icons font is loaded */
+  .spinner-container .material-icons:not(:empty) {
+    position: relative;
+    z-index: 1;
+    background: var(--background);
   }
 
   .loading p {
