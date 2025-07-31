@@ -992,7 +992,7 @@
   .header {
     background: var(--primary-color);
     color: white;
-    padding: 1rem;
+    padding: var(--spacing-lg);
     position: sticky;
     top: 0;
     z-index: 100;
@@ -1002,9 +1002,9 @@
 
   .header-content {
     display: grid;
-    grid-template-columns: 40px 1fr 40px;
+    grid-template-columns: var(--touch-target-min) 1fr var(--touch-target-min);
     align-items: center;
-    max-width: 480px;
+    max-width: 30rem; /* 480px equivalent but fluid */
     margin: 0 auto;
   }
 
@@ -1018,7 +1018,7 @@
   }
 
   .header-center h1 {
-    font-size: 1.25rem;
+    font-size: var(--font-size-lg);
     font-weight: 600;
     margin: 0;
   }
@@ -1033,12 +1033,14 @@
     border: none;
     color: white;
     cursor: pointer;
-    padding: 8px;
+    padding: var(--spacing-sm);
     border-radius: 50%;
     transition: background-color 0.2s ease;
     display: flex;
     align-items: center;
     justify-content: center;
+    min-width: var(--touch-target-min);
+    min-height: var(--touch-target-min);
   }
 
   .back-button:hover {
@@ -1046,45 +1048,46 @@
   }
 
   .back-button .material-icons {
-    font-size: 24px;
+    font-size: var(--icon-size-lg);
   }
 
   .stats-content {
     flex: 1;
     overflow-y: auto;
-    padding: 16px;
-    padding-bottom: 80px;
+    padding: var(--spacing-lg);
+    padding-bottom: 5rem; /* 80px converted to rem */
   }
 
   .stats-view-controls {
-    margin-bottom: 20px;
+    margin-bottom: var(--spacing-xl);
   }
 
   .view-options {
     display: flex;
-    gap: 8px;
+    gap: var(--spacing-sm);
     justify-content: center;
     background-color: var(--surface);
-    border-radius: 8px;
-    padding: 4px;
+    border-radius: var(--spacing-sm);
+    padding: var(--spacing-xs);
     border: 1px solid var(--divider);
   }
 
   .view-option {
     display: flex;
     align-items: center;
-    gap: 4px;
-    padding: 8px 12px;
+    gap: var(--spacing-xs);
+    padding: var(--spacing-sm) var(--spacing-md);
     border: none;
     background: none;
-    border-radius: 6px;
+    border-radius: 0.375rem; /* 6px converted */
     cursor: pointer;
-    font-size: 0.875rem;
+    font-size: var(--font-size-sm);
     font-weight: 500;
     color: var(--text-secondary);
     transition: all 0.2s ease;
     flex: 1;
     justify-content: center;
+    min-height: var(--touch-target-min);
   }
 
   .view-option:hover {
@@ -1098,14 +1101,14 @@
   }
 
   .view-option .material-icons {
-    font-size: 18px;
+    font-size: var(--icon-size-md);
   }
 
   .stats-summary-card {
     background-color: var(--surface);
-    border-radius: 12px;
-    padding: 20px;
-    margin-bottom: 24px;
+    border-radius: var(--spacing-md);
+    padding: var(--spacing-xl);
+    margin-bottom: var(--spacing-2xl);
     box-shadow: var(--shadow);
     border: 1px solid var(--divider);
     text-align: center;
@@ -1122,24 +1125,26 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: 16px;
+    margin-bottom: var(--spacing-lg);
   }
 
   .stats-nav-btn {
     background: none;
     border: none;
     color: var(--text-secondary);
-    font-size: 18px;
+    font-size: var(--font-size-lg);
     font-weight: bold;
     cursor: pointer;
-    padding: 8px;
+    padding: var(--spacing-sm);
     border-radius: 50%;
-    width: 32px;
-    height: 32px;
+    width: 2rem;
+    height: 2rem;
     display: flex;
     align-items: center;
     justify-content: center;
     transition: all 0.2s ease;
+    min-width: var(--touch-target-min);
+    min-height: var(--touch-target-min);
   }
 
   .stats-nav-btn:hover {
@@ -1148,12 +1153,12 @@
   }
 
   .stats-period {
-    font-size: 1rem;
+    font-size: var(--font-size-base);
     font-weight: 500;
     color: var(--text-primary);
     cursor: pointer;
-    padding: 4px 8px;
-    border-radius: 4px;
+    padding: var(--spacing-xs) var(--spacing-sm);
+    border-radius: var(--spacing-xs);
     transition: background-color 0.2s ease;
   }
 
@@ -1167,24 +1172,25 @@
     left: 50%;
     transform: translateX(-50%);
     background: var(--surface);
-    border-radius: 8px;
+    border-radius: var(--spacing-sm);
     box-shadow: var(--shadow-lg);
-    padding: 1rem;
+    padding: var(--spacing-lg);
     z-index: 1000;
-    margin-top: 0.5rem;
+    margin-top: var(--spacing-sm);
     display: flex;
     flex-direction: column;
-    gap: 1rem;
+    gap: var(--spacing-lg);
     border: 1px solid var(--divider);
   }
 
   .date-input {
     border: 1px solid var(--divider);
-    border-radius: 4px;
-    padding: 0.5rem;
-    font-size: 1rem;
+    border-radius: var(--spacing-xs);
+    padding: var(--spacing-sm);
+    font-size: var(--input-font-ideal);
     background: var(--background);
     color: var(--text-primary);
+    min-height: var(--touch-target-min);
   }
 
   .date-input:focus {
@@ -1196,16 +1202,17 @@
     background: var(--primary-color);
     color: white;
     border: none;
-    padding: 0.5rem 1rem;
-    border-radius: 20px;
+    padding: var(--spacing-sm) var(--spacing-lg);
+    border-radius: var(--spacing-xl);
     cursor: pointer;
-    font-size: 0.9rem;
+    font-size: var(--font-size-sm);
     font-weight: 500;
     display: flex;
     align-items: center;
-    gap: 0.25rem;
+    gap: var(--spacing-xs);
     transition: all 0.2s;
     justify-content: center;
+    min-height: var(--touch-target-min);
   }
 
   .today-btn:hover {
@@ -1214,26 +1221,26 @@
   }
 
   .today-btn .material-icons {
-    font-size: 16px;
+    font-size: var(--icon-size-md);
   }
 
   .stats-main-value {
     display: flex;
     align-items: baseline;
     justify-content: center;
-    gap: 4px;
-    margin-bottom: 16px;
+    gap: var(--spacing-xs);
+    margin-bottom: var(--spacing-lg);
   }
 
   .stats-value {
-    font-size: 2.5rem;
+    font-size: var(--font-size-3xl);
     font-weight: 700;
     color: var(--primary-color);
     line-height: 1;
   }
 
   .stats-unit {
-    font-size: 1.25rem;
+    font-size: var(--font-size-xl);
     font-weight: 500;
     color: var(--text-secondary);
   }
@@ -1242,7 +1249,7 @@
     display: grid;
     grid-template-columns: 1fr auto 1fr;
     align-items: center;
-    gap: 12px;
+    gap: var(--spacing-md);
   }
 
   .stats-left {
@@ -1258,31 +1265,31 @@
   }
 
   .stats-title {
-    font-size: 0.875rem;
+    font-size: var(--font-size-sm);
     font-weight: 600;
     color: var(--text-primary);
   }
 
   .stats-subtitle {
-    font-size: 0.875rem;
+    font-size: var(--font-size-sm);
     font-weight: 500;
     color: var(--text-secondary);
   }
 
   .chart-container {
-    margin-bottom: 24px;
+    margin-bottom: var(--spacing-2xl);
     background-color: var(--surface);
-    border-radius: 8px;
+    border-radius: var(--spacing-sm);
     border: 1px solid var(--divider);
     overflow: hidden;
   }
 
   .chart-scroll-wrapper {
     position: relative;
-    height: 260px;
+    height: 16.25rem; /* 260px converted to rem */
     overflow-x: auto;
     overflow-y: hidden;
-    padding: 16px;
+    padding: var(--spacing-lg);
     scroll-behavior: smooth;
   }
 
@@ -1291,33 +1298,33 @@
     height: 100%;
     display: flex;
     align-items: flex-end;
-    gap: 2px;
+    gap: 0.125rem; /* 2px converted */
     min-width: 100%;
-    padding: 2px 8px 0 8px;
+    padding: 0.125rem var(--spacing-sm) 0 var(--spacing-sm);
   }
 
   .chart-canvas.daily-view {
-    gap: 1px;
+    gap: 0.0625rem; /* 1px converted */
   }
 
   .chart-canvas.monthly-view {
-    min-width: 800px;
+    min-width: 50rem; /* 800px converted */
   }
 
   .chart-canvas.weekly-view {
-    gap: 8px;
+    gap: var(--spacing-sm); /* Proper spacing for weekly bars */
   }
 
   .chart-canvas.yearly-view {
     justify-content: space-between;
-    gap: 4px;
+    gap: var(--spacing-xs);
   }
 
   .chart-labels-wrapper {
     overflow-x: auto;
     scrollbar-width: none;
     -ms-overflow-style: none;
-    padding: 8px 16px 16px;
+    padding: var(--spacing-sm) var(--spacing-lg) var(--spacing-lg);
   }
 
   .chart-labels-wrapper::-webkit-scrollbar {
@@ -1326,9 +1333,9 @@
 
   .chart-labels {
     display: flex;
-    gap: 2px;
+    gap: 0.125rem; /* 2px converted */
     width: 100%;
-    padding: 0 8px;
+    padding: 0 var(--spacing-sm);
   }
 
   .chart-labels::-webkit-scrollbar {
@@ -1336,23 +1343,23 @@
   }
 
   .chart-labels.daily-view {
-    gap: 1px;
+    gap: 0.0625rem; /* 1px converted */
     min-width: 100%;
   }
 
   .chart-labels.weekly-view {
-    gap: 8px;
+    gap: var(--spacing-sm); /* Match chart canvas gap */
     min-width: 100%;
   }
 
   .chart-labels.monthly-view {
-    min-width: 800px;
-    gap: 2px;
+    min-width: 50rem; /* 800px converted */
+    gap: 0.125rem;
   }
 
   .chart-labels.yearly-view {
     justify-content: space-between;
-    gap: 1px;
+    gap: 0.0625rem;
     min-width: 100%;
   }
 
@@ -1426,7 +1433,7 @@
     flex: 1 1 0;
     min-width: 0;
     text-align: center;
-    font-size: 0.75rem;
+    font-size: var(--font-size-xs);
     font-weight: 500;
     color: var(--text-secondary);
     display: flex;
@@ -1438,13 +1445,13 @@
   .additional-stats {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 12px;
+    gap: var(--spacing-md);
   }
 
   .stat-card {
     background-color: var(--surface);
-    border-radius: 8px;
-    padding: 16px 12px;
+    border-radius: var(--spacing-sm);
+    padding: var(--spacing-lg) var(--spacing-md);
     text-align: center;
     border: 1px solid var(--divider);
     transition: all 0.2s ease;
@@ -1456,34 +1463,34 @@
   }
 
   .stat-icon {
-    margin-bottom: 8px;
+    margin-bottom: var(--spacing-sm);
   }
 
   .stat-icon .material-icons {
-    font-size: 24px;
+    font-size: var(--icon-size-lg);
     color: var(--primary-color);
   }
 
   .stat-value {
-    font-size: 1.125rem;
+    font-size: var(--font-size-lg);
     font-weight: 600;
     color: var(--text-primary);
-    margin-bottom: 4px;
+    margin-bottom: var(--spacing-xs);
   }
 
   .stat-label {
-    font-size: 0.75rem;
+    font-size: var(--font-size-xs);
     font-weight: 500;
     color: var(--text-secondary);
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.03125rem; /* 0.5px converted */
   }
 
   /* Mobile responsive */
-  @media (max-width: 480px) {
+  @media (max-width: 30rem) { /* 480px equivalent */
     .stats-content {
-      padding: 12px;
-      padding-bottom: 80px;
+      padding: var(--spacing-md);
+      padding-bottom: 5rem;
     }
 
     .view-option span:not(.material-icons) {
@@ -1491,46 +1498,46 @@
     }
 
     .view-option {
-      padding: 10px;
+      padding: 0.625rem; /* 10px converted */
     }
 
     .stats-summary-card {
-      padding: 16px;
+      padding: var(--spacing-lg);
     }
 
     .stats-value {
-      font-size: 2rem;
+      font-size: var(--font-size-2xl);
     }
 
     .additional-stats {
-      gap: 8px;
+      gap: var(--spacing-sm);
     }
 
     .stat-card {
-      padding: 12px 8px;
+      padding: var(--spacing-md) var(--spacing-sm);
     }
 
     /* Fix mobile chart alignment */
     .chart-canvas {
-      gap: 4px;
-      padding: 2px 4px 0 4px;
+      gap: var(--spacing-xs);
+      padding: 0.125rem var(--spacing-xs) 0 var(--spacing-xs);
     }
 
     .chart-canvas.weekly-view {
-      gap: 4px;
+      gap: var(--spacing-xs); /* Tighter gap on mobile */
     }
 
     .chart-labels {
-      gap: 4px;
-      padding: 0 4px;
+      gap: var(--spacing-xs);
+      padding: 0 var(--spacing-xs);
     }
 
     .chart-labels.weekly-view {
-      gap: 4px;
+      gap: var(--spacing-xs); /* Match mobile chart canvas gap */
     }
 
     .chart-label {
-      font-size: 0.7rem;
+      font-size: 0.7rem; /* Slightly smaller than --font-size-xs for mobile */
       min-width: 0;
     }
   }

@@ -83,61 +83,61 @@
     align-items: center;
     justify-content: center;
     z-index: 1500;
-    padding: 1rem;
+    padding: var(--spacing-lg);
   }
 
   .confirm-dialog {
     background: var(--surface);
-    border-radius: 12px;
+    border-radius: var(--spacing-md);
     box-shadow: var(--shadow-lg);
     width: 100%;
-    max-width: 400px;
-    padding: 1.5rem;
+    max-width: 25rem; /* 400px equivalent */
+    padding: var(--spacing-2xl);
     display: flex;
     flex-direction: column;
     align-items: center;
     text-align: center;
-    gap: 1rem;
+    gap: var(--spacing-lg);
   }
 
   .dialog-icon {
-    width: 48px;
-    height: 48px;
+    width: 3rem; /* 48px equivalent */
+    height: 3rem;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    background: var(--info-color, #2196F3);
+    background: var(--info-color);
     color: white;
   }
 
   .confirm-dialog.danger .dialog-icon {
-    background: var(--error-color, #F44336);
+    background: var(--error-color);
   }
 
   .confirm-dialog.warning .dialog-icon {
-    background: var(--warning-color, #FF9800);
+    background: var(--warning-color);
   }
 
   .dialog-icon .material-icons {
-    font-size: 24px;
+    font-size: var(--icon-size-lg);
   }
 
   .dialog-content {
     display: flex;
     flex-direction: column;
-    gap: 0.5rem;
+    gap: var(--spacing-sm);
   }
 
   .dialog-title {
-    font-size: 1.25rem;
+    font-size: var(--font-size-xl);
     font-weight: 600;
     color: var(--text-primary);
     margin: 0;
   }
 
   .dialog-message {
-    font-size: 1rem;
+    font-size: var(--font-size-base);
     color: var(--text-secondary);
     margin: 0;
     line-height: 1.4;
@@ -145,17 +145,17 @@
 
   .dialog-actions {
     display: flex;
-    gap: 1rem;
+    gap: var(--spacing-lg);
     width: 100%;
-    margin-top: 0.5rem;
+    margin-top: var(--spacing-sm);
   }
 
   .btn {
     flex: 1;
-    padding: 0.75rem 1.5rem;
+    padding: var(--spacing-md) var(--spacing-2xl);
     border: none;
-    border-radius: 8px;
-    font-size: 1rem;
+    border-radius: var(--spacing-sm);
+    font-size: var(--font-size-base);
     font-weight: 500;
     cursor: pointer;
     transition: all 0.2s;
@@ -177,35 +177,35 @@
   }
 
   .btn-primary:hover {
-    background: var(--primary-color-dark, #1565C0);
+    background: var(--primary-color-dark);
   }
 
   .btn-danger {
-    background: var(--error-color, #F44336);
+    background: var(--error-color);
     color: white;
   }
 
   .btn-danger:hover {
-    background: #d32f2f;
+    background: var(--error-color-dark, #d32f2f);
   }
 
   .btn-warning {
-    background: var(--warning-color, #FF9800);
+    background: var(--warning-color);
     color: white;
   }
 
   .btn-warning:hover {
-    background: #f57c00;
+    background: var(--warning-color-dark, #f57c00);
   }
 
   /* Mobile responsive */
-  @media (max-width: 480px) {
+  @media (max-width: 30rem) { /* 480px equivalent */
     .modal-overlay {
-      padding: 0.5rem;
+      padding: var(--spacing-sm);
     }
 
     .confirm-dialog {
-      padding: 1.25rem;
+      padding: var(--spacing-xl);
     }
 
     .dialog-actions {

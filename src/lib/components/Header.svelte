@@ -94,18 +94,19 @@
   .header {
     background: var(--primary-color);
     color: white;
-    padding: 1rem;
+    padding: var(--spacing-lg);
     position: sticky;
     top: 0;
     z-index: 100;
     box-shadow: var(--shadow);
+    min-height: var(--header-height);
   }
 
   .header-content {
     display: grid;
-    grid-template-columns: 40px 1fr 40px;
+    grid-template-columns: var(--touch-target-min) 1fr var(--touch-target-min);
     align-items: center;
-    max-width: 480px;
+    max-width: 30rem; /* 480px equivalent */
     margin: 0 auto;
   }
 
@@ -113,7 +114,7 @@
     background: none;
     border: none;
     color: white;
-    padding: 0.5rem;
+    padding: var(--spacing-sm);
     border-radius: 50%;
     cursor: pointer;
     transition: background-color 0.2s;
@@ -121,6 +122,8 @@
     align-items: center;
     justify-content: center;
     grid-column: 1;
+    min-width: var(--touch-target-min);
+    min-height: var(--touch-target-min);
   }
 
   .hamburger-btn:hover {
@@ -128,7 +131,7 @@
   }
 
   .app-title {
-    font-size: 1.25rem;
+    font-size: var(--font-size-lg);
     font-weight: 600;
     margin: 0;
     text-align: center;
@@ -142,11 +145,11 @@
   .hamburger-menu {
     position: absolute;
     top: 100%;
-    left: 1rem;
+    left: var(--spacing-lg);
     background: var(--surface);
-    border-radius: 8px;
+    border-radius: var(--spacing-sm);
     box-shadow: var(--shadow-lg);
-    min-width: 200px;
+    min-width: 12.5rem; /* 200px converted */
     z-index: 200;
     overflow: hidden;
   }
@@ -154,8 +157,8 @@
   .menu-item {
     display: flex;
     align-items: center;
-    gap: 0.75rem;
-    padding: 1rem;
+    gap: var(--spacing-md);
+    padding: var(--spacing-lg);
     width: 100%;
     background: none;
     border: none;
@@ -163,8 +166,9 @@
     cursor: pointer;
     transition: background-color 0.2s;
     border-bottom: 1px solid var(--divider);
-    font-size: 1rem;
+    font-size: var(--font-size-base);
     text-align: left;
+    min-height: var(--touch-target-min);
   }
 
   .menu-item:last-child {
@@ -176,27 +180,27 @@
   }
 
   .hamburger-btn .material-icons {
-    font-size: 24px;
+    font-size: var(--icon-size-lg);
   }
 
   .menu-item .material-icons {
-    font-size: 20px;
+    font-size: var(--icon-size-md);
     color: var(--text-secondary);
   }
 
   /* Mobile responsive */
-  @media (max-width: 480px) {
+  @media (max-width: 30rem) { /* 480px equivalent */
     .header {
-      padding: 0.75rem 1rem;
+      padding: var(--spacing-md) var(--spacing-lg);
     }
 
     .app-title {
-      font-size: 1.1rem;
+      font-size: var(--font-size-base); /* Slightly smaller on mobile */
     }
 
     .hamburger-menu {
-      left: 0.5rem;
-      right: 0.5rem;
+      left: var(--spacing-sm);
+      right: var(--spacing-sm);
     }
   }
 </style>

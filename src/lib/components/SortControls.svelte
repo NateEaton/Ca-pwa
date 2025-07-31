@@ -73,9 +73,9 @@
   .sort-controls {
     display: flex;
     align-items: center;
-    gap: 0.75rem;
-    margin-bottom: 0.5rem;
-    padding: 0.5rem 1rem;
+    gap: var(--spacing-md);
+    margin-bottom: var(--spacing-sm);
+    padding: var(--spacing-sm) var(--spacing-lg);
     background-color: transparent;
     border: none;
     box-shadow: none;
@@ -87,17 +87,17 @@
   }
 
   .sort-label {
-    font-size: var(--font-size-sm, 0.875rem);
+    font-size: var(--font-size-sm);
     color: var(--text-secondary);
     font-weight: 500;
     flex-shrink: 0;
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: var(--spacing-sm);
   }
 
   .sort-section-icon {
-    font-size: var(--font-size-lg, 1.125rem);
+    font-size: var(--icon-size-lg);
     color: var(--text-secondary);
     flex-shrink: 0;
   }
@@ -106,7 +106,7 @@
     display: flex;
     justify-content: space-between;
     flex: 1;
-    gap: 0.5rem;
+    gap: var(--spacing-sm);
     overflow-x: auto;
     scrollbar-width: none;
     -ms-overflow-style: none;
@@ -120,22 +120,22 @@
     display: flex;
     align-items: center;
     gap: 0.1875rem;
-    padding: 0.5rem 0.75rem;
-    border-radius: 0.75rem;
+    padding: var(--spacing-sm) var(--spacing-md);
+    border-radius: var(--spacing-md);
     cursor: pointer;
-    font-size: var(--font-size-sm, 0.875rem);
+    font-size: var(--font-size-sm);
     color: var(--text-secondary);
     transition: all 0.2s ease;
     border: 1px solid transparent;
     flex: 1;
     justify-content: center;
     text-align: center;
-    min-height: var(--touch-target-min, 44px);
+    min-height: var(--touch-target-min);
     background: none;
   }
 
   .sort-option:hover {
-    background-color: var(--surface-variant, #f0f0f0);
+    background-color: var(--surface-variant);
   }
 
   .sort-option.active {
@@ -145,7 +145,7 @@
   }
 
   .sort-icon {
-    font-size: var(--font-size-sm, 0.875rem);
+    font-size: var(--icon-size-sm);
   }
 
   .sort-option.active .sort-icon {
@@ -153,15 +153,15 @@
   }
 
   /* Responsive design - hide text on small screens, show only icons */
-  @media (max-width: 480px) {
+  @media (max-width: 30rem) { /* 480px equivalent */
     .sort-text {
       display: none;
     }
 
     .sort-option {
-      gap: 0.25rem;
-      padding: 0.5rem;
-      min-width: 44px;
+      gap: var(--spacing-xs);
+      padding: var(--spacing-sm);
+      min-width: var(--touch-target-min);
     }
 
     .sort-label span:not(.material-icons) {
@@ -170,10 +170,10 @@
   }
 
   /* Large screens - show both icons and text */
-  @media (min-width: 481px) {
+  @media (min-width: 30.0625rem) { /* 481px equivalent */
     .sort-option {
       justify-content: center;
-      gap: 0.375rem;
+      gap: var(--spacing-sm);
     }
   }
 </style>

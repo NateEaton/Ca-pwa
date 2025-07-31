@@ -88,15 +88,15 @@
     align-items: center;
     justify-content: center;
     z-index: 1000;
-    padding: 1rem;
+    padding: var(--spacing-lg);
   }
 
   .modal {
     background-color: var(--surface);
-    border-radius: 8px;
+    border-radius: var(--spacing-sm);
     box-shadow: var(--shadow-lg);
     width: 90%;
-    max-width: 432px; /* 90% of 480px */
+    max-width: 27rem; /* 432px equivalent */
     max-height: 90vh;
     overflow: hidden;
     display: flex;
@@ -106,7 +106,7 @@
   .modal-header {
     display: flex;
     align-items: center;
-    padding: 16px 20px;
+    padding: var(--spacing-lg) var(--spacing-xl);
     border-bottom: 1px solid var(--divider);
     background-color: var(--surface);
     flex-shrink: 0;
@@ -123,17 +123,17 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 24px;
+    font-size: var(--icon-size-xl);
   }
 
   .back-btn .material-icons {
-    font-size: 24px;
+    font-size: var(--icon-size-xl);
   }
 
   .modal-header-left {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--spacing-sm);
   }
 
   .modal-header-center {
@@ -143,14 +143,14 @@
   }
 
   .modal-title {
-    font-size: 1.25rem;
+    font-size: var(--font-size-xl);
     font-weight: 600;
     margin: 0;
     color: var(--text-primary);
   }
 
   .modal-body {
-    padding: 20px;
+    padding: var(--spacing-xl);
     overflow-y: auto;
     flex: 1;
   }
@@ -160,7 +160,7 @@
   }
 
   .about-section {
-    margin-bottom: 1.5rem;
+    margin-bottom: var(--spacing-2xl);
   }
 
   .about-section:last-child {
@@ -169,51 +169,51 @@
 
   .about-section h3 {
     color: var(--primary-color);
-    font-size: 1.5rem;
-    margin-bottom: 0.5rem;
+    font-size: var(--font-size-2xl);
+    margin-bottom: var(--spacing-sm);
     font-weight: 600;
   }
 
   .about-section h4 {
     color: var(--text-primary);
-    font-size: 1.25rem;
-    margin-bottom: 0.5rem;
+    font-size: var(--font-size-xl);
+    margin-bottom: var(--spacing-sm);
     font-weight: 500;
   }
 
   .about-section p {
     color: var(--text-secondary);
     line-height: 1.6;
-    margin-bottom: 0.5rem;
+    margin-bottom: var(--spacing-sm);
   }
 
   .about-section ul {
-    margin: 0.5rem 0;
-    padding-left: 1.25rem;
+    margin: var(--spacing-sm) 0;
+    padding-left: var(--spacing-xl);
   }
 
   .about-section li {
     color: var(--text-secondary);
     line-height: 1.6;
-    margin-bottom: 0.25rem;
+    margin-bottom: var(--spacing-xs);
   }
 
   .about-footer {
     text-align: center;
-    padding-top: 1rem;
+    padding-top: var(--spacing-lg);
     border-top: 1px solid var(--divider);
-    margin-top: 1.5rem;
+    margin-top: var(--spacing-2xl);
   }
 
   .about-footer p {
     color: var(--text-hint);
-    font-size: 0.875rem;
+    font-size: var(--font-size-sm);
   }
 
   /* Mobile responsive */
-  @media (max-width: 480px) {
+  @media (max-width: 30rem) { /* 480px equivalent */
     .modal-backdrop {
-      padding: 0.5rem;
+      padding: var(--spacing-sm);
     }
 
     .modal {
@@ -221,24 +221,24 @@
     }
 
     .modal-header {
-      padding: 1rem;
+      padding: var(--spacing-lg);
     }
 
     .modal-body {
-      padding: 1rem;
+      padding: var(--spacing-lg);
     }
 
     .about-section h3 {
-      font-size: 1.25rem;
+      font-size: var(--font-size-xl);
     }
 
     .about-section h4 {
-      font-size: 1.1rem;
+      font-size: var(--font-size-lg);
     }
 
     .about-section p,
     .about-section li {
-      font-size: 0.9rem;
+      font-size: var(--font-size-sm);
       line-height: 1.5;
     }
   }

@@ -145,15 +145,15 @@
     align-items: center;
     justify-content: center;
     z-index: 1000;
-    padding: 1rem;
+    padding: var(--spacing-lg);
   }
 
   .modal-content {
     background: var(--surface);
-    border-radius: 12px;
+    border-radius: var(--spacing-md);
     box-shadow: var(--shadow-lg);
     width: 100%;
-    max-width: 400px;
+    max-width: 25rem; /* 400px equivalent */
     max-height: 90vh;
     overflow: hidden;
     display: flex;
@@ -163,7 +163,7 @@
   .modal-header {
     display: flex;
     align-items: center;
-    padding: 1rem 1.5rem;
+    padding: var(--spacing-lg) var(--spacing-2xl);
     border-bottom: 1px solid var(--divider);
     background: var(--surface-variant);
   }
@@ -173,9 +173,9 @@
     border: none;
     color: var(--text-secondary);
     cursor: pointer;
-    padding: 0.5rem;
+    padding: var(--spacing-sm);
     border-radius: 50%;
-    margin-right: 1rem;
+    margin-right: var(--spacing-lg);
     transition: all 0.2s;
     display: flex;
     align-items: center;
@@ -193,36 +193,36 @@
   }
 
   .modal-title {
-    font-size: 1.25rem;
+    font-size: var(--font-size-xl);
     font-weight: 600;
     color: var(--text-primary);
     margin: 0;
   }
 
   .modal-body {
-    padding: 1.5rem;
+    padding: var(--spacing-2xl);
     flex: 1;
     overflow-y: auto;
   }
 
   .form-group {
-    margin-bottom: 1.5rem;
+    margin-bottom: var(--spacing-2xl);
   }
 
   .form-label {
     display: block;
-    margin-bottom: 0.5rem;
+    margin-bottom: var(--spacing-sm);
     font-weight: 500;
     color: var(--text-primary);
-    font-size: 0.9rem;
+    font-size: var(--font-size-sm);
   }
 
   .form-input {
     width: 100%;
-    padding: 0.75rem;
+    padding: var(--spacing-md);
     border: 2px solid var(--divider);
-    border-radius: 8px;
-    font-size: 1rem;
+    border-radius: var(--spacing-sm);
+    font-size: var(--font-size-base);
     background: var(--background);
     color: var(--text-primary);
     transition: all 0.2s;
@@ -231,7 +231,7 @@
   .form-input:focus {
     outline: none;
     border-color: var(--primary-color);
-    box-shadow: 0 0 0 3px var(--primary-alpha-10);
+    box-shadow: 0 0 0 0.1875rem var(--primary-alpha-10); /* 3px equivalent */
   }
 
   .form-input.error {
@@ -245,32 +245,32 @@
 
   .error-message {
     color: var(--error-color);
-    font-size: 0.875rem;
-    margin-top: 0.5rem;
+    font-size: var(--font-size-sm);
+    margin-top: var(--spacing-sm);
     display: flex;
     align-items: center;
-    gap: 0.25rem;
+    gap: var(--spacing-xs);
   }
 
   .modal-actions {
     display: flex;
-    gap: 1rem;
+    gap: var(--spacing-lg);
     justify-content: flex-end;
-    margin-top: 2rem;
+    margin-top: var(--spacing-3xl);
   }
 
   .btn {
-    padding: 0.75rem 1.5rem;
+    padding: var(--spacing-md) var(--spacing-2xl);
     border: none;
-    border-radius: 8px;
-    font-size: 1rem;
+    border-radius: var(--spacing-sm);
+    font-size: var(--font-size-base);
     font-weight: 500;
     cursor: pointer;
     transition: all 0.2s;
     display: flex;
     align-items: center;
-    gap: 0.5rem;
-    min-width: 80px;
+    gap: var(--spacing-sm);
+    min-width: 5rem; /* 80px equivalent */
     justify-content: center;
   }
 
@@ -295,7 +295,7 @@
   }
 
   .btn-primary:hover:not(:disabled) {
-    background: var(--primary-color-dark, #1565C0);
+    background: var(--primary-color-dark);
   }
 
   .spin {
@@ -308,9 +308,9 @@
   }
 
   /* Mobile responsive */
-  @media (max-width: 480px) {
+  @media (max-width: 30rem) { /* 480px equivalent */
     .modal-overlay {
-      padding: 0.5rem;
+      padding: var(--spacing-sm);
     }
 
     .modal-content {
@@ -318,21 +318,21 @@
     }
 
     .modal-header {
-      padding: 1rem;
+      padding: var(--spacing-lg);
     }
 
     .modal-body {
-      padding: 1rem;
+      padding: var(--spacing-lg);
     }
 
     .btn {
-      padding: 0.875rem 1.25rem;
-      font-size: 0.9rem;
+      padding: var(--spacing-md) var(--spacing-xl);
+      font-size: var(--font-size-sm);
     }
 
     .modal-actions {
       flex-direction: column-reverse;
-      gap: 0.75rem;
+      gap: var(--spacing-md);
     }
 
     .btn {

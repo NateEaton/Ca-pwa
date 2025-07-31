@@ -77,9 +77,9 @@
   .food-entry {
     background: var(--surface);
     border: 1px solid var(--divider);
-    border-radius: 8px;
-    padding: 1rem;
-    margin-bottom: 0.5rem;
+    border-radius: var(--spacing-sm);
+    padding: var(--spacing-lg);
+    margin-bottom: var(--spacing-sm);
     transition: all 0.2s;
     display: flex;
     justify-content: space-between;
@@ -100,7 +100,7 @@
     justify-content: space-between;
     align-items: center;
     flex: 1;
-    gap: 1rem;
+    gap: var(--spacing-lg);
   }
 
   .food-info {
@@ -110,57 +110,57 @@
   .food-name {
     font-weight: 600;
     color: var(--text-primary);
-    margin-bottom: 0.25rem;
+    margin-bottom: var(--spacing-xs);
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: var(--spacing-sm);
   }
 
   .custom-badge {
-    background: var(--secondary-color, #ffc107);
+    background: var(--secondary-color);
     color: var(--text-primary);
-    font-size: 0.75rem;
+    font-size: var(--font-size-xs);
     font-weight: 500;
-    padding: 0.125rem 0.5rem;
-    border-radius: 10px;
+    padding: 0.125rem var(--spacing-sm);
+    border-radius: 0.625rem; /* 10px equivalent */
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.03125rem;
   }
 
   .food-details {
-    font-size: 0.9rem;
+    font-size: var(--font-size-sm);
     color: var(--text-secondary);
   }
 
   .food-calcium {
     display: flex;
     align-items: baseline;
-    gap: 0.25rem;
+    gap: var(--spacing-xs);
     flex-shrink: 0;
   }
 
   .calcium-amount {
-    font-size: 1.25rem;
+    font-size: var(--font-size-xl);
     font-weight: bold;
     color: var(--primary-color);
   }
 
   .calcium-unit {
-    font-size: 0.8rem;
+    font-size: var(--font-size-xs);
     color: var(--text-secondary);
   }
 
   .food-actions {
     display: flex;
-    gap: 0.25rem;
+    gap: var(--spacing-xs);
     flex-shrink: 0;
-    margin-left: 1rem;
+    margin-left: var(--spacing-lg);
   }
 
   .action-btn {
     background: none;
     border: none;
-    padding: 0.375rem;
+    padding: var(--spacing-sm);
     border-radius: 50%;
     cursor: pointer;
     color: var(--text-secondary);
@@ -168,8 +168,8 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    min-width: 32px;
-    min-height: 32px;
+    min-width: 2rem; /* 32px equivalent */
+    min-height: 2rem;
   }
 
   .action-btn:hover {
@@ -182,24 +182,24 @@
   }
 
   .action-btn.delete:hover {
-    color: var(--error-color, #f44336);
+    color: var(--error-color);
     background-color: var(--error-alpha-10);
   }
 
   .action-btn .material-icons {
-    font-size: 18px;
+    font-size: var(--icon-size-md);
   }
 
   /* Mobile responsive */
-  @media (max-width: 480px) {
+  @media (max-width: 30rem) { /* 480px equivalent */
     .food-entry {
-      padding: 0.875rem;
+      padding: var(--spacing-md);
       flex-direction: column;
       align-items: stretch;
     }
 
     .food-main {
-      margin-bottom: 0.5rem;
+      margin-bottom: var(--spacing-sm);
     }
 
     .food-actions {
@@ -208,25 +208,25 @@
     }
 
     .food-name {
-      font-size: 0.95rem;
+      font-size: var(--font-size-sm);
     }
 
     .food-details {
-      font-size: 0.85rem;
+      font-size: var(--font-size-xs);
     }
 
     .calcium-amount {
-      font-size: 1.125rem;
+      font-size: var(--font-size-lg);
     }
 
     .action-btn {
-      min-width: 28px;
-      min-height: 28px;
-      padding: 0.25rem;
+      min-width: 1.75rem; /* 28px equivalent */
+      min-height: 1.75rem;
+      padding: var(--spacing-xs);
     }
 
     .action-btn .material-icons {
-      font-size: 16px;
+      font-size: var(--icon-size-sm);
     }
   }
 </style>

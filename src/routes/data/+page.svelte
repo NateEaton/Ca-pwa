@@ -213,7 +213,7 @@
     left: 50%;
     transform: translateX(-50%);
     width: 100%;
-    max-width: 480px;
+    max-width: 30rem; /* 480px equivalent */
     height: 100vh;
     background-color: var(--background);
     z-index: 2000;
@@ -224,7 +224,7 @@
   .header {
     background: var(--primary-color);
     color: white;
-    padding: 1rem;
+    padding: var(--spacing-lg);
     position: sticky;
     top: 0;
     z-index: 100;
@@ -234,9 +234,9 @@
 
   .header-content {
     display: grid;
-    grid-template-columns: 40px 1fr 40px;
+    grid-template-columns: 2.5rem 1fr 2.5rem; /* 40px equivalent */
     align-items: center;
-    max-width: 480px;
+    max-width: 30rem; /* 480px equivalent */
     margin: 0 auto;
   }
 
@@ -255,7 +255,7 @@
   }
 
   .header-center h1 {
-    font-size: 1.25rem;
+    font-size: var(--font-size-xl);
     font-weight: 600;
     margin: 0;
   }
@@ -265,7 +265,7 @@
     border: none;
     color: white;
     cursor: pointer;
-    padding: 8px;
+    padding: var(--spacing-sm);
     border-radius: 50%;
     transition: background-color 0.2s ease;
     display: flex;
@@ -278,27 +278,27 @@
   }
 
   .back-button .material-icons {
-    font-size: 24px;
+    font-size: var(--icon-size-xl);
   }
 
   .content {
     flex: 1;
     overflow-y: auto;
-    padding: 16px;
-    padding-bottom: 80px;
+    padding: var(--spacing-lg);
+    padding-bottom: 5rem; /* 80px equivalent */
   }
 
   .search-container {
     position: relative;
-    margin-bottom: 16px;
+    margin-bottom: var(--spacing-lg);
   }
 
   .data-search {
     width: 100%;
-    padding: 12px 16px 12px 48px;
+    padding: var(--spacing-md) var(--spacing-lg) var(--spacing-md) 3rem; /* 48px equivalent */
     border: 1px solid var(--divider);
-    border-radius: 8px;
-    font-size: 16px;
+    border-radius: var(--spacing-sm);
+    font-size: var(--input-font-min); /* Prevent iOS zoom */
     background-color: var(--surface);
     color: var(--text-primary);
   }
@@ -311,11 +311,11 @@
 
   .search-icon {
     position: absolute;
-    left: 16px;
+    left: var(--spacing-lg);
     top: 50%;
     transform: translateY(-50%);
     color: var(--text-secondary);
-    font-size: 20px;
+    font-size: var(--icon-size-lg);
   }
 
   .data-filter-controls,
@@ -465,47 +465,47 @@
 
 
   /* Mobile responsive */
-  @media (max-width: 480px) {
+  @media (max-width: 30rem) { /* 480px equivalent */
     .content {
-      padding: 12px;
-      padding-bottom: 80px;
+      padding: var(--spacing-md);
+      padding-bottom: 5rem;
     }
 
     .data-filter-controls .sort-option,
     .data-sort-controls .sort-option {
-      padding: 4px 6px;
-      font-size: 0.75rem;
-      gap: 2px;
+      padding: var(--spacing-xs) var(--spacing-sm);
+      font-size: var(--font-size-xs);
+      gap: 0.125rem; /* 2px equivalent */
     }
 
     .data-filter-controls,
     .data-sort-controls {
-      padding: 4px 8px;
-      gap: 6px;
+      padding: var(--spacing-xs) var(--spacing-sm);
+      gap: var(--spacing-sm);
     }
 
     .data-search {
-      padding: 10px 14px 10px 40px;
-      font-size: 14px;
+      padding: var(--spacing-sm) var(--spacing-md) var(--spacing-sm) 2.5rem; /* 40px equivalent */
+      font-size: var(--font-size-sm);
     }
 
     .search-icon {
-      left: 12px;
-      font-size: 18px;
+      left: var(--spacing-md);
+      font-size: var(--icon-size-md);
     }
 
     .food-item {
-      padding: 10px 12px;
+      padding: var(--spacing-sm) var(--spacing-md);
     }
 
     .food-info {
-      margin-right: 12px;
+      margin-right: var(--spacing-md);
     }
 
   }
 
   /* Hide text labels on mobile, show icons only */
-  @media (max-width: 480px) {
+  @media (max-width: 30rem) { /* 480px equivalent */
     .data-filter-controls .sort-option span:not(.material-icons),
     .data-sort-controls .sort-option span:not(.material-icons) {
       display: none;
@@ -513,7 +513,7 @@
 
     .data-filter-controls .sort-option .material-icons,
     .data-sort-controls .sort-option .material-icons {
-      font-size: 16px !important;
+      font-size: var(--icon-size-sm) !important;
       margin: 0;
     }
   }

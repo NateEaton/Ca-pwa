@@ -378,16 +378,16 @@
     align-items: center;
     justify-content: center;
     z-index: 1000;
-    padding: 1rem;
+    padding: var(--spacing-lg);
   }
 
   .modal-content {
     background: var(--surface);
-    border-radius: 8px;
+    border-radius: var(--spacing-sm);
     box-shadow: var(--shadow);
     border: 1px solid var(--divider);
     width: 100%;
-    max-width: 400px;
+    max-width: 25rem; /* 400px equivalent */
     max-height: 90vh;
     overflow: hidden;
     display: flex;
@@ -397,7 +397,7 @@
   .modal-header {
     display: flex;
     align-items: center;
-    padding: 16px 20px;
+    padding: var(--spacing-lg) var(--spacing-xl);
     border-bottom: 1px solid var(--divider);
     position: relative;
   }
@@ -405,7 +405,7 @@
   .modal-header-left {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--spacing-sm);
   }
 
   .modal-header-center {
@@ -418,7 +418,7 @@
     margin-left: auto;
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--spacing-sm);
   }
 
   .modal-back {
@@ -426,8 +426,8 @@
     border: none;
     color: var(--text-secondary);
     cursor: pointer;
-    font-size: var(--icon-size-xl, 24px);
-    padding: 4px;
+    font-size: var(--icon-size-xl);
+    padding: var(--spacing-xs);
     border-radius: 50%;
     transition: all 0.2s;
     display: flex;
@@ -446,7 +446,7 @@
   }
 
   .modal-title {
-    font-size: var(--font-size-lg, 18px);
+    font-size: var(--font-size-lg);
     font-weight: 500;
     color: var(--text-primary);
     margin: 0;
@@ -457,13 +457,13 @@
     border: none;
     color: var(--text-secondary);
     cursor: pointer;
-    padding: 8px;
+    padding: var(--spacing-sm);
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
     transition: all 0.2s ease;
-    font-size: var(--icon-size-lg, 20px);
+    font-size: var(--icon-size-lg);
   }
 
   .custom-food-toggle:hover:not(:disabled) {
@@ -482,7 +482,7 @@
   }
 
   .modal-body {
-    padding: 20px;
+    padding: var(--spacing-xl);
     flex: 1;
     overflow-y: auto;
     border-left: 3px solid var(--primary-color);
@@ -495,22 +495,22 @@
   }
 
   .form-group {
-    margin-bottom: 16px;
+    margin-bottom: var(--spacing-lg);
   }
 
   .form-label {
     display: block;
-    margin-bottom: 8px;
+    margin-bottom: var(--spacing-sm);
     font-weight: 500;
     color: var(--text-primary);
   }
 
   .form-input {
     width: 100%;
-    padding: 12px;
+    padding: var(--spacing-md);
     border: 1px solid var(--divider);
-    border-radius: 4px;
-    font-size: var(--input-font-ideal, 18px);
+    border-radius: var(--spacing-xs);
+    font-size: var(--input-font-ideal);
     background-color: var(--surface);
     color: var(--text-primary);
     transition: border-color 0.2s;
@@ -530,7 +530,7 @@
 
   .serving-row {
     display: flex;
-    gap: 12px;
+    gap: var(--spacing-md);
     align-items: end;
   }
 
@@ -553,16 +553,16 @@
   }
 
   .search-results {
-    max-height: 200px;
+    max-height: 12.5rem; /* 200px equivalent */
     overflow-y: auto;
     border: 1px solid var(--divider);
-    border-radius: 4px;
-    margin-top: 8px;
+    border-radius: var(--spacing-xs);
+    margin-top: var(--spacing-sm);
     background-color: var(--surface);
   }
 
   .search-item {
-    padding: 12px;
+    padding: var(--spacing-md);
     cursor: pointer;
     border-bottom: 1px solid var(--divider);
     transition: background-color 0.2s ease;
@@ -582,46 +582,46 @@
   }
 
   .search-item-details {
-    font-size: var(--font-size-sm, 14px);
+    font-size: var(--font-size-sm);
     color: var(--text-secondary);
-    margin-top: 4px;
+    margin-top: var(--spacing-xs);
   }
 
   .error-message {
     display: flex;
     align-items: center;
-    gap: 8px;
-    color: var(--error-color, #f44336);
-    font-size: 0.9rem;
-    padding: 8px 12px;
+    gap: var(--spacing-sm);
+    color: var(--error-color);
+    font-size: var(--font-size-sm);
+    padding: var(--spacing-sm) var(--spacing-md);
     background: var(--error-alpha-10);
-    border-radius: 4px;
-    margin-bottom: 16px;
+    border-radius: var(--spacing-xs);
+    margin-bottom: var(--spacing-lg);
   }
 
   .error-message .material-icons {
-    font-size: 18px;
+    font-size: var(--icon-size-md);
   }
 
   .button-group {
     display: flex;
-    gap: 12px;
-    margin-top: 20px;
+    gap: var(--spacing-md);
+    margin-top: var(--spacing-xl);
   }
 
   .btn {
-    padding: 12px 24px;
+    padding: var(--spacing-md) var(--spacing-2xl);
     border: none;
-    border-radius: 4px;
+    border-radius: var(--spacing-xs);
     cursor: pointer;
-    font-size: var(--font-size-base, 16px);
+    font-size: var(--font-size-base);
     font-weight: 500;
     transition: all 0.2s ease;
     flex: 1;
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 8px;
+    gap: var(--spacing-sm);
   }
 
   .btn:disabled {
@@ -645,7 +645,7 @@
   }
 
   .btn-primary:hover:not(:disabled) {
-    background-color: var(--primary-dark, #1565c0);
+    background-color: var(--primary-color-dark);
   }
 
   .spin {
@@ -662,10 +662,10 @@
   }
 
   /* Mobile responsive */
-  @media (max-width: 480px) {
+  @media (max-width: 30rem) { /* 480px equivalent */
     .modal-backdrop {
       align-items: center;
-      padding: 1rem;
+      padding: var(--spacing-lg);
     }
 
     .modal-content {
@@ -673,20 +673,20 @@
     }
 
     .modal-header {
-      padding: 12px 16px;
+      padding: var(--spacing-md) var(--spacing-lg);
     }
 
     .modal-body {
-      padding: 16px;
+      padding: var(--spacing-lg);
     }
 
     .form-input {
-      font-size: 16px; /* Prevent zoom on iOS */
+      font-size: var(--input-font-min); /* Prevent zoom on iOS */
     }
 
     .btn {
-      padding: 14px 20px;
-      font-size: 16px;
+      padding: var(--spacing-md) var(--spacing-xl);
+      font-size: var(--font-size-base);
     }
   }
 </style>

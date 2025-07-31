@@ -57,20 +57,20 @@
   .summary-card {
     background: var(--surface);
     border: 1px solid var(--divider);
-    border-radius: 8px;
-    padding: 1rem 1.25rem;
-    margin-bottom: 1rem;
+    border-radius: var(--spacing-sm);
+    padding: var(--spacing-lg) var(--spacing-xl);
+    margin-bottom: var(--spacing-lg);
     box-shadow: var(--shadow);
   }
 
   .calcium-summary {
-    margin-top: 1rem;
+    margin-top: var(--spacing-lg);
   }
 
   .summary-numbers {
     display: grid;
     grid-template-columns: 1fr 2fr 1fr;
-    gap: 1rem;
+    gap: var(--spacing-lg);
     align-items: center;
   }
 
@@ -81,16 +81,16 @@
 
   .current-amount,
   .goal-amount {
-    font-size: 2rem;
+    font-size: var(--font-size-2xl);
     font-weight: bold;
     line-height: 1;
-    margin-bottom: 0.25rem;
+    margin-bottom: var(--spacing-xs);
     color: var(--text-primary);
   }
 
   .current-label,
   .goal-label {
-    font-size: 0.875rem;
+    font-size: var(--font-size-sm);
     color: var(--text-secondary);
   }
 
@@ -99,14 +99,15 @@
     border: none;
     color: var(--text-primary);
     cursor: pointer;
-    padding: 0.5rem;
-    border-radius: 8px;
+    padding: var(--spacing-sm);
+    border-radius: var(--spacing-sm);
     transition: all 0.2s;
     position: relative;
     width: 100%;
     display: flex;
     flex-direction: column;
     align-items: center;
+    min-height: var(--touch-target-min);
   }
 
   .goal-button:hover {
@@ -117,7 +118,7 @@
     position: absolute;
     top: 0;
     right: 0;
-    font-size: 16px;
+    font-size: var(--icon-size-md);
     opacity: 0.5;
     color: var(--text-secondary);
     transition: opacity 0.2s;
@@ -131,7 +132,7 @@
   .progress-section {
     display: flex;
     flex-direction: column;
-    gap: 0.5rem;
+    gap: var(--spacing-sm);
   }
 
   .progress-bar-container {
@@ -140,45 +141,45 @@
 
   .progress-bar {
     width: 100%;
-    height: 8px;
+    height: var(--spacing-sm); /* 8px equivalent */
     background: var(--surface-variant);
-    border-radius: 4px;
+    border-radius: var(--spacing-xs);
     overflow: hidden;
   }
 
   .progress-fill {
     height: 100%;
     background: var(--primary-color);
-    border-radius: 4px;
+    border-radius: var(--spacing-xs);
     transition: width 0.3s ease;
   }
 
   .progress-text {
     text-align: center;
-    font-size: 0.875rem;
+    font-size: var(--font-size-sm);
     font-weight: 500;
     color: var(--text-secondary);
   }
 
   /* Mobile responsive */
-  @media (max-width: 480px) {
+  @media (max-width: 30rem) { /* 480px equivalent */
     .summary-numbers {
       grid-template-columns: 1fr 1fr 1fr;
-      gap: 0.5rem;
+      gap: var(--spacing-sm);
     }
 
     .current-amount,
     .goal-amount {
-      font-size: 1.5rem;
+      font-size: var(--font-size-xl);
     }
 
     .current-label,
     .goal-label {
-      font-size: 0.75rem;
+      font-size: var(--font-size-xs);
     }
 
     .goal-edit-icon {
-      font-size: 14px;
+      font-size: var(--icon-size-sm);
     }
   }
 </style>

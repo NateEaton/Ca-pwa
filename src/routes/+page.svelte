@@ -148,45 +148,45 @@
   .page-container {
     position: relative;
     min-height: 100vh;
-    padding-bottom: 80px;
+    padding-bottom: 5rem; /* 80px equivalent */
     background-color: var(--background);
   }
 
   .foods-section {
-    margin: 0 1rem;
+    margin: 0 var(--spacing-lg);
   }
 
   .foods-list {
     display: flex;
     flex-direction: column;
-    gap: 0.5rem;
+    gap: var(--spacing-sm);
   }
 
   .empty-state {
     text-align: center;
-    padding: 3rem 1rem;
+    padding: var(--spacing-3xl) var(--spacing-lg);
     color: var(--text-secondary);
   }
 
   .empty-icon {
     font-size: 4rem;
-    margin-bottom: 1.5rem;
+    margin-bottom: var(--spacing-2xl);
     opacity: 0.7;
   }
 
   .empty-text h3 {
-    font-size: 1.25rem;
+    font-size: var(--font-size-xl);
     font-weight: 600;
     color: var(--text-primary);
-    margin: 0 0 0.75rem 0;
+    margin: 0 0 var(--spacing-md) 0;
   }
 
   .empty-text p {
-    font-size: 1rem;
+    font-size: var(--font-size-base);
     line-height: 1.5;
     color: var(--text-secondary);
     margin: 0;
-    max-width: 300px;
+    max-width: 18.75rem; /* 300px equivalent */
     margin-left: auto;
     margin-right: auto;
   }
@@ -194,16 +194,16 @@
   /* Floating Action Button Container */
   .fab-container {
     position: fixed;
-    bottom: max(1.25rem, env(safe-area-inset-bottom));
-    right: max(1.25rem, env(safe-area-inset-right));
-    left: max(1.25rem, env(safe-area-inset-left));
-    max-width: 27.5rem;
+    bottom: max(var(--spacing-xl), env(safe-area-inset-bottom));
+    right: max(var(--spacing-xl), env(safe-area-inset-right));
+    left: max(var(--spacing-xl), env(safe-area-inset-left));
+    max-width: 27.5rem; /* 440px equivalent */
     margin: 0 auto;
     display: flex;
     justify-content: space-between;
     align-items: center;
     pointer-events: none;
-    gap: 0.75rem;
+    gap: var(--spacing-md);
   }
 
   .fab-container .fab {
@@ -212,8 +212,8 @@
     color: white;
     border: none;
     box-shadow: var(--shadow-lg);
-    width: 56px;
-    height: 56px;
+    width: 3.5rem; /* 56px equivalent */
+    height: 3.5rem;
     border-radius: 50%;
     cursor: pointer;
     transition:
@@ -230,18 +230,18 @@
   }
 
   .fab-container .fab .fab-icon {
-    font-size: 1.5rem;
+    font-size: var(--icon-size-lg);
     font-family: "Material Icons";
   }
 
   /* Mobile responsive */
-  @media (max-width: 480px) {
+  @media (max-width: 30rem) { /* 480px equivalent */
     .foods-section {
-      margin: 0 0.5rem;
+      margin: 0 var(--spacing-sm);
     }
 
     .empty-state {
-      padding: 2rem 1rem;
+      padding: var(--spacing-3xl) var(--spacing-lg);
     }
 
     .empty-icon {
@@ -249,16 +249,16 @@
     }
 
     .fab-container {
-      bottom: max(0.75rem, env(safe-area-inset-bottom));
-      right: max(1.25rem, env(safe-area-inset-right));
-      left: max(1.25rem, env(safe-area-inset-left));
+      bottom: max(var(--spacing-md), env(safe-area-inset-bottom));
+      right: max(var(--spacing-xl), env(safe-area-inset-right));
+      left: max(var(--spacing-xl), env(safe-area-inset-left));
       max-width: 100%;
-      gap: 8px;
-      padding: 0 8px;
+      gap: var(--spacing-sm);
+      padding: 0 var(--spacing-sm);
     }
 
     .fab-container .fab .fab-icon {
-      font-size: 1.25rem;
+      font-size: var(--icon-size-lg);
     }
   }
 </style>
