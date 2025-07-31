@@ -3,6 +3,7 @@
   import { getCalciumServiceSync } from "$lib/services/CalciumServiceSingleton";
   import { calciumState } from "$lib/stores/calcium";
   import { searchFoods } from "$lib/data/usdaCalciumData";
+  import UnitConverter from "$lib/services/UnitConverter.js";
 
   export let show = false;
   export let editingFood = null;
@@ -26,6 +27,12 @@
   // Current selected food data for unit conversion
   let currentFoodData = null;
   let isSelectedFromSearch = false;
+  
+  // Unit conversion
+  const unitConverter = new UnitConverter();
+  let parsedUsdaMeasure = null;
+  let unitSuggestions = [];
+  let showUnitSuggestions = false;
 
   // Reset form when modal opens or editing changes
   $: if (show) {
@@ -55,6 +62,9 @@
     isSubmitting = false;
     searchResults = [];
     showSearchResults = false;
+    parsedUsdaMeasure = null;
+    unitSuggestions = [];
+    showUnitSuggestions = false;
   }
 
   function toggleMode() {
@@ -65,6 +75,9 @@
     // Clear fields when switching modes but don't call full resetForm
     currentFoodData = null;
     isSelectedFromSearch = false;
+    parsedUsdaMeasure = null;
+    unitSuggestions = [];
+    showUnitSuggestions = false;
     foodName = "";
     calcium = "";
     servingQuantity = 1;
@@ -118,14 +131,23 @@
       isCustomMode = true;
     }
 
-    // Parse serving from USDA measure
-    const servingMatch = food.measure.match(/^(\d+(?:\.\d+)?)\s*(.+)/);
-    if (servingMatch) {
-      servingQuantity = parseFloat(servingMatch[1]);
-      servingUnit = servingMatch[2].trim();
+    // Parse USDA measure using UnitConverter for better parsing
+    parsedUsdaMeasure = unitConverter.parseUSDAMeasure(food.measure);
+    
+    // Set initial serving size from parsed measure
+    servingQuantity = parsedUsdaMeasure.originalQuantity;
+    servingUnit = parsedUsdaMeasure.detectedUnit;
+    
+    // Generate unit suggestions if the unit type is known
+    if (parsedUsdaMeasure.unitType !== 'unknown') {
+      unitSuggestions = unitConverter.detectBestAlternativeUnits(
+        parsedUsdaMeasure.detectedUnit,
+        parsedUsdaMeasure.originalQuantity
+      );
+      showUnitSuggestions = unitSuggestions.length > 0;
     } else {
-      servingQuantity = 1;
-      servingUnit = food.measure;
+      unitSuggestions = [];
+      showUnitSuggestions = false;
     }
 
     searchResults = [];
@@ -133,15 +155,34 @@
   }
 
   function updateCalcium() {
-    if (currentFoodData && servingQuantity) {
-      // Calculate calcium based on quantity change
-      const originalMatch = currentFoodData.measure.match(/^(\d+(?:\.\d+)?)/);
-      const originalQuantity = originalMatch ? parseFloat(originalMatch[1]) : 1;
-      const newCalcium = Math.round(
-        (currentFoodData.calcium * servingQuantity) / originalQuantity
-      );
-      calcium = newCalcium.toString();
+    if (currentFoodData && servingQuantity && parsedUsdaMeasure) {
+      try {
+        // Use UnitConverter for more sophisticated calcium calculation
+        const newCalcium = unitConverter.calculateCalciumForConvertedUnits(
+          currentFoodData.calcium,
+          parsedUsdaMeasure.originalQuantity,
+          parsedUsdaMeasure.detectedUnit,
+          servingQuantity,
+          servingUnit
+        );
+        calcium = newCalcium.toString();
+      } catch (error) {
+        // Fallback to simple calculation if unit conversion fails
+        const originalMatch = currentFoodData.measure.match(/^(\d+(?:\.\d+)?)/);
+        const originalQuantity = originalMatch ? parseFloat(originalMatch[1]) : 1;
+        const newCalcium = Math.round(
+          (currentFoodData.calcium * servingQuantity) / originalQuantity
+        );
+        calcium = newCalcium.toString();
+      }
     }
+  }
+
+  function selectUnitSuggestion(suggestion) {
+    servingQuantity = suggestion.quantity;
+    servingUnit = suggestion.unit;
+    updateCalcium();
+    showUnitSuggestions = false;
   }
 
   function closeModal() {
@@ -336,6 +377,28 @@
               />
             </div>
           </div>
+          
+          {#if showUnitSuggestions && unitSuggestions.length > 0}
+            <div class="unit-suggestions">
+              <div class="unit-suggestions-label">
+                <span class="material-icons">swap_horiz</span>
+                Quick conversions:
+              </div>
+              <div class="unit-suggestions-list">
+                {#each unitSuggestions.slice(0, 3) as suggestion}
+                  <button 
+                    type="button"
+                    class="unit-suggestion"
+                    class:practical={suggestion.practical}
+                    on:click={() => selectUnitSuggestion(suggestion)}
+                    disabled={isSubmitting}
+                  >
+                    {unitConverter.formatQuantity(suggestion.quantity)} {suggestion.display}
+                  </button>
+                {/each}
+              </div>
+            </div>
+          {/if}
         </div>
 
         {#if errorMessage}
@@ -587,6 +650,62 @@
     margin-top: var(--spacing-xs);
   }
 
+  .unit-suggestions {
+    margin-top: var(--spacing-sm);
+    padding: var(--spacing-sm);
+    background: var(--surface-variant);
+    border-radius: var(--spacing-xs);
+    border: 1px solid var(--divider);
+  }
+
+  .unit-suggestions-label {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+    margin-bottom: var(--spacing-sm);
+    font-weight: 500;
+  }
+
+  .unit-suggestions-label .material-icons {
+    font-size: var(--icon-size-sm);
+  }
+
+  .unit-suggestions-list {
+    display: flex;
+    gap: var(--spacing-xs);
+    flex-wrap: wrap;
+  }
+
+  .unit-suggestion {
+    background: var(--surface);
+    border: 1px solid var(--divider);
+    border-radius: var(--spacing-xs);
+    padding: var(--spacing-xs) var(--spacing-sm);
+    font-size: var(--font-size-sm);
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+  }
+
+  .unit-suggestion:hover:not(:disabled) {
+    background: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+  }
+
+  .unit-suggestion.practical {
+    border-color: var(--primary-color);
+    background: var(--primary-alpha-5);
+  }
+
+  .unit-suggestion:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
   .error-message {
     display: flex;
     align-items: center;
@@ -687,6 +806,16 @@
     .btn {
       padding: var(--spacing-md) var(--spacing-xl);
       font-size: var(--font-size-base);
+    }
+
+    .unit-suggestions-list {
+      flex-direction: column;
+      gap: var(--spacing-xs);
+    }
+
+    .unit-suggestion {
+      width: 100%;
+      text-align: center;
     }
   }
 </style>
