@@ -2,6 +2,7 @@
   import { onMount, onDestroy } from "svelte";
   import { calciumState } from "$lib/stores/calcium";
   import { goto } from "$app/navigation";
+  import { formatDate, isToday, getTodayString } from "$lib/utils/dateUtils";
 
   // Stats state
   let currentView = "weekly";
@@ -29,9 +30,12 @@
   let touchStartY = 0;
   let isScrolling = false;
 
-  onMount(() => {
+  // Date picker
+  let showDatePicker = false;
+
+  onMount(async () => {
     resetToCurrentDate();
-    switchView("weekly");
+    await switchView("weekly");
   });
 
   function resetToCurrentDate() {
@@ -43,17 +47,17 @@
   }
 
   function handleBackClick() {
-    goto('/');
+    goto("/");
   }
 
   async function switchView(viewType) {
     const currentReferenceDate = lastReferenceDate || getCurrentPeriodDate();
     currentView = viewType;
     clearDetailMode();
-    
+
     syncViewOffsets(currentReferenceDate);
     lastReferenceDate = currentReferenceDate;
-    
+
     try {
       await loadDataForView();
       updateViewButtons();
@@ -64,25 +68,42 @@
 
   function syncViewOffsets(referenceDate) {
     const today = new Date();
-    const todayNormalized = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-    const refNormalized = new Date(referenceDate.getFullYear(), referenceDate.getMonth(), referenceDate.getDate());
+    const todayNormalized = new Date(
+      today.getFullYear(),
+      today.getMonth(),
+      today.getDate()
+    );
+    const refNormalized = new Date(
+      referenceDate.getFullYear(),
+      referenceDate.getMonth(),
+      referenceDate.getDate()
+    );
 
     switch (currentView) {
       case "daily":
-        currentDayOffset = Math.floor((refNormalized - todayNormalized) / (1000 * 60 * 60 * 24));
+        currentDayOffset = Math.floor(
+          (refNormalized - todayNormalized) / (1000 * 60 * 60 * 24)
+        );
         break;
       case "weekly":
         const todayWeekStart = new Date(todayNormalized);
-        todayWeekStart.setDate(todayNormalized.getDate() - todayNormalized.getDay());
+        todayWeekStart.setDate(
+          todayNormalized.getDate() - todayNormalized.getDay()
+        );
         const refWeekStart = new Date(refNormalized);
         refWeekStart.setDate(refNormalized.getDate() - refNormalized.getDay());
-        currentWeekOffset = Math.floor((refWeekStart - todayWeekStart) / (1000 * 60 * 60 * 24 * 7));
+        currentWeekOffset = Math.floor(
+          (refWeekStart - todayWeekStart) / (1000 * 60 * 60 * 24 * 7)
+        );
         break;
       case "monthly":
-        currentMonthOffset = (refNormalized.getFullYear() - todayNormalized.getFullYear()) * 12 + (refNormalized.getMonth() - todayNormalized.getMonth());
+        currentMonthOffset =
+          (refNormalized.getFullYear() - todayNormalized.getFullYear()) * 12 +
+          (refNormalized.getMonth() - todayNormalized.getMonth());
         break;
       case "yearly":
-        currentYearOffset = refNormalized.getFullYear() - todayNormalized.getFullYear();
+        currentYearOffset =
+          refNormalized.getFullYear() - todayNormalized.getFullYear();
         break;
     }
   }
@@ -111,10 +132,13 @@
     const targetDate = new Date(today);
     targetDate.setDate(today.getDate() + currentDayOffset);
 
-    const dateStr = targetDate.getFullYear() + "-" + 
-      String(targetDate.getMonth() + 1).padStart(2, "0") + "-" + 
+    const dateStr =
+      targetDate.getFullYear() +
+      "-" +
+      String(targetDate.getMonth() + 1).padStart(2, "0") +
+      "-" +
       String(targetDate.getDate()).padStart(2, "0");
-    
+
     const dayFoods = allData[dateStr] || [];
     const isFuture = targetDate > today;
 
@@ -136,9 +160,14 @@
         foods: hourFoods,
         foodCount: hourFoods.length,
         isFuture: isFuture && hour > today.getHours(),
-        isCurrentHour: dateStr === today.getFullYear() + "-" + 
-          String(today.getMonth() + 1).padStart(2, "0") + "-" + 
-          String(today.getDate()).padStart(2, "0") && hour === today.getHours(),
+        isCurrentHour:
+          dateStr ===
+            today.getFullYear() +
+              "-" +
+              String(today.getMonth() + 1).padStart(2, "0") +
+              "-" +
+              String(today.getDate()).padStart(2, "0") &&
+          hour === today.getHours(),
       };
     });
 
@@ -148,14 +177,20 @@
     return {
       title: "Hourly Intake",
       subtitle: targetDate.toLocaleDateString("en-US", {
-        weekday: "short", month: "short", day: "numeric", year: "numeric",
+        weekday: "short",
+        month: "short",
+        day: "numeric",
+        year: "numeric",
       }),
       data: hourlyData,
       unit: "mg",
-      averageValue: hoursWithData > 0 ? Math.round(dayTotal / hoursWithData) : 0,
+      averageValue:
+        hoursWithData > 0 ? Math.round(dayTotal / hoursWithData) : 0,
       totalValue: dayTotal,
       maxValue: Math.max(...hourlyData.map((h) => h.value)),
-      minValue: Math.min(...hourlyData.filter((h) => !h.isFuture).map((h) => h.value)),
+      minValue: Math.min(
+        ...hourlyData.filter((h) => !h.isFuture).map((h) => h.value)
+      ),
     };
   }
 
@@ -172,11 +207,17 @@
     for (let i = 0; i < 7; i++) {
       const date = new Date(weekStart);
       date.setDate(weekStart.getDate() + i);
-      const dateStr = date.getFullYear() + "-" + 
-        String(date.getMonth() + 1).padStart(2, "0") + "-" + 
+      const dateStr =
+        date.getFullYear() +
+        "-" +
+        String(date.getMonth() + 1).padStart(2, "0") +
+        "-" +
         String(date.getDate()).padStart(2, "0");
-      const todayStr = today.getFullYear() + "-" + 
-        String(today.getMonth() + 1).padStart(2, "0") + "-" + 
+      const todayStr =
+        today.getFullYear() +
+        "-" +
+        String(today.getMonth() + 1).padStart(2, "0") +
+        "-" +
         String(today.getDate()).padStart(2, "0");
       const isToday = dateStr === todayStr;
       const isFuture = date > today;
@@ -187,7 +228,9 @@
       data.push({
         date: dateStr,
         displayDate: date.toLocaleDateString("en-US", {
-          month: "short", day: "numeric", year: "numeric",
+          month: "short",
+          day: "numeric",
+          year: "numeric",
         }),
         shortDate: dayNames[i],
         value: isFuture ? 0 : totalCalcium,
@@ -203,9 +246,12 @@
     weekEndDate.setDate(weekStart.getDate() + 6);
 
     let subtitle = `${weekStart.toLocaleDateString("en-US", {
-      month: "short", day: "numeric",
+      month: "short",
+      day: "numeric",
     })} - ${weekEndDate.toLocaleDateString("en-US", {
-      month: "short", day: "numeric", year: "numeric",
+      month: "short",
+      day: "numeric",
+      year: "numeric",
     })}`;
 
     return {
@@ -214,18 +260,25 @@
       data: data,
       unit: "mg",
       averageValue: Math.round(
-        data.filter((d) => !d.isFuture && d.value > 0)
+        data
+          .filter((d) => !d.isFuture && d.value > 0)
           .reduce((sum, d) => sum + d.value, 0) /
-        Math.max(1, data.filter((d) => !d.isFuture && d.value > 0).length)
+          Math.max(1, data.filter((d) => !d.isFuture && d.value > 0).length)
       ),
       maxValue: Math.max(...data.map((d) => d.value)),
-      minValue: Math.min(...data.filter((d) => !d.isFuture).map((d) => d.value)),
+      minValue: Math.min(
+        ...data.filter((d) => !d.isFuture).map((d) => d.value)
+      ),
     };
   }
 
   async function generateMonthlyData(allData) {
     const today = new Date();
-    const targetMonth = new Date(today.getFullYear(), today.getMonth() + currentMonthOffset, 1);
+    const targetMonth = new Date(
+      today.getFullYear(),
+      today.getMonth() + currentMonthOffset,
+      1
+    );
     const year = targetMonth.getFullYear();
     const month = targetMonth.getMonth();
     const daysInMonth = new Date(year, month + 1, 0).getDate();
@@ -233,11 +286,17 @@
 
     for (let day = 1; day <= daysInMonth; day++) {
       const date = new Date(year, month, day);
-      const dateStr = date.getFullYear() + "-" + 
-        String(date.getMonth() + 1).padStart(2, "0") + "-" + 
+      const dateStr =
+        date.getFullYear() +
+        "-" +
+        String(date.getMonth() + 1).padStart(2, "0") +
+        "-" +
         String(date.getDate()).padStart(2, "0");
-      const todayStr = today.getFullYear() + "-" + 
-        String(today.getMonth() + 1).padStart(2, "0") + "-" + 
+      const todayStr =
+        today.getFullYear() +
+        "-" +
+        String(today.getMonth() + 1).padStart(2, "0") +
+        "-" +
         String(today.getDate()).padStart(2, "0");
       const isToday = dateStr === todayStr;
       const isFuture = date > today;
@@ -248,7 +307,9 @@
       data.push({
         date: dateStr,
         displayDate: date.toLocaleDateString("en-US", {
-          month: "short", day: "numeric", year: "numeric",
+          month: "short",
+          day: "numeric",
+          year: "numeric",
         }),
         shortDate: day.toString(),
         value: isFuture ? 0 : totalCalcium,
@@ -263,17 +324,21 @@
     return {
       title: "Average",
       subtitle: targetMonth.toLocaleDateString("en-US", {
-        month: "long", year: "numeric",
+        month: "long",
+        year: "numeric",
       }),
       data: data,
       unit: "mg",
       averageValue: Math.round(
-        data.filter((d) => !d.isFuture && d.value > 0)
+        data
+          .filter((d) => !d.isFuture && d.value > 0)
           .reduce((sum, d) => sum + d.value, 0) /
-        Math.max(1, data.filter((d) => !d.isFuture && d.value > 0).length)
+          Math.max(1, data.filter((d) => !d.isFuture && d.value > 0).length)
       ),
       maxValue: Math.max(...data.map((d) => d.value)),
-      minValue: Math.min(...data.filter((d) => !d.isFuture).map((d) => d.value)),
+      minValue: Math.min(
+        ...data.filter((d) => !d.isFuture).map((d) => d.value)
+      ),
     };
   }
 
@@ -281,7 +346,20 @@
     const today = new Date();
     const targetYear = today.getFullYear() + currentYearOffset;
     const data = [];
-    const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const monthNames = [
+      "Jan",
+      "Feb",
+      "Mar",
+      "Apr",
+      "May",
+      "Jun",
+      "Jul",
+      "Aug",
+      "Sep",
+      "Oct",
+      "Nov",
+      "Dec",
+    ];
 
     for (let month = 0; month < 12; month++) {
       const monthDate = new Date(targetYear, month, 1);
@@ -289,7 +367,11 @@
 
       const monthDays = Object.keys(allData).filter((dateStr) => {
         const [year, monthStr, day] = dateStr.split("-");
-        const date = new Date(parseInt(year), parseInt(monthStr) - 1, parseInt(day));
+        const date = new Date(
+          parseInt(year),
+          parseInt(monthStr) - 1,
+          parseInt(day)
+        );
         return date.getFullYear() === targetYear && date.getMonth() === month;
       });
 
@@ -303,11 +385,15 @@
       }
 
       data.push({
-        date: monthDate.getFullYear() + "-" + 
-          String(monthDate.getMonth() + 1).padStart(2, "0") + "-" + 
+        date:
+          monthDate.getFullYear() +
+          "-" +
+          String(monthDate.getMonth() + 1).padStart(2, "0") +
+          "-" +
           String(monthDate.getDate()).padStart(2, "0"),
         displayDate: monthDate.toLocaleDateString("en-US", {
-          month: "short", year: "numeric",
+          month: "short",
+          year: "numeric",
         }),
         shortDate: monthNames[month],
         value: averageDaily,
@@ -323,12 +409,15 @@
       data: data,
       unit: "mg",
       averageValue: Math.round(
-        data.filter((d) => !d.isFuture && d.value > 0)
+        data
+          .filter((d) => !d.isFuture && d.value > 0)
           .reduce((sum, d) => sum + d.value, 0) /
-        Math.max(1, data.filter((d) => !d.isFuture && d.value > 0).length)
+          Math.max(1, data.filter((d) => !d.isFuture && d.value > 0).length)
       ),
       maxValue: Math.max(...data.map((d) => d.value)),
-      minValue: Math.min(...data.filter((d) => !d.isFuture).map((d) => d.value)),
+      minValue: Math.min(
+        ...data.filter((d) => !d.isFuture).map((d) => d.value)
+      ),
     };
   }
 
@@ -341,10 +430,18 @@
 
   async function navigatePrevious() {
     switch (currentView) {
-      case "daily": currentDayOffset--; break;
-      case "weekly": currentWeekOffset--; break;
-      case "monthly": currentMonthOffset--; break;
-      case "yearly": currentYearOffset--; break;
+      case "daily":
+        currentDayOffset--;
+        break;
+      case "weekly":
+        currentWeekOffset--;
+        break;
+      case "monthly":
+        currentMonthOffset--;
+        break;
+      case "yearly":
+        currentYearOffset--;
+        break;
     }
     clearDetailMode();
     await loadDataForView();
@@ -358,19 +455,47 @@
     if (currentView === "yearly" && currentYearOffset >= 0) return;
 
     switch (currentView) {
-      case "daily": currentDayOffset++; break;
-      case "weekly": currentWeekOffset++; break;
-      case "monthly": currentMonthOffset++; break;
-      case "yearly": currentYearOffset++; break;
+      case "daily":
+        currentDayOffset++;
+        break;
+      case "weekly":
+        currentWeekOffset++;
+        break;
+      case "monthly":
+        currentMonthOffset++;
+        break;
+      case "yearly":
+        currentYearOffset++;
+        break;
     }
     clearDetailMode();
     await loadDataForView();
     lastReferenceDate = getCurrentPeriodDate();
   }
 
+  function handleDateChange(event) {
+    const selectedDate = new Date(event.target.value + "T00:00:00");
+    syncViewOffsets(selectedDate);
+    lastReferenceDate = selectedDate;
+    loadDataForView();
+    showDatePicker = false;
+  }
+
+  function goToToday() {
+    const today = new Date();
+    syncViewOffsets(today);
+    lastReferenceDate = today;
+    loadDataForView();
+    showDatePicker = false;
+  }
+
   function getCurrentPeriodDate() {
     const today = new Date();
-    const todayNormalized = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const todayNormalized = new Date(
+      today.getFullYear(),
+      today.getMonth(),
+      today.getDate()
+    );
 
     switch (currentView) {
       case "daily":
@@ -398,6 +523,13 @@
     selectedBarIndex = -1;
     isDetailMode = false;
     originalSummaryData = null;
+    // Remove detail line if it exists
+    if (chartCanvas) {
+      const detailLine = chartCanvas.querySelector(".chart-detail-line");
+      if (detailLine) {
+        detailLine.remove();
+      }
+    }
   }
 
   function showBarDetail(item, index) {
@@ -446,11 +578,14 @@
 
     if (currentView === "daily") {
       const dayTotal = currentData.totalValue || 0;
-      return dayTotal >= $calciumState.settings.dailyGoal ? 100 : 
-        Math.round((dayTotal / $calciumState.settings.dailyGoal) * 100);
+      return dayTotal >= $calciumState.settings.dailyGoal
+        ? 100
+        : Math.round((dayTotal / $calciumState.settings.dailyGoal) * 100);
     }
 
-    const validDays = currentData.data.filter((item) => !item.isFuture && item.value > 0);
+    const validDays = currentData.data.filter(
+      (item) => !item.isFuture && item.value > 0
+    );
     if (validDays.length === 0) return 0;
 
     const goalsAchieved = validDays.filter((item) => item.goalMet).length;
@@ -462,30 +597,45 @@
 
     switch (currentView) {
       case "daily":
-        const hoursWithData = currentData.data.filter((item) => !item.isFuture && item.value > 0).length;
+        const hoursWithData = currentData.data.filter(
+          (item) => !item.isFuture && item.value > 0
+        ).length;
         return `${hoursWithData} of 24 hours`;
       case "weekly":
-        const daysWithData = currentData.data.filter((item) => !item.isFuture && item.value > 0).length;
+        const daysWithData = currentData.data.filter(
+          (item) => !item.isFuture && item.value > 0
+        ).length;
         return `${daysWithData} of 7 days`;
       case "monthly":
         const validDays = currentData.data.filter((item) => !item.isFuture);
-        const monthDaysWithData = validDays.filter((item) => item.value > 0).length;
+        const monthDaysWithData = validDays.filter(
+          (item) => item.value > 0
+        ).length;
         return `${monthDaysWithData} of ${validDays.length} days`;
       case "yearly":
-        const monthsWithData = currentData.data.filter((item) => !item.isFuture && item.value > 0).length;
+        const monthsWithData = currentData.data.filter(
+          (item) => !item.isFuture && item.value > 0
+        ).length;
         return `${monthsWithData} months`;
       default:
         return `${currentData.data.length} periods`;
     }
   }
 
-  $: isAtCurrentPeriod = (currentView === "daily" && currentDayOffset >= 0) ||
+  $: isAtCurrentPeriod =
+    (currentView === "daily" && currentDayOffset >= 0) ||
     (currentView === "weekly" && currentWeekOffset >= 0) ||
     (currentView === "monthly" && currentMonthOffset >= 0) ||
     (currentView === "yearly" && currentYearOffset >= 0);
 
   $: if (currentData) {
     renderChart();
+    // Auto-scroll for monthly view
+    if (currentView === "monthly" && chartScrollWrapper) {
+      setTimeout(() => {
+        scrollToCurrentDay();
+      }, 50);
+    }
   }
 
   function renderChart() {
@@ -511,7 +661,7 @@
       // Create bar
       const bar = document.createElement("div");
       bar.className = "chart-bar";
-      
+
       const heightPercent = maxValue > 0 ? (item.value / maxValue) * 100 : 0;
       bar.style.height = `${Math.max(heightPercent, 2)}%`;
 
@@ -532,14 +682,6 @@
         bar.classList.add("selected");
       }
 
-      // For daily view, add value text inside bars
-      if (currentView === "daily" && item.value > 0) {
-        const valueSpan = document.createElement("span");
-        valueSpan.className = "bar-value";
-        valueSpan.textContent = item.value;
-        bar.appendChild(valueSpan);
-      }
-
       // Add click handler
       if (!item.isFuture) {
         bar.addEventListener("click", (e) => {
@@ -554,9 +696,22 @@
       // Create label
       const label = document.createElement("div");
       label.className = "chart-label";
-      label.textContent = currentView === "daily" && index % 2 !== 0 ? "" : item.shortDate;
+      if (currentView === "daily") {
+        // Show only even hours (00, 02, 04, etc.)
+        label.textContent = index % 2 === 0 ? item.shortDate : "";
+      } else {
+        label.textContent = item.shortDate;
+      }
       chartLabels.appendChild(label);
     });
+
+    // Add detail line for selected bar (after all bars are created)
+    if (selectedBarIndex >= 0 && selectedBarIndex < data.length) {
+      const detailLine = document.createElement("div");
+      detailLine.className = "chart-detail-line";
+      detailLine.style.left = `${(selectedBarIndex / data.length) * 100 + 100 / data.length / 2}%`;
+      chartCanvas.appendChild(detailLine);
+    }
   }
 
   function createGoalLine(maxValue) {
@@ -568,6 +723,47 @@
     goalLine.style.width = "100%";
     goalLine.style.left = "0";
     chartCanvas.appendChild(goalLine);
+  }
+
+  function scrollToCurrentDay() {
+    if (currentView !== "monthly" || !chartScrollWrapper || !currentData)
+      return;
+
+    const today = new Date();
+    const todayStr =
+      today.getFullYear() +
+      "-" +
+      String(today.getMonth() + 1).padStart(2, "0") +
+      "-" +
+      String(today.getDate()).padStart(2, "0");
+
+    // Find today's index in the data
+    const todayIndex = currentData.data.findIndex(
+      (item) => item.date === todayStr
+    );
+
+    if (todayIndex >= 0) {
+      const containerWidth = chartScrollWrapper.clientWidth;
+      const totalBars = currentData.data.length;
+      const barWidth = chartScrollWrapper.scrollWidth / totalBars;
+
+      // Calculate scroll position to center today with some left margin
+      const targetScroll = Math.max(
+        0,
+        todayIndex * barWidth - containerWidth / 2 + barWidth / 2
+      );
+      chartScrollWrapper.scrollLeft = targetScroll;
+      // Sync labels scroll
+      if (chartLabels && chartLabels.parentElement) {
+        chartLabels.parentElement.scrollLeft = targetScroll;
+      }
+    }
+  }
+
+  function syncLabelsScroll() {
+    if (chartScrollWrapper && chartLabels && chartLabels.parentElement) {
+      chartLabels.parentElement.scrollLeft = chartScrollWrapper.scrollLeft;
+    }
   }
 </script>
 
@@ -597,32 +793,32 @@
     <!-- Time Period Controls -->
     <div class="stats-view-controls">
       <div class="view-options">
-        <button 
-          class="view-option" 
+        <button
+          class="view-option"
           class:active={currentView === "daily"}
           on:click={() => switchView("daily")}
         >
           <span class="material-icons">schedule</span>
           <span>Daily</span>
         </button>
-        <button 
-          class="view-option" 
+        <button
+          class="view-option"
           class:active={currentView === "weekly"}
           on:click={() => switchView("weekly")}
         >
           <span class="material-icons">view_week</span>
           <span>Weekly</span>
         </button>
-        <button 
-          class="view-option" 
+        <button
+          class="view-option"
           class:active={currentView === "monthly"}
           on:click={() => switchView("monthly")}
         >
           <span class="material-icons">calendar_month</span>
           <span>Monthly</span>
         </button>
-        <button 
-          class="view-option" 
+        <button
+          class="view-option"
           class:active={currentView === "yearly"}
           on:click={() => switchView("yearly")}
         >
@@ -636,18 +832,40 @@
       <!-- Summary Card -->
       <div class="stats-summary-card" class:detail-mode={isDetailMode}>
         <div class="stats-period-container">
-          <button class="stats-nav-btn stats-nav-prev" on:click={navigatePrevious}>
+          <button
+            class="stats-nav-btn stats-nav-prev"
+            on:click={navigatePrevious}
+          >
             <span>&lt;</span>
           </button>
-          <div class="stats-period">{currentData.subtitle}</div>
-          <button 
-            class="stats-nav-btn stats-nav-next" 
+          <div
+            class="stats-period"
+            on:click={() => (showDatePicker = !showDatePicker)}
+          >
+            {currentData.subtitle}
+          </div>
+          <button
+            class="stats-nav-btn stats-nav-next"
             on:click={navigateNext}
             style:visibility={isAtCurrentPeriod ? "hidden" : "visible"}
           >
             <span>&gt;</span>
           </button>
         </div>
+        {#if showDatePicker}
+          <div class="calendar-popup">
+            <input
+              type="date"
+              value={getCurrentPeriodDate().toISOString().split("T")[0]}
+              on:change={handleDateChange}
+              class="date-input"
+            />
+            <button class="today-btn" on:click={goToToday}>
+              <span class="material-icons">today</span>
+              Today
+            </button>
+          </div>
+        {/if}
         <div class="stats-main-value">
           <span class="stats-value">
             {#if isDetailMode && selectedBarIndex >= 0}
@@ -667,7 +885,8 @@
                 {#if currentView === "daily"}
                   {currentData.data[selectedBarIndex].displayHour}
                 {:else if currentView === "weekly"}
-                  {currentData.data[selectedBarIndex].shortDate} {currentData.data[selectedBarIndex].date.split('-')[2]}
+                  {currentData.data[selectedBarIndex].shortDate}
+                  {currentData.data[selectedBarIndex].date.split("-")[2]}
                 {:else if currentView === "monthly"}
                   {currentData.data[selectedBarIndex].shortDate}
                 {:else}
@@ -703,13 +922,19 @@
 
       <!-- Chart Container -->
       <div class="chart-container">
-        <div class="chart-scroll-wrapper" bind:this={chartScrollWrapper}>
+        <div
+          class="chart-scroll-wrapper"
+          bind:this={chartScrollWrapper}
+          on:scroll={syncLabelsScroll}
+        >
           <div class="chart-canvas {currentView}-view" bind:this={chartCanvas}>
             <!-- Chart will be rendered here -->
           </div>
         </div>
-        <div class="chart-labels {currentView}-view" bind:this={chartLabels}>
-          <!-- Labels will be rendered here -->
+        <div class="chart-labels-wrapper">
+          <div class="chart-labels {currentView}-view" bind:this={chartLabels}>
+            <!-- Labels will be rendered here -->
+          </div>
         </div>
       </div>
 
@@ -724,7 +949,7 @@
             <div class="stat-label">Daily Goal</div>
           </div>
         </div>
-        
+
         <div class="stat-card">
           <div class="stat-icon">
             <span class="material-icons">trending_up</span>
@@ -734,7 +959,7 @@
             <div class="stat-label">Goal Achieved</div>
           </div>
         </div>
-        
+
         <div class="stat-card">
           <div class="stat-icon">
             <span class="material-icons">schedule</span>
@@ -747,7 +972,6 @@
       </div>
     {/if}
   </div>
-
 </div>
 
 <style>
@@ -886,6 +1110,7 @@
     border: 1px solid var(--divider);
     text-align: center;
     transition: all 0.3s ease;
+    position: relative;
   }
 
   .stats-summary-card.detail-mode {
@@ -934,6 +1159,62 @@
 
   .stats-period:hover {
     background-color: var(--divider);
+  }
+
+  .calendar-popup {
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--surface);
+    border-radius: 8px;
+    box-shadow: var(--shadow-lg);
+    padding: 1rem;
+    z-index: 1000;
+    margin-top: 0.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    border: 1px solid var(--divider);
+  }
+
+  .date-input {
+    border: 1px solid var(--divider);
+    border-radius: 4px;
+    padding: 0.5rem;
+    font-size: 1rem;
+    background: var(--background);
+    color: var(--text-primary);
+  }
+
+  .date-input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+  }
+
+  .today-btn {
+    background: var(--primary-color);
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    transition: all 0.2s;
+    justify-content: center;
+  }
+
+  .today-btn:hover {
+    background: var(--primary-color-dark, #1565c0);
+    transform: translateY(-1px);
+  }
+
+  .today-btn .material-icons {
+    font-size: 16px;
   }
 
   .stats-main-value {
@@ -998,10 +1279,11 @@
 
   .chart-scroll-wrapper {
     position: relative;
-    height: 200px;
+    height: 260px;
     overflow-x: auto;
     overflow-y: hidden;
     padding: 16px;
+    scroll-behavior: smooth;
   }
 
   .chart-canvas {
@@ -1011,19 +1293,42 @@
     align-items: flex-end;
     gap: 2px;
     min-width: 100%;
+    padding: 2px 8px 0 8px;
   }
 
   .chart-canvas.daily-view {
     gap: 1px;
   }
 
-  .chart-labels {
-    display: flex;
-    gap: 2px;
-    padding: 8px 16px 16px;
+  .chart-canvas.monthly-view {
+    min-width: 800px;
+  }
+
+  .chart-canvas.weekly-view {
+    gap: 8px;
+  }
+
+  .chart-canvas.yearly-view {
+    justify-content: space-between;
+    gap: 4px;
+  }
+
+  .chart-labels-wrapper {
     overflow-x: auto;
     scrollbar-width: none;
     -ms-overflow-style: none;
+    padding: 8px 16px 16px;
+  }
+
+  .chart-labels-wrapper::-webkit-scrollbar {
+    display: none;
+  }
+
+  .chart-labels {
+    display: flex;
+    gap: 2px;
+    width: 100%;
+    padding: 0 8px;
   }
 
   .chart-labels::-webkit-scrollbar {
@@ -1032,11 +1337,28 @@
 
   .chart-labels.daily-view {
     gap: 1px;
+    min-width: 100%;
+  }
+
+  .chart-labels.weekly-view {
+    gap: 8px;
+    min-width: 100%;
+  }
+
+  .chart-labels.monthly-view {
+    min-width: 800px;
+    gap: 2px;
+  }
+
+  .chart-labels.yearly-view {
+    justify-content: space-between;
+    gap: 1px;
+    min-width: 100%;
   }
 
   :global(.chart-bar) {
-    flex: 1;
-    min-width: 16px;
+    flex: 1 1 0;
+    min-width: 0;
     background-color: var(--primary-color);
     border-radius: 2px 2px 0 0;
     transition: all 0.2s ease;
@@ -1054,8 +1376,8 @@
   }
 
   :global(.chart-bar.selected) {
-    background-color: var(--secondary-color);
-    transform: scaleY(1.1);
+    border: 2px solid var(--secondary-color);
+    box-shadow: 0 0 0 2px rgba(255, 193, 7, 0.3);
   }
 
   :global(.chart-bar.future-day) {
@@ -1068,7 +1390,7 @@
   }
 
   :global(.chart-bar.below-goal) {
-    background-color: #ff9800;
+    background-color: var(--error-color);
   }
 
   :global(.chart-bar.today) {
@@ -1084,24 +1406,9 @@
   }
 
   :global(.goal-line) {
-    background-color: #4caf50;
-    height: 2px;
-    border-radius: 1px;
-    box-shadow: 0 0 4px rgba(76, 175, 80, 0.5);
-  }
-
-  :global(.goal-line::after) {
-    content: "Goal";
-    position: absolute;
-    right: 8px;
-    top: -20px;
-    font-size: 0.75rem;
-    font-weight: 500;
-    color: #4caf50;
-    background-color: var(--surface);
-    padding: 2px 6px;
-    border-radius: 3px;
-    border: 1px solid #4caf50;
+    border-top: 2px dashed var(--secondary-color);
+    height: 0;
+    opacity: 0.8;
   }
 
   :global(.chart-detail-line) {
@@ -1116,12 +1423,16 @@
   }
 
   .chart-label {
-    flex: 1;
-    min-width: 16px;
+    flex: 1 1 0;
+    min-width: 0;
     text-align: center;
     font-size: 0.75rem;
     font-weight: 500;
     color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    white-space: nowrap;
   }
 
   .additional-stats {
@@ -1168,7 +1479,6 @@
     letter-spacing: 0.5px;
   }
 
-
   /* Mobile responsive */
   @media (max-width: 480px) {
     .stats-content {
@@ -1200,5 +1510,28 @@
       padding: 12px 8px;
     }
 
+    /* Fix mobile chart alignment */
+    .chart-canvas {
+      gap: 4px;
+      padding: 2px 4px 0 4px;
+    }
+
+    .chart-canvas.weekly-view {
+      gap: 4px;
+    }
+
+    .chart-labels {
+      gap: 4px;
+      padding: 0 4px;
+    }
+
+    .chart-labels.weekly-view {
+      gap: 4px;
+    }
+
+    .chart-label {
+      font-size: 0.7rem;
+      min-width: 0;
+    }
   }
 </style>
