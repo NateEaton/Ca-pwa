@@ -204,12 +204,6 @@
     </div>
   </div>
 
-  <!-- FAB Container -->
-  <div class="fab-container">
-    <button class="fab" on:click={handleBackClick} title="Back to Main">
-      <span class="fab-icon material-icons">home</span>
-    </button>
-  </div>
 </div>
 
 <style>
@@ -469,45 +463,6 @@
     margin: 0;
   }
 
-  /* Floating Action Button Container */
-  .fab-container {
-    position: fixed;
-    bottom: max(1.25rem, env(safe-area-inset-bottom));
-    right: max(1.25rem, env(safe-area-inset-right));
-    left: max(1.25rem, env(safe-area-inset-left));
-    max-width: 27.5rem;
-    margin: 0 auto;
-    display: flex;
-    justify-content: flex-end;
-    align-items: center;
-    pointer-events: none;
-  }
-
-  .fab-container .fab {
-    pointer-events: auto;
-    background: var(--primary-color);
-    color: white;
-    border: none;
-    box-shadow: var(--shadow-lg);
-    width: 56px;
-    height: 56px;
-    border-radius: 50%;
-    cursor: pointer;
-    transition: transform 0.2s, box-shadow 0.2s;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .fab-container .fab:hover {
-    transform: scale(1.1);
-    box-shadow: var(--shadow-lg);
-  }
-
-  .fab-container .fab .fab-icon {
-    font-size: 1.5rem;
-    font-family: "Material Icons";
-  }
 
   /* Mobile responsive */
   @media (max-width: 480px) {
@@ -547,16 +502,6 @@
       margin-right: 12px;
     }
 
-    .fab-container {
-      bottom: max(0.75rem, env(safe-area-inset-bottom));
-      right: max(2rem, env(safe-area-inset-right));
-      left: auto;
-      max-width: 100%;
-    }
-
-    .fab-container .fab .fab-icon {
-      font-size: 1.25rem;
-    }
   }
 
   /* Hide text labels on mobile, show icons only */

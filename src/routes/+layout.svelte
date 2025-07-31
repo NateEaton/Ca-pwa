@@ -7,8 +7,8 @@
   import Toast from "$lib/components/Toast.svelte";
   import "../app.css";
 
-  // Don't show loading spinner on certain pages that have their own layout
-  $: isDataPage = $page.route?.id === '/data';
+  // Don't show loading spinner or header on pages that have their own layout
+  $: isSubPage = $page.route?.id === '/data' || $page.route?.id === '/stats' || $page.route?.id === '/report';
 
   // Theme detection and management
   function initializeTheme() {
@@ -35,27 +35,31 @@
   });
 </script>
 
-<div class="app-container">
-  <Header />
+{#if isSubPage}
+  <slot />
+{:else}
+  <div class="app-container">
+    <Header />
 
-  <main class="main-content">
-    {#if $calciumState.isLoading && !isDataPage}
-      <div class="loading">
-        <div class="loading-spinner">
-          <div class="spinner-container">
-            <span class="material-icons">hourglass_empty</span>
+    <main class="main-content">
+      {#if $calciumState.isLoading}
+        <div class="loading">
+          <div class="loading-spinner">
+            <div class="spinner-container">
+              <span class="material-icons">hourglass_empty</span>
+            </div>
           </div>
+          <p>Loading your calcium data...</p>
         </div>
-        <p>Loading your calcium data...</p>
-      </div>
-    {:else}
-      <slot />
-    {/if}
-  </main>
+      {:else}
+        <slot />
+      {/if}
+    </main>
 
-  <!-- Toast notifications -->
-  <Toast />
-</div>
+    <!-- Toast notifications -->
+    <Toast />
+  </div>
+{/if}
 
 <style>
   .app-container {

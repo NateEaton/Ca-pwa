@@ -32,6 +32,11 @@
     showRestoreModal = true;
   }
 
+  function handleReportClick() {
+    closeMenu();
+    goto('/report');
+  }
+
 
   // Close menu when clicking outside
   function handleOutsideClick(event) {
@@ -69,7 +74,7 @@
         <span class="material-icons">restore</span>
         <span>Restore Data</span>
       </button>
-      <button class="menu-item" on:click={closeMenu}>
+      <button class="menu-item" on:click={handleReportClick}>
         <span class="material-icons">assessment</span>
         <span>Generate Report</span>
       </button>

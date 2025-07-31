@@ -555,4 +555,28 @@ export class CalciumService {
     });
   }
 
+  /**
+   * Get all journal entries from localStorage for reporting
+   */
+  async getAllEntries(): Promise<Record<string, FoodEntry[]>> {
+    const journalData: Record<string, FoodEntry[]> = {};
+
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith('calcium_foods_')) {
+        const date = key.replace('calcium_foods_', '');
+        try {
+          const foods = JSON.parse(localStorage.getItem(key) || '[]');
+          if (foods && foods.length > 0) {
+            journalData[date] = foods;
+          }
+        } catch (error) {
+          console.error(`Error parsing journal data for ${date}:`, error);
+        }
+      }
+    }
+
+    return journalData;
+  }
+
 }
