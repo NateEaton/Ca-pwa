@@ -159,7 +159,7 @@
   .foods-list {
     display: flex;
     flex-direction: column;
-    gap: var(--spacing-sm);
+    gap: var(--spacing-xs);
   }
 
   .empty-state {

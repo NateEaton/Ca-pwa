@@ -328,7 +328,7 @@
           {#if showSearchResults && !isCustomMode}
             <div class="search-results">
               {#each searchResults as food}
-                <div class="search-item" on:click={() => selectFood(food)}>
+                <div class="search-item" class:custom-food={food.isCustom} on:click={() => selectFood(food)}>
                   <div class="search-item-name">{food.name}</div>
                   <div class="search-item-details">
                     {food.calcium}mg per {food.measure}
@@ -629,7 +629,12 @@
     padding: var(--spacing-md);
     cursor: pointer;
     border-bottom: 1px solid var(--divider);
+    border-left: 3px solid var(--primary-color);
     transition: background-color 0.2s ease;
+  }
+  
+  .search-item.custom-food {
+    border-left: 3px solid var(--warning-color);
   }
 
   .search-item:hover {

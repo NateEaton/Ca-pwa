@@ -2108,6 +2108,11 @@ export function searchFoods(query, customFoods = []) {
       // Must match at least one keyword
       if (!hasMatch) return null;
 
+      // Prioritize custom foods at the top
+      if (food.isCustom) {
+        score += 1000;
+      }
+
       // Boost score for foods with higher calcium content
       score += Math.log(food.calcium + 1) * 0.5;
 
