@@ -1,6 +1,6 @@
 <script>
   import { calciumState } from "$lib/stores/calcium";
-  import { USDA_CALCIUM_DATA } from "$lib/data/usdaCalciumData";
+  import { DEFAULT_FOOD_DATABASE } from "$lib/data/foodDatabase";
   import { goto } from "$app/navigation";
 
   let searchQuery = "";
@@ -15,9 +15,9 @@
     
     // Apply filter
     if (selectedFilter === "all") {
-      foods = [...USDA_CALCIUM_DATA, ...$calciumState.customFoods];
-    } else if (selectedFilter === "usda") {
-      foods = [...USDA_CALCIUM_DATA];
+      foods = [...DEFAULT_FOOD_DATABASE, ...$calciumState.customFoods];
+    } else if (selectedFilter === "database") {
+      foods = [...DEFAULT_FOOD_DATABASE];
     } else if (selectedFilter === "custom") {
       foods = [...$calciumState.customFoods];
     }
@@ -41,8 +41,8 @@
           comparison = a.calcium - b.calcium;
           break;
         case "type":
-          const aType = a.isCustom ? "Custom" : "USDA";
-          const bType = b.isCustom ? "Custom" : "USDA";
+          const aType = a.isCustom ? "Custom" : "Database";
+          const bType = b.isCustom ? "Custom" : "Database";
           comparison = aType.localeCompare(bType);
           break;
       }
@@ -126,11 +126,11 @@
         </div>
         <div 
           class="sort-option" 
-          class:active={selectedFilter === "usda"}
-          on:click={() => handleFilterClick("usda")}
+          class:active={selectedFilter === "database"}
+          on:click={() => handleFilterClick("database")}
         >
           <span class="material-icons">shield</span>
-          <span>USDA</span>
+          <span>Database</span>
         </div>
         <div 
           class="sort-option" 
@@ -188,7 +188,7 @@
           <div class="food-calcium">
             <div class="calcium-amount">{food.calcium}mg</div>
             <div class="food-type">
-              {food.isCustom ? "Custom" : "USDA"}
+              {food.isCustom ? "Custom" : "Database"}
             </div>
           </div>
         </div>

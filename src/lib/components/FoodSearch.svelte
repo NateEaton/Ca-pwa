@@ -1,6 +1,6 @@
 <script>
   import { createEventDispatcher } from "svelte";
-  import { searchFoods } from "$lib/data/usdaCalciumData";
+  import { searchFoods } from "$lib/data/foodDatabase";
 
   export let customFoods = [];
   export let searchQuery = "";

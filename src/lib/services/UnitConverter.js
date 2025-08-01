@@ -1,6 +1,6 @@
 /**
  * UnitConverter - A comprehensive unit conversion system for calcium tracking app
- * Handles volume, weight, and count-based measurements with USDA measure parsing
+ * Handles volume, weight, and count-based measurements with food database measure parsing
  * Ported from vanilla JS version for Svelte integration
  */
 export class UnitConverter {
@@ -125,8 +125,8 @@ export class UnitConverter {
     }
 
     /**
-     * Parse USDA measure string to extract quantity and unit
-     * @param {string} measureString - The USDA measure string to parse
+     * Parse food database measure string to extract quantity and unit
+     * @param {string} measureString - The food database measure string to parse
      * @returns {Object} Parsed measure information
      */
     parseUSDAMeasure(measureString) {

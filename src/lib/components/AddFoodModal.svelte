@@ -2,7 +2,7 @@
   import { createEventDispatcher } from "svelte";
   import { getCalciumServiceSync } from "$lib/services/CalciumServiceSingleton";
   import { calciumState } from "$lib/stores/calcium";
-  import { searchFoods } from "$lib/data/usdaCalciumData";
+  import { searchFoods } from "$lib/data/foodDatabase";
   import UnitConverter from "$lib/services/UnitConverter.js";
 
   export let show = false;
@@ -30,7 +30,7 @@
   
   // Unit conversion
   const unitConverter = new UnitConverter();
-  let parsedUsdaMeasure = null;
+  let parsedFoodMeasure = null;
   let unitSuggestions = [];
   let showUnitSuggestions = false;
 
@@ -62,7 +62,7 @@
     isSubmitting = false;
     searchResults = [];
     showSearchResults = false;
-    parsedUsdaMeasure = null;
+    parsedFoodMeasure = null;
     unitSuggestions = [];
     showUnitSuggestions = false;
   }
@@ -75,7 +75,7 @@
     // Clear fields when switching modes but don't call full resetForm
     currentFoodData = null;
     isSelectedFromSearch = false;
-    parsedUsdaMeasure = null;
+    parsedFoodMeasure = null;
     unitSuggestions = [];
     showUnitSuggestions = false;
     foodName = "";
@@ -131,18 +131,18 @@
       isCustomMode = true;
     }
 
-    // Parse USDA measure using UnitConverter for better parsing
-    parsedUsdaMeasure = unitConverter.parseUSDAMeasure(food.measure);
+    // Parse food measure using UnitConverter for better parsing
+    parsedFoodMeasure = unitConverter.parseUSDAMeasure(food.measure);
     
     // Set initial serving size from parsed measure
-    servingQuantity = parsedUsdaMeasure.originalQuantity;
-    servingUnit = parsedUsdaMeasure.detectedUnit;
+    servingQuantity = parsedFoodMeasure.originalQuantity;
+    servingUnit = parsedFoodMeasure.detectedUnit;
     
     // Generate unit suggestions if the unit type is known
-    if (parsedUsdaMeasure.unitType !== 'unknown') {
+    if (parsedFoodMeasure.unitType !== 'unknown') {
       unitSuggestions = unitConverter.detectBestAlternativeUnits(
-        parsedUsdaMeasure.detectedUnit,
-        parsedUsdaMeasure.originalQuantity
+        parsedFoodMeasure.detectedUnit,
+        parsedFoodMeasure.originalQuantity
       );
       showUnitSuggestions = unitSuggestions.length > 0;
     } else {
@@ -155,13 +155,13 @@
   }
 
   function updateCalcium() {
-    if (currentFoodData && servingQuantity && parsedUsdaMeasure) {
+    if (currentFoodData && servingQuantity && parsedFoodMeasure) {
       try {
         // Use UnitConverter for more sophisticated calcium calculation
         const newCalcium = unitConverter.calculateCalciumForConvertedUnits(
           currentFoodData.calcium,
-          parsedUsdaMeasure.originalQuantity,
-          parsedUsdaMeasure.detectedUnit,
+          parsedFoodMeasure.originalQuantity,
+          parsedFoodMeasure.detectedUnit,
           servingQuantity,
           servingUnit
         );

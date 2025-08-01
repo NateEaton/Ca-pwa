@@ -80,9 +80,12 @@
       }
       const backupData = await calciumService.generateBackup();
       
-      // Create filename with current date
+      // Create filename with current date (local timezone)
       const now = new Date();
-      const dateStr = now.toISOString().split('T')[0]; // YYYY-MM-DD
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const day = String(now.getDate()).padStart(2, '0');
+      const dateStr = `${year}-${month}-${day}`;
       const filename = `calcium-tracker-backup-${dateStr}.json`;
       
       // Create and download file
