@@ -12,7 +12,6 @@
 <div class="sort-controls" class:muted={$sortSettings.isLoading}>
   <div class="sort-label">
     <span class="material-icons sort-section-icon">sort</span>
-    <span>Sort</span>
   </div>
 
   <div class="sort-options">
@@ -87,13 +86,9 @@
   }
 
   .sort-label {
-    font-size: var(--font-size-sm);
-    color: var(--text-secondary);
-    font-weight: 500;
     flex-shrink: 0;
     display: flex;
     align-items: center;
-    gap: var(--spacing-sm);
   }
 
   .sort-section-icon {

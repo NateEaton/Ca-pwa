@@ -322,6 +322,7 @@
               ? "Enter custom food name..."
               : "Start typing to search..."}
             disabled={isSubmitting}
+            autocomplete="off"
           />
 
           {#if showSearchResults && !isCustomMode}

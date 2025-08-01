@@ -219,6 +219,8 @@
     z-index: 2000;
     overflow: hidden;
     box-shadow: var(--shadow);
+    display: flex;
+    flex-direction: column;
   }
 
   .header {
@@ -285,7 +287,8 @@
     flex: 1;
     overflow-y: auto;
     padding: var(--spacing-lg);
-    padding-bottom: 5rem; /* 80px equivalent */
+    padding-bottom: var(--spacing-lg);
+    min-height: 0; /* Important for flex child scrolling */
   }
 
   .search-container {

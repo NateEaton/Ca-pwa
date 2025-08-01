@@ -134,14 +134,23 @@ await calciumService.methodName();
 
 ## 🚧 CURRENT TASKS IN PROGRESS
 
-### **Stats Page Refinements (95% Complete)**
+### **Stats Page Enhancement (98% Complete)**
 ✅ **Core Functionality**: All views working (daily/weekly/monthly/yearly)
 ✅ **Chart Rendering**: Bars, goal lines, interactivity complete
 ✅ **Date Navigation**: Arrow buttons and date picker functional
-🔄 **Minor Styling Issues**: Label alignment tweaks in progress
+✅ **CSS Conversion**: Comprehensive px→rem conversion with fluid typography
+✅ **Unit Conversion**: Complete UnitConverter.js integration with suggestions UI
+✅ **Bar Selection**: Working across all views with brightness feedback
+✅ **Summary Card Integration**: Yellow border and dynamic content updates
+🔄 **Yellow Detail Line**: Issue with line visibility on Daily/Weekly/Yearly views
+
+### **Recently Completed**
+✅ **CSS Architecture Overhaul**: Established rem-based system with CSS variables
+✅ **UnitConverter Integration**: Full serving size conversion with intelligent suggestions
+✅ **Monthly View Fixes**: Centered yellow line, proper border colors, full height coverage
 
 ### **Ready for Next Phase**
-🎯 **Unit Conversion**: Integrate UnitConverter.js from original
+🎯 **Detail Line Debug**: Resolve yellow line visibility across all chart views  
 🎯 **USDA Data Expansion**: Import remaining 170+ foods
 🎯 **Performance Optimization**: Bundle size and load time improvements
 
@@ -149,36 +158,32 @@ await calciumService.methodName();
 
 ## ⚠️ REMAINING TECHNICAL DEBT
 
-### **Stats Page Minor Issues**
-- Weekly view labels: Slight spacing adjustment needed
-- **Impact**: Minor visual inconsistency vs original
-
-### **Mobile Optimization**
-- Some chart interactions need touch optimization
-- **Impact**: Reduced mobile UX quality
+### **Stats Page Yellow Detail Line Issue**
+- Working: Monthly view with proper positioning
+- Not Working: Daily, Weekly, Yearly views - line not visible despite being created
+- **Technical**: Line element created via JavaScript, console shows creation, CSS appears correct
+- **Impact**: Inconsistent UX across chart views
 
 ### **Limited Food Database**
 - Current: ~130 foods  
 - Target: 300+ foods from original
 - **Impact**: Reduced search options for users
 
-### **No Unit Conversion**
-- Original had sophisticated UnitConverter.js
-- Current: Basic serving quantities only
-- **Impact**: Less flexible serving size handling
+### **Mobile Chart Interactions**
+- Some touch interactions could be optimized
+- **Impact**: Minor mobile UX improvement potential
 
 ---
 
 ## 🎯 IMPLEMENTATION PRIORITIES
 
-### **HIGH PRIORITY** (Minor polish needed)
-1. **Stats Page Final Fixes**: Complete weekly label alignment
-2. **Mobile Touch Optimization**: Improve chart interactions on mobile
+### **HIGH PRIORITY** (Bug fixes needed)
+1. **Yellow Detail Line Fix**: Debug visibility issue in Daily/Weekly/Yearly views
+2. **Stats Page Polish**: Minor refinements and consistency improvements
 
 ### **MEDIUM PRIORITY** (Enhanced functionality)
-3. **Unit Conversion**: Integrate UnitConverter.js from original
-4. **USDA Data Expansion**: Import remaining 170+ foods from original
-5. **Performance Optimization**: Bundle size and load time improvements
+3. **USDA Data Expansion**: Import remaining 170+ foods from original
+4. **Performance Optimization**: Bundle size and load time improvements
 
 ### **LOW PRIORITY** (Future enhancements)
 6. **PWA Enhancement**: Offline capabilities and app installation
@@ -197,11 +202,11 @@ await calciumService.methodName();
 | Mobile Responsiveness | ✅ Complete | 100% |
 | Navigation System | ✅ Complete | 100% |
 | Additional Pages | ✅ Complete | 100% |
-| Charts & Analytics | 🔄 Near Complete | 95% |
+| Charts & Analytics | 🔄 Near Complete | 98% |
 | Backup/Restore | ✅ Complete | 100% |
 | Report Generation | ✅ Complete | 100% |
 | **OVERALL PROGRESS** | **🔄 Nearly Complete** | **95%** |
 
 ---
 
-*Next Session Priority: Final Stats page label alignment fixes, then UnitConverter integration*
+*Next Session Priority: Debug yellow detail line visibility issue in Daily/Weekly/Yearly views*

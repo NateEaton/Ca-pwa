@@ -131,7 +131,7 @@
   }
 
   .app-title {
-    font-size: var(--font-size-lg);
+    font-size: var(--font-size-xl);
     font-weight: 600;
     margin: 0;
     text-align: center;
@@ -195,7 +195,7 @@
     }
 
     .app-title {
-      font-size: var(--font-size-base); /* Slightly smaller on mobile */
+      font-size: var(--font-size-lg); /* Slightly smaller on mobile */
     }
 
     .hamburger-menu {

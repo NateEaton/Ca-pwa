@@ -651,10 +651,8 @@
     const chartCeiling = Math.max(dataMax, goal);
     const maxValue = chartCeiling * 1.25;
 
-    // Create goal line for non-daily views
-    if (currentView !== "daily") {
-      createGoalLine(maxValue);
-    }
+    // Create goal line for all views
+    createGoalLine(maxValue);
 
     // Create bars and labels
     data.forEach((item, index) => {
@@ -682,7 +680,7 @@
         bar.classList.add("selected");
       }
 
-      // Add click handler
+      // Add click handler - allow selection for all non-future items
       if (!item.isFuture) {
         bar.addEventListener("click", (e) => {
           e.stopPropagation();
@@ -709,7 +707,34 @@
     if (selectedBarIndex >= 0 && selectedBarIndex < data.length) {
       const detailLine = document.createElement("div");
       detailLine.className = "chart-detail-line";
-      detailLine.style.left = `${(selectedBarIndex / data.length) * 100 + 100 / data.length / 2}%`;
+      
+      // Calculate positioning based on view type
+      let leftPosition;
+      if (currentView === "yearly") {
+        // For yearly view with space-between layout, calculate position differently
+        const barCount = data.length;
+        if (barCount > 1) {
+          const barSpacing = 100 / (barCount - 1); // Space between bars in space-between layout
+          leftPosition = `${selectedBarIndex * barSpacing}%`;
+        } else {
+          leftPosition = "50%"; // Center if only one bar
+        }
+      } else {
+        // For other views with flex layout, center on the bar
+        leftPosition = `${((selectedBarIndex + 0.5) / data.length) * 100}%`;
+      }
+      
+      detailLine.style.left = leftPosition;
+      console.log(`Adding detail line for ${currentView} view at position ${leftPosition}, selectedBarIndex: ${selectedBarIndex}`);
+      
+      // Ensure the line is visible by setting additional styles
+      detailLine.style.position = 'absolute';
+      detailLine.style.top = '0';
+      detailLine.style.height = '100%';
+      detailLine.style.width = '3px';
+      detailLine.style.backgroundColor = '#ffc107'; // Yellow color directly
+      detailLine.style.zIndex = '50';
+      
       chartCanvas.appendChild(detailLine);
     }
   }
@@ -838,11 +863,27 @@
           >
             <span>&lt;</span>
           </button>
-          <div
-            class="stats-period"
-            on:click={() => (showDatePicker = !showDatePicker)}
-          >
-            {currentData.subtitle}
+          <div class="stats-period-wrapper">
+            <div
+              class="stats-period"
+              on:click={() => (showDatePicker = !showDatePicker)}
+            >
+              {currentData.subtitle}
+            </div>
+            {#if showDatePicker}
+              <div class="calendar-popup">
+                <input
+                  type="date"
+                  value={getCurrentPeriodDate().toISOString().split("T")[0]}
+                  on:change={handleDateChange}
+                  class="date-input"
+                />
+                <button class="today-btn" on:click={goToToday}>
+                  <span class="material-icons">today</span>
+                  Today
+                </button>
+              </div>
+            {/if}
           </div>
           <button
             class="stats-nav-btn stats-nav-next"
@@ -852,20 +893,6 @@
             <span>&gt;</span>
           </button>
         </div>
-        {#if showDatePicker}
-          <div class="calendar-popup">
-            <input
-              type="date"
-              value={getCurrentPeriodDate().toISOString().split("T")[0]}
-              on:change={handleDateChange}
-              class="date-input"
-            />
-            <button class="today-btn" on:click={goToToday}>
-              <span class="material-icons">today</span>
-              Today
-            </button>
-          </div>
-        {/if}
         <div class="stats-main-value">
           <span class="stats-value">
             {#if isDetailMode && selectedBarIndex >= 0}
@@ -1018,7 +1045,7 @@
   }
 
   .header-center h1 {
-    font-size: var(--font-size-lg);
+    font-size: var(--font-size-xl);
     font-weight: 600;
     margin: 0;
   }
@@ -1107,7 +1134,7 @@
   .stats-summary-card {
     background-color: var(--surface);
     border-radius: var(--spacing-md);
-    padding: var(--spacing-xl);
+    padding: var(--spacing-md) var(--spacing-xl);
     margin-bottom: var(--spacing-2xl);
     box-shadow: var(--shadow);
     border: 1px solid var(--divider);
@@ -1117,8 +1144,8 @@
   }
 
   .stats-summary-card.detail-mode {
-    border-color: var(--primary-color);
-    box-shadow: 0 4px 12px rgba(25, 118, 210, 0.2);
+    border-color: var(--secondary-color);
+    box-shadow: 0 4px 12px rgba(255, 193, 7, 0.2);
   }
 
   .stats-period-container {
@@ -1126,6 +1153,12 @@
     align-items: center;
     justify-content: space-between;
     margin-bottom: var(--spacing-lg);
+  }
+
+  .stats-period-wrapper {
+    position: relative;
+    display: flex;
+    justify-content: center;
   }
 
   .stats-nav-btn {
@@ -1181,6 +1214,7 @@
     flex-direction: column;
     gap: var(--spacing-lg);
     border: 1px solid var(--divider);
+    min-width: 12rem;
   }
 
   .date-input {
@@ -1383,8 +1417,8 @@
   }
 
   :global(.chart-bar.selected) {
-    border: 2px solid var(--secondary-color);
-    box-shadow: 0 0 0 2px rgba(255, 193, 7, 0.3);
+    filter: brightness(1.3);
+    transform: scaleY(1.02);
   }
 
   :global(.chart-bar.future-day) {
@@ -1421,12 +1455,13 @@
   :global(.chart-detail-line) {
     position: absolute;
     top: 0;
-    bottom: 0;
-    width: 2px;
+    height: 100%;
+    width: 3px;
     background-color: var(--secondary-color);
-    opacity: 0.8;
+    opacity: 1;
     pointer-events: none;
-    z-index: 10;
+    z-index: 50;
+    box-shadow: 0 0 4px rgba(255, 193, 7, 0.6);
   }
 
   .chart-label {
@@ -1502,7 +1537,7 @@
     }
 
     .stats-summary-card {
-      padding: var(--spacing-lg);
+      padding: var(--spacing-md) var(--spacing-lg);
     }
 
     .stats-value {

@@ -40,18 +40,14 @@
 
 ## 🔄 REMAINING TASKS
 
-### **HIGH PRIORITY** (Minor Polish)
-- [ ] **Stats Page Final Fixes**: Fix weekly view label spacing alignment
-  - **Context**: Labels are slightly too wide, need to match original spacing
-  - **Location**: `/src/routes/stats/+page.svelte` - weekly view chart labels
-  - **Reference**: Compare against `/Volumes/projects/Ca-pwa/client/src/css`
+### **HIGH PRIORITY** (Bug Fixes)
+- [ ] **Yellow Detail Line Debug**: Fix visibility issue in Daily/Weekly/Yearly views
+  - **Context**: Line created via JS and logged but not visible (works in Monthly view)
+  - **Location**: `/src/routes/stats/+page.svelte` - renderChart() function, line 707-740
+  - **Technical**: Element created, CSS correct, z-index high, but invisible in 3 of 4 views
+  - **Impact**: Inconsistent bar selection UX across chart views
 
 ### **MEDIUM PRIORITY** (Feature Enhancement)
-- [ ] **Unit Conversion Integration**: Add UnitConverter.js functionality from original
-  - **Context**: Original had sophisticated serving size conversions
-  - **Files**: Import and adapt `UnitConverter.js` from vanilla version
-  - **Impact**: More flexible serving size adjustments
-
 - [ ] **USDA Data Expansion**: Import remaining 170+ foods from original database
   - **Context**: Current has ~130 foods, original had 300+
   - **Location**: Expand data in CalciumService or separate data files
@@ -61,32 +57,33 @@
 
 ## 📋 IMPLEMENTATION NOTES
 
-### **Current Status: 95% Complete**
-The Calcium Tracker Svelte migration is essentially complete with all core functionality implemented:
+### **Current Status: 98% Complete**
+The Calcium Tracker Svelte migration is essentially complete with all major functionality implemented:
 - ✅ Full application with main page, Data, Stats, and Reports pages
 - ✅ Complete header navigation and menu system  
 - ✅ Backup/Restore functionality
-- ✅ Interactive charts with proper styling and interactions
+- ✅ Interactive charts with bar selection and detail modes
 - ✅ Dark mode system and mobile responsiveness
 - ✅ Print-optimized reports
+- ✅ **NEW**: CSS architecture completely overhauled to rem-based fluid system
+- ✅ **NEW**: UnitConverter fully integrated with intelligent suggestions
+- ✅ **NEW**: Bar selection working across all chart views (with minor visibility issue)
 
 ### **Final Session Priority**
-1. **Complete Stats page weekly label spacing** (simple CSS fix)
-2. **Optional enhancements**: UnitConverter integration, USDA data expansion
+1. **Debug yellow detail line visibility** (technical debugging needed)
+2. **Optional enhancements**: USDA data expansion
 
 ### **Next Session Pickup**
-- Stats page weekly labels need minor spacing adjustment
-- All critical functionality is operational
-- App is ready for production use with current feature set
-  - Needed: Navigation handlers for Data, Stats, Reports pages
-  - Context: Users can see menu but items don't work
+- **Critical Issue**: Yellow detail line visible in Monthly view but invisible in Daily/Weekly/Yearly views
+- **Technical Details**: JavaScript creates element successfully, console confirms, CSS appears correct
+- **Impact**: Bar selection feature works but lacks visual detail line in 3 of 4 views
+- App is otherwise production-ready with all major functionality operational
 
-- [ ] **Implement SvelteKit routing** for Data, Stats, and Reports pages
-  - Create: `src/routes/data/+page.svelte` (food database browser)
-  - Create: `src/routes/stats/+page.svelte` (charts and analytics)
-  - Create: `src/routes/reports/+page.svelte` (report generation)
-  - Update: `src/routes/+layout.svelte` for proper routing
-  - Context: Pages exist in original app but missing in Svelte version
+### **Major Achievements This Session**
+- ✅ **CSS Architecture**: Complete px→rem conversion with fluid typography system
+- ✅ **UnitConverter**: Full integration with intelligent suggestions and calcium recalculation
+- ✅ **Bar Selection**: Extended to all chart views with brightness feedback
+- ✅ **Summary Card**: Dynamic content updates with yellow border in detail mode
 
 ---
 

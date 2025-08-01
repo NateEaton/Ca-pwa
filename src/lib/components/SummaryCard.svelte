@@ -45,8 +45,10 @@
       <div class="goal-section">
         <button class="goal-button" on:click={handleGoalClick}>
           <div class="goal-amount">{dailyGoal}</div>
-          <div class="goal-label">Goal</div>
-          <span class="material-icons goal-edit-icon">edit</span>
+          <div class="goal-label">
+            Goal
+            <span class="material-icons goal-edit-icon">edit</span>
+          </div>
         </button>
       </div>
     </div>
@@ -57,9 +59,9 @@
   .summary-card {
     background: var(--surface);
     border: 1px solid var(--divider);
-    border-radius: var(--spacing-sm);
+    border-radius: var(--spacing-md);
     padding: var(--spacing-lg) var(--spacing-xl);
-    margin-bottom: var(--spacing-lg);
+    margin: var(--spacing-lg);
     box-shadow: var(--shadow);
   }
 
@@ -92,6 +94,10 @@
   .goal-label {
     font-size: var(--font-size-sm);
     color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--spacing-xs);
   }
 
   .goal-button {
@@ -115,13 +121,10 @@
   }
 
   .goal-edit-icon {
-    position: absolute;
-    top: 0;
-    right: 0;
-    font-size: var(--icon-size-md);
-    opacity: 0.5;
+    font-size: calc(var(--icon-size-sm) * 0.9); /* 10% smaller */
+    opacity: 0.6;
     color: var(--text-secondary);
-    transition: opacity 0.2s;
+    transition: all 0.2s;
   }
 
   .goal-button:hover .goal-edit-icon {
