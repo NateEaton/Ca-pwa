@@ -17,14 +17,14 @@
   <div class="sort-options">
     <button
       class="sort-option"
-      class:active={$sortSettings.sortBy === "added"}
+      class:active={$sortSettings.sortBy === "time"}
       data-sort="added"
       on:click={() => handleSortClick("added")}
     >
       <span class="material-icons">schedule</span>
       <span class="sort-text">Added</span>
       <span class="material-icons sort-icon">
-        {$sortSettings.sortBy === "added"
+        {$sortSettings.sortBy === "time"
           ? $sortSettings.sortOrder === "asc"
             ? "expand_less"
             : "expand_more"

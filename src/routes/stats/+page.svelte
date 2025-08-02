@@ -396,7 +396,8 @@
           day: "numeric",
           year: "numeric",
         }),
-        shortDate: day.toString(),
+        shortDate: date.toLocaleDateString("en-US", { weekday: "short" }),
+        chartLabel: day.toString(),
         value: isFuture ? 0 : totalCalcium,
         goalMet: totalCalcium >= $calciumState.settings.dailyGoal,
         foodCount: foods.length,
@@ -839,7 +840,8 @@
           label.style.visibility = "hidden";
         }
       } else {
-        label.textContent = item.shortDate;
+        // Use chartLabel for monthly view (day numbers), shortDate for others
+        label.textContent = (currentView === "monthly" && item.chartLabel) ? item.chartLabel : item.shortDate;
       }
       chartLabels.appendChild(label);
     });
@@ -1040,6 +1042,7 @@
                   {currentData.data[selectedBarIndex].date.split("-")[2]}
                 {:else if currentView === "monthly"}
                   {currentData.data[selectedBarIndex].shortDate}
+                  {currentData.data[selectedBarIndex].date.split("-")[2]}
                 {:else}
                   {currentData.data[selectedBarIndex].shortDate}
                 {/if}

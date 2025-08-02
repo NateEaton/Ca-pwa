@@ -35,7 +35,14 @@
 
   async function handleSortChange(event) {
     const { sortBy } = event.detail;
-    await calciumService.updateSort(sortBy);
+    // Map UI sort types to service sort types
+    const sortMapping = {
+      'added': 'time',
+      'name': 'name', 
+      'calcium': 'calcium'
+    };
+    const serviceSortBy = sortMapping[sortBy] || sortBy;
+    await calciumService.updateSort(serviceSortBy);
   }
 
   function handleEditFood(event) {

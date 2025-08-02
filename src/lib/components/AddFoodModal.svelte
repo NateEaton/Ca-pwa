@@ -47,7 +47,21 @@
       calcium = editingFood.calcium.toString();
       servingQuantity = editingFood.servingQuantity;
       servingUnit = editingFood.servingUnit;
-      currentFoodData = null;
+      
+      // Store original calcium per unit for recalculation in edit mode
+      currentFoodData = {
+        name: editingFood.name,
+        calcium: Math.round(editingFood.calcium / editingFood.servingQuantity), // calcium per unit
+        measure: `1 ${editingFood.servingUnit}`,
+        isCustom: editingFood.isCustom || false
+      };
+      
+      // Set up parsed measure for unit conversion
+      parsedFoodMeasure = {
+        originalQuantity: 1,
+        detectedUnit: editingFood.servingUnit,
+        unitType: 'generic'
+      };
     } else {
       // Add mode - reset everything
       isCustomMode = false;
@@ -62,9 +76,12 @@
     isSubmitting = false;
     searchResults = [];
     showSearchResults = false;
-    parsedFoodMeasure = null;
-    unitSuggestions = [];
-    showUnitSuggestions = false;
+    
+    if (!editingFood) {
+      parsedFoodMeasure = null;
+      unitSuggestions = [];
+      showUnitSuggestions = false;
+    }
   }
 
   function toggleMode() {
