@@ -1,15 +1,22 @@
 <script>
-  import { createEventDispatcher } from "svelte";
+  import { createEventDispatcher, onMount, onDestroy } from "svelte";
   import DatePicker from "./DatePicker.svelte";
+  import { addDays } from "$lib/utils/dateUtils";
 
   export let currentDate;
   export let dailyTotal;
   export let dailyGoal;
 
   const dispatch = createEventDispatcher();
+  let summaryCardElement;
 
   // Calculate progress percentage
   $: progressPercentage = Math.min((dailyTotal / dailyGoal) * 100, 100);
+
+  // Touch handling
+  let touchStartX = 0;
+  let touchStartY = 0;
+  let isScrolling = false;
 
   function handleDateChange(event) {
     dispatch("dateChange", event.detail);
@@ -18,9 +25,78 @@
   function handleGoalClick() {
     dispatch("goalEdit");
   }
+
+  function handleTouchStart(event) {
+    const touch = event.touches[0];
+    touchStartX = touch.clientX;
+    touchStartY = touch.clientY;
+    isScrolling = false;
+  }
+
+  function handleTouchMove(event) {
+    if (!touchStartX || !touchStartY) return;
+    
+    const touch = event.touches[0];
+    const diffX = touchStartX - touch.clientX;
+    const diffY = touchStartY - touch.clientY;
+    
+    // Determine if this is a vertical scroll (ignore horizontal swipes)
+    if (Math.abs(diffY) > Math.abs(diffX)) {
+      isScrolling = true;
+      return;
+    }
+  }
+
+  function handleTouchEnd(event) {
+    if (!touchStartX || !touchStartY || isScrolling) {
+      touchStartX = 0;
+      touchStartY = 0;
+      isScrolling = false;
+      return;
+    }
+
+    const touch = event.changedTouches[0];
+    const diffX = touchStartX - touch.clientX;
+    const diffY = touchStartY - touch.clientY;
+    
+    // Minimum swipe distance (50px)
+    const minSwipeDistance = 50;
+    
+    // Ensure horizontal swipe is dominant
+    if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > minSwipeDistance) {
+      if (diffX > 0) {
+        // Swipe left - go to next day
+        const newDate = addDays(currentDate, 1);
+        dispatch("dateChange", { date: newDate });
+      } else {
+        // Swipe right - go to previous day
+        const newDate = addDays(currentDate, -1);
+        dispatch("dateChange", { date: newDate });
+      }
+    }
+    
+    touchStartX = 0;
+    touchStartY = 0;
+    isScrolling = false;
+  }
+
+  onDestroy(() => {
+    if (summaryCardElement) {
+      summaryCardElement.removeEventListener("touchstart", handleTouchStart);
+      summaryCardElement.removeEventListener("touchmove", handleTouchMove);
+      summaryCardElement.removeEventListener("touchend", handleTouchEnd);
+    }
+  });
+
+  // Set up touch listeners when summary card element becomes available
+  $: if (summaryCardElement) {
+    summaryCardElement.addEventListener("touchstart", handleTouchStart, { passive: false });
+    summaryCardElement.addEventListener("touchmove", handleTouchMove, { passive: false });
+    summaryCardElement.addEventListener("touchend", handleTouchEnd, { passive: false });
+  }
 </script>
 
-<div class="summary-card">
+<div class="summary-card" bind:this={summaryCardElement}>
   <DatePicker {currentDate} on:dateChange={handleDateChange} />
 
   <div class="calcium-summary">

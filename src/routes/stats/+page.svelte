@@ -29,13 +29,98 @@
   let touchStartX = 0;
   let touchStartY = 0;
   let isScrolling = false;
+  let summaryCardElement;
 
   // Date picker
   let showDatePicker = false;
 
+  // Navigation event handlers
+  function handleKeydown(event) {
+    switch (event.key) {
+      case "ArrowLeft":
+        event.preventDefault();
+        navigatePrevious();
+        break;
+      case "ArrowRight":
+        event.preventDefault();
+        navigateNext();
+        break;
+      case "Escape":
+        event.preventDefault();
+        handleBackClick();
+        break;
+    }
+  }
+
+  function handleTouchStart(event) {
+    const touch = event.touches[0];
+    touchStartX = touch.clientX;
+    touchStartY = touch.clientY;
+    isScrolling = false;
+  }
+
+  function handleTouchMove(event) {
+    if (!touchStartX || !touchStartY) return;
+    
+    const touch = event.touches[0];
+    const diffX = touchStartX - touch.clientX;
+    const diffY = touchStartY - touch.clientY;
+    
+    // Determine if this is a vertical scroll (ignore horizontal swipes)
+    if (Math.abs(diffY) > Math.abs(diffX)) {
+      isScrolling = true;
+      return;
+    }
+  }
+
+  function handleTouchEnd(event) {
+    if (!touchStartX || !touchStartY || isScrolling) {
+      touchStartX = 0;
+      touchStartY = 0;
+      isScrolling = false;
+      return;
+    }
+
+    const touch = event.changedTouches[0];
+    const diffX = touchStartX - touch.clientX;
+    const diffY = touchStartY - touch.clientY;
+    
+    // Minimum swipe distance (50px)
+    const minSwipeDistance = 50;
+    
+    // Ensure horizontal swipe is dominant
+    if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > minSwipeDistance) {
+      if (diffX > 0) {
+        // Swipe left - go to next period
+        navigateNext();
+      } else {
+        // Swipe right - go to previous period
+        navigatePrevious();
+      }
+    }
+    
+    touchStartX = 0;
+    touchStartY = 0;
+    isScrolling = false;
+  }
+
   onMount(async () => {
     resetToCurrentDate();
     await switchView("weekly");
+    
+    // Add keyboard event listener
+    document.addEventListener("keydown", handleKeydown);
+  });
+
+  onDestroy(() => {
+    // Clean up event listeners
+    document.removeEventListener("keydown", handleKeydown);
+    
+    if (summaryCardElement) {
+      summaryCardElement.removeEventListener("touchstart", handleTouchStart);
+      summaryCardElement.removeEventListener("touchmove", handleTouchMove);
+      summaryCardElement.removeEventListener("touchend", handleTouchEnd);
+    }
   });
 
   function resetToCurrentDate() {
@@ -628,6 +713,13 @@
     (currentView === "monthly" && currentMonthOffset >= 0) ||
     (currentView === "yearly" && currentYearOffset >= 0);
 
+  // Set up touch listeners when summary card element becomes available
+  $: if (summaryCardElement) {
+    summaryCardElement.addEventListener("touchstart", handleTouchStart, { passive: false });
+    summaryCardElement.addEventListener("touchmove", handleTouchMove, { passive: false });
+    summaryCardElement.addEventListener("touchend", handleTouchEnd, { passive: false });
+  }
+
   $: if (currentData) {
     renderChart();
     // Auto-scroll for monthly view
@@ -865,13 +957,13 @@
 
     {#if currentData}
       <!-- Summary Card -->
-      <div class="stats-summary-card" class:detail-mode={isDetailMode}>
+      <div class="stats-summary-card" class:detail-mode={isDetailMode} bind:this={summaryCardElement}>
         <div class="stats-period-container">
           <button
             class="stats-nav-btn stats-nav-prev"
             on:click={navigatePrevious}
           >
-            <span>&lt;</span>
+            <span class="material-icons">chevron_left</span>
           </button>
           <div class="stats-period-wrapper">
             <div
@@ -900,7 +992,7 @@
             on:click={navigateNext}
             style:visibility={isAtCurrentPeriod ? "hidden" : "visible"}
           >
-            <span>&gt;</span>
+            <span class="material-icons">chevron_right</span>
           </button>
         </div>
         <div class="stats-main-value">
@@ -1175,13 +1267,9 @@
     background: none;
     border: none;
     color: var(--text-secondary);
-    font-size: var(--font-size-lg);
-    font-weight: bold;
     cursor: pointer;
     padding: var(--spacing-sm);
     border-radius: 50%;
-    width: 2rem;
-    height: 2rem;
     display: flex;
     align-items: center;
     justify-content: center;

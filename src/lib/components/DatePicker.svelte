@@ -1,5 +1,5 @@
 <script>
-  import { createEventDispatcher } from "svelte";
+  import { createEventDispatcher, onMount, onDestroy } from "svelte";
   import {
     formatDate,
     addDays,
@@ -14,6 +14,7 @@
 
   // Check if current date is today for styling
   $: isCurrentDateToday = isToday(currentDate);
+
 
   function toggleCalendar() {
     showCalendar = !showCalendar;
@@ -44,6 +45,31 @@
       showCalendar = false;
     }
   }
+
+  // Navigation event handlers
+  function handleKeydown(event) {
+    switch (event.key) {
+      case "ArrowLeft":
+        event.preventDefault();
+        handleDateChange("prev");
+        break;
+      case "ArrowRight":
+        event.preventDefault();
+        handleDateChange("next");
+        break;
+    }
+  }
+
+
+  onMount(() => {
+    // Add keyboard event listener
+    document.addEventListener("keydown", handleKeydown);
+  });
+
+  onDestroy(() => {
+    // Clean up event listeners
+    document.removeEventListener("keydown", handleKeydown);
+  });
 </script>
 
 <svelte:window on:click={handleOutsideClick} />
@@ -98,24 +124,32 @@
   .date-navigation {
     display: flex;
     align-items: center;
-    gap: var(--spacing-lg);
+    justify-content: space-between;
+    width: 100%;
   }
 
   .nav-btn {
     background: none;
     border: none;
-    color: var(--primary-color);
+    color: var(--text-secondary);
+    font-size: var(--font-size-lg);
+    font-weight: bold;
+    cursor: pointer;
     padding: var(--spacing-sm);
     border-radius: 50%;
-    cursor: pointer;
-    transition: background-color 0.2s;
+    width: 2rem;
+    height: 2rem;
     display: flex;
     align-items: center;
     justify-content: center;
+    transition: all 0.2s ease;
+    min-width: var(--touch-target-min);
+    min-height: var(--touch-target-min);
   }
 
   .nav-btn:hover {
-    background-color: var(--surface-variant);
+    background-color: var(--divider);
+    color: var(--text-primary);
   }
 
   .current-date-btn {
@@ -222,7 +256,7 @@
     }
 
     .date-navigation {
-      gap: var(--spacing-sm);
+      justify-content: space-between;
     }
 
     .date-input {
