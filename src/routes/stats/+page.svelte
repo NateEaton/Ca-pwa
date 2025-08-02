@@ -608,8 +608,14 @@
     selectedBarIndex = -1;
     isDetailMode = false;
     originalSummaryData = null;
-    // Remove detail line if it exists
+    
+    // Remove selected state from all bars
     if (chartCanvas) {
+      chartCanvas.querySelectorAll(".chart-bar.selected").forEach((bar) => {
+        bar.classList.remove("selected");
+      });
+      
+      // Remove detail line if it exists
       const detailLine = chartCanvas.querySelector(".chart-detail-line");
       if (detailLine) {
         detailLine.remove();
@@ -626,13 +632,48 @@
       };
     }
 
+    // If clicking the same bar, clear detail mode
     if (selectedBarIndex === index && isDetailMode) {
       clearDetailMode();
       return;
     }
 
+    // Clear previous selection
+    if (chartCanvas) {
+      chartCanvas.querySelectorAll(".chart-bar.selected").forEach((bar) => {
+        bar.classList.remove("selected");
+      });
+
+      // Remove existing detail line
+      const existingLine = chartCanvas.querySelector(".chart-detail-line");
+      if (existingLine) {
+        existingLine.remove();
+      }
+    }
+
+    // Set new selection
     selectedBarIndex = index;
     isDetailMode = true;
+
+    // Add selected state to clicked bar and create detail line
+    if (chartCanvas) {
+      const bars = chartCanvas.querySelectorAll(".chart-bar");
+      if (bars[index]) {
+        bars[index].classList.add("selected");
+
+        // Create detail line using the original positioning method
+        const detailLine = document.createElement("div");
+        detailLine.className = "chart-detail-line active";
+
+        // Position the line at the center of the selected bar
+        const barRect = bars[index].getBoundingClientRect();
+        const containerRect = chartCanvas.getBoundingClientRect();
+        const linePosition = barRect.left - containerRect.left + barRect.width / 2 - 1;
+
+        detailLine.style.left = `${linePosition}px`;
+        chartCanvas.appendChild(detailLine);
+      }
+    }
   }
 
   function updateViewButtons() {
@@ -805,39 +846,20 @@
 
     // Add detail line for selected bar (after all bars are created)
     if (selectedBarIndex >= 0 && selectedBarIndex < data.length) {
-      const detailLine = document.createElement("div");
-      detailLine.className = "chart-detail-line";
+      // Use the original positioning method from pre-refactor code
+      const bars = chartCanvas.querySelectorAll(".chart-bar");
+      if (bars[selectedBarIndex]) {
+        const detailLine = document.createElement("div");
+        detailLine.className = "chart-detail-line active";
 
-      // Calculate positioning based on view type
-      let leftPosition;
-      if (currentView === "yearly") {
-        // For yearly view with space-between layout, calculate position differently
-        const barCount = data.length;
-        if (barCount > 1) {
-          const barSpacing = 100 / (barCount - 1); // Space between bars in space-between layout
-          leftPosition = `${selectedBarIndex * barSpacing}%`;
-        } else {
-          leftPosition = "50%"; // Center if only one bar
-        }
-      } else {
-        // For other views with flex layout, center on the bar
-        leftPosition = `${((selectedBarIndex + 0.5) / data.length) * 100}%`;
+        // Position the line at the center of the selected bar using getBoundingClientRect
+        const barRect = bars[selectedBarIndex].getBoundingClientRect();
+        const containerRect = chartCanvas.getBoundingClientRect();
+        const linePosition = barRect.left - containerRect.left + barRect.width / 2 - 1;
+
+        detailLine.style.left = `${linePosition}px`;
+        chartCanvas.appendChild(detailLine);
       }
-
-      detailLine.style.left = leftPosition;
-      console.log(
-        `Adding detail line for ${currentView} view at position ${leftPosition}, selectedBarIndex: ${selectedBarIndex}`
-      );
-
-      // Ensure the line is visible by setting additional styles
-      detailLine.style.position = "absolute";
-      detailLine.style.top = "0";
-      detailLine.style.height = "100%";
-      detailLine.style.width = "3px";
-      detailLine.style.backgroundColor = "#ffc107"; // Yellow color directly
-      detailLine.style.zIndex = "50";
-
-      chartCanvas.appendChild(detailLine);
     }
   }
 
@@ -1537,12 +1559,17 @@
     position: absolute;
     top: 0;
     height: 100%;
-    width: 3px;
+    width: 2px;
     background-color: var(--secondary-color);
-    opacity: 1;
+    opacity: 0;
     pointer-events: none;
     z-index: 50;
     box-shadow: 0 0 4px rgba(255, 193, 7, 0.6);
+    transition: opacity 0.2s ease;
+  }
+
+  :global(.chart-detail-line.active) {
+    opacity: 1;
   }
 
   .chart-label {
