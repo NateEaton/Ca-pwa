@@ -651,6 +651,11 @@
     const chartCeiling = Math.max(dataMax, goal);
     const maxValue = chartCeiling * 1.25;
 
+    // Set the --bar-count variable for the CSS Grid layout
+    const count = data.length;
+    chartCanvas.style.setProperty("--bar-count", count);
+    chartLabels.style.setProperty("--bar-count", count);
+
     // Create goal line for all views
     createGoalLine(maxValue);
 
@@ -695,8 +700,11 @@
       const label = document.createElement("div");
       label.className = "chart-label";
       if (currentView === "daily") {
-        // Show only even hours (00, 02, 04, etc.)
-        label.textContent = index % 2 === 0 ? item.shortDate : "";
+        // Show all hour labels but hide odd hours visually
+        label.textContent = item.shortHour;
+        if (index % 2 !== 0) {
+          label.style.visibility = "hidden";
+        }
       } else {
         label.textContent = item.shortDate;
       }
@@ -707,7 +715,7 @@
     if (selectedBarIndex >= 0 && selectedBarIndex < data.length) {
       const detailLine = document.createElement("div");
       detailLine.className = "chart-detail-line";
-      
+
       // Calculate positioning based on view type
       let leftPosition;
       if (currentView === "yearly") {
@@ -723,18 +731,20 @@
         // For other views with flex layout, center on the bar
         leftPosition = `${((selectedBarIndex + 0.5) / data.length) * 100}%`;
       }
-      
+
       detailLine.style.left = leftPosition;
-      console.log(`Adding detail line for ${currentView} view at position ${leftPosition}, selectedBarIndex: ${selectedBarIndex}`);
-      
+      console.log(
+        `Adding detail line for ${currentView} view at position ${leftPosition}, selectedBarIndex: ${selectedBarIndex}`
+      );
+
       // Ensure the line is visible by setting additional styles
-      detailLine.style.position = 'absolute';
-      detailLine.style.top = '0';
-      detailLine.style.height = '100%';
-      detailLine.style.width = '3px';
-      detailLine.style.backgroundColor = '#ffc107'; // Yellow color directly
-      detailLine.style.zIndex = '50';
-      
+      detailLine.style.position = "absolute";
+      detailLine.style.top = "0";
+      detailLine.style.height = "100%";
+      detailLine.style.width = "3px";
+      detailLine.style.backgroundColor = "#ffc107"; // Yellow color directly
+      detailLine.style.zIndex = "50";
+
       chartCanvas.appendChild(detailLine);
     }
   }
@@ -1086,7 +1096,7 @@
   }
 
   .stats-view-controls {
-    margin-bottom: var(--spacing-xl);
+    margin-bottom: var(--spacing-sm);
   }
 
   .view-options {
@@ -1135,7 +1145,7 @@
     background-color: var(--surface);
     border-radius: var(--spacing-md);
     padding: var(--spacing-md) var(--spacing-xl);
-    margin-bottom: var(--spacing-2xl);
+    margin-bottom: var(--spacing-sm);
     box-shadow: var(--shadow);
     border: 1px solid var(--divider);
     text-align: center;
@@ -1311,7 +1321,7 @@
   }
 
   .chart-container {
-    margin-bottom: var(--spacing-2xl);
+    margin-bottom: var(--spacing-sm);
     background-color: var(--surface);
     border-radius: var(--spacing-sm);
     border: 1px solid var(--divider);
@@ -1320,95 +1330,82 @@
 
   .chart-scroll-wrapper {
     position: relative;
-    height: 16.25rem; /* 260px converted to rem */
+    height: 16.25rem; /* 260px */
     overflow-x: auto;
     overflow-y: hidden;
-    padding: var(--spacing-lg);
+    padding: var(--spacing-lg) 0;
     scroll-behavior: smooth;
+    width: 100%;
   }
 
   .chart-canvas {
-    position: relative;
-    height: 100%;
-    display: flex;
-    align-items: flex-end;
-    gap: 0.125rem; /* 2px converted */
-    min-width: 100%;
-    padding: 0.125rem var(--spacing-sm) 0 var(--spacing-sm);
+    display: grid;
+    height: 100%; /* <<< THIS IS THE CRITICAL RESTORED LINE */
+    align-items: end; /* This anchors the bars to the bottom */
+    grid-auto-flow: column;
+    grid-template-columns: repeat(var(--bar-count, 1), minmax(0, 1fr));
+    gap: var(--bar-gap, 2px);
+    /* min-width: 100%; */
+    padding: 0 var(--spacing-sm);
   }
 
-  .chart-canvas.daily-view {
-    gap: 0.0625rem; /* 1px converted */
-  }
-
-  .chart-canvas.monthly-view {
-    min-width: 50rem; /* 800px converted */
-  }
-
-  .chart-canvas.weekly-view {
-    gap: var(--spacing-sm); /* Proper spacing for weekly bars */
-  }
-
-  .chart-canvas.yearly-view {
-    justify-content: space-between;
-    gap: var(--spacing-xs);
+  .chart-labels {
+    display: grid;
+    align-items: end; /* This aligns the labels to the bottom */
+    grid-auto-flow: column;
+    grid-template-columns: repeat(var(--bar-count, 1), minmax(0, 1fr));
+    gap: var(--bar-gap, 2px);
+    /* min-width: 100%; */
+    padding: 0 var(--spacing-sm);
+    text-align: center;
   }
 
   .chart-labels-wrapper {
     overflow-x: auto;
     scrollbar-width: none;
     -ms-overflow-style: none;
-    padding: var(--spacing-sm) var(--spacing-lg) var(--spacing-lg);
+    padding: 0 0 var(--spacing-lg) 0;
   }
 
   .chart-labels-wrapper::-webkit-scrollbar {
     display: none;
   }
 
-  .chart-labels {
-    display: flex;
-    gap: 0.125rem; /* 2px converted */
-    width: 100%;
-    padding: 0 var(--spacing-sm);
-  }
-
   .chart-labels::-webkit-scrollbar {
     display: none;
   }
 
+  /* --- View-Specific Grid Adjustments --- */
+  .chart-canvas.daily-view,
   .chart-labels.daily-view {
-    gap: 0.0625rem; /* 1px converted */
-    min-width: 100%;
+    --bar-gap: 1px;
   }
 
+  .chart-canvas.weekly-view,
   .chart-labels.weekly-view {
-    gap: var(--spacing-sm); /* Match chart canvas gap */
-    min-width: 100%;
+    --bar-gap: var(--spacing-sm);
   }
 
-  .chart-labels.monthly-view {
-    min-width: 50rem; /* 800px converted */
-    gap: 0.125rem;
-  }
-
+  .chart-canvas.yearly-view,
   .chart-labels.yearly-view {
-    justify-content: space-between;
-    gap: 0.0625rem;
-    min-width: 100%;
+    --bar-gap: var(--spacing-xs);
   }
 
+  /* Monthly view requires horizontal scrolling */
+  .chart-canvas.monthly-view,
+  .chart-labels.monthly-view {
+    /* min-width: max-content; */
+    grid-template-columns: repeat(var(--bar-count), 1.25rem);
+    --bar-gap: 2px;
+  }
   :global(.chart-bar) {
-    flex: 1 1 0;
-    min-width: 0;
     background-color: var(--primary-color);
     border-radius: 2px 2px 0 0;
     transition: all 0.2s ease;
     cursor: pointer;
-    position: relative;
-    display: flex;
-    align-items: flex-end;
-    justify-content: center;
     min-height: 4px;
+    height: auto;
+    align-self: end;
   }
 
   :global(.chart-bar:hover) {
@@ -1438,18 +1435,14 @@
     background-color: var(--secondary-color);
   }
 
-  :global(.bar-value) {
-    font-size: 0.6rem;
-    font-weight: 600;
-    color: white;
-    padding: 2px;
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
-  }
-
   :global(.goal-line) {
     border-top: 2px dashed var(--secondary-color);
     height: 0;
     opacity: 0.8;
+  }
+
+  :global(.chart-canvas.daily-view .goal-line) {
+    display: none;
   }
 
   :global(.chart-detail-line) {
@@ -1465,16 +1458,14 @@
   }
 
   .chart-label {
-    flex: 1 1 0;
-    min-width: 0;
     text-align: center;
     font-size: var(--font-size-xs);
     font-weight: 500;
     color: var(--text-secondary);
+    white-space: nowrap;
     display: flex;
     align-items: center;
     justify-content: center;
-    white-space: nowrap;
   }
 
   .additional-stats {
@@ -1521,8 +1512,17 @@
     letter-spacing: 0.03125rem; /* 0.5px converted */
   }
 
+  /* Fallback for narrow devices to prevent overflow */
+  @media (max-width: 400px) {
+    .chart-canvas:not(.monthly-view),
+    .chart-labels:not(.monthly-view) {
+      min-width: max-content; /* Allow scrolling on small screens */
+    }
+  }
+
   /* Mobile responsive */
-  @media (max-width: 30rem) { /* 480px equivalent */
+  @media (max-width: 30rem) {
+    /* 480px equivalent */
     .stats-content {
       padding: var(--spacing-md);
       padding-bottom: 5rem;
@@ -1555,7 +1555,7 @@
     /* Fix mobile chart alignment */
     .chart-canvas {
       gap: var(--spacing-xs);
-      padding: 0.125rem var(--spacing-xs) 0 var(--spacing-xs);
+      padding: 0 var(--spacing-xs);
     }
 
     .chart-canvas.weekly-view {
