@@ -1,5 +1,5 @@
 <script>
-  import { onMount } from "svelte";
+  import { onMount, onDestroy } from "svelte";
   import { goto } from "$app/navigation";
   import { getCalciumService } from "$lib/services/CalciumServiceSingleton";
   import { calciumState } from "$lib/stores/calcium";
@@ -276,6 +276,13 @@
     goto('/');
   }
 
+  function handleKeydown(event) {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      handleBack();
+    }
+  }
+
   onMount(async () => {
     try {
       calciumService = await getCalciumService();
@@ -287,6 +294,14 @@
     } finally {
       isLoading = false;
     }
+
+    // Add keyboard event listener
+    document.addEventListener("keydown", handleKeydown);
+  });
+
+  onDestroy(() => {
+    // Clean up event listeners
+    document.removeEventListener("keydown", handleKeydown);
   });
 
   $: yearlyChartData = reportData ? getYearlyChartData(reportData.yearlyChart, reportData.metadata.dailyGoal) : null;
