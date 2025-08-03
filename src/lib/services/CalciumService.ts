@@ -1,6 +1,7 @@
 import { get } from 'svelte/store';
 import { calciumState, showToast } from '$lib/stores/calcium';
-import type { FoodEntry, CustomFood, CalciumSettings } from '$lib/types/calcium';
+import type { FoodEntry, CustomFood, CalciumSettings, UserServingPreference } from '$lib/types/calcium';
+import { DEFAULT_FOOD_DATABASE } from '$lib/data/foodDatabase';
 
 export class CalciumService {
   private db: IDBDatabase | null = null;
@@ -8,10 +9,12 @@ export class CalciumService {
   async initialize(): Promise<void> {
     await this.initializeIndexedDB();
     await this.migrateCustomFoodsIfNeeded();
+    await this.migrateFavoritesToIDsIfNeeded();
     await this.loadSettings();
     await this.loadDailyFoods();
     await this.loadCustomFoods();
     await this.loadFavorites();
+    await this.loadServingPreferences();
     
     // Apply initial sort after loading
     await this.applySortToFoods();
@@ -21,7 +24,7 @@ export class CalciumService {
 
   private async initializeIndexedDB(): Promise<void> {
     return new Promise((resolve, reject) => {
-      const request = indexedDB.open('CalciumTracker', 4);
+      const request = indexedDB.open('CalciumTracker', 5);
       
       request.onerror = () => {
         console.error('IndexedDB error:', request.error);
@@ -50,7 +53,11 @@ export class CalciumService {
         }
 
         if (!db.objectStoreNames.contains('favorites')) {
-          db.createObjectStore('favorites', { keyPath: 'foodName' });
+          db.createObjectStore('favorites', { keyPath: 'foodId' });
+        }
+
+        if (!db.objectStoreNames.contains('servingPreferences')) {
+          db.createObjectStore('servingPreferences', { keyPath: 'foodId' });
         }
       };
     });
@@ -84,6 +91,72 @@ export class CalciumService {
     } catch (error) {
       console.error('Custom foods migration failed:', error);
       showToast('Some custom foods may need to be re-added', 'warning');
+    }
+  }
+
+  private async migrateFavoritesToIDsIfNeeded(): Promise<void> {
+    if (!this.db) return;
+
+    const migrationStatus = await this.getMigrationStatus('favoritesToIDs');
+    if (migrationStatus) return;
+
+    try {
+      // Get existing name-based favorites
+      const transaction = this.db.transaction(['favorites'], 'readonly');
+      const store = transaction.objectStore('favorites');
+      const request = store.getAll();
+
+      const legacyFavorites = await new Promise<any[]>((resolve, reject) => {
+        request.onsuccess = () => resolve(request.result || []);
+        request.onerror = () => reject(request.error);
+      });
+
+      if (legacyFavorites.length > 0) {
+        // Convert names to IDs
+        const favoriteFoodIds: number[] = [];
+        
+        for (const favRecord of legacyFavorites) {
+          const foodName = favRecord.foodName;
+          const databaseFood = DEFAULT_FOOD_DATABASE.find(food => food.name === foodName);
+          if (databaseFood) {
+            favoriteFoodIds.push(databaseFood.id);
+          }
+        }
+
+        // Clear old favorites store and create new ID-based records
+        if (favoriteFoodIds.length > 0) {
+          const writeTransaction = this.db.transaction(['favorites'], 'readwrite');
+          const writeStore = writeTransaction.objectStore('favorites');
+          
+          // Clear old name-based favorites
+          await new Promise<void>((resolve, reject) => {
+            const clearRequest = writeStore.clear();
+            clearRequest.onsuccess = () => resolve();
+            clearRequest.onerror = () => reject(clearRequest.error);
+          });
+
+          // Add new ID-based favorites
+          for (const foodId of favoriteFoodIds) {
+            const favoriteData = {
+              foodId,
+              dateAdded: new Date().toISOString()
+            };
+            
+            await new Promise<void>((resolve, reject) => {
+              const addRequest = writeStore.put(favoriteData);
+              addRequest.onsuccess = () => resolve();
+              addRequest.onerror = () => reject(addRequest.error);
+            });
+          }
+
+          showToast(`Migrated ${favoriteFoodIds.length} favorites to new system`, 'success');
+        }
+      }
+
+      await this.setMigrationStatus('favoritesToIDs', true);
+    } catch (error) {
+      console.error('Favorites migration failed:', error);
+      showToast('Some favorites may need to be re-added', 'warning');
     }
   }
 
@@ -458,6 +531,9 @@ export class CalciumService {
     
     // Get favorites as array for backup
     const favorites = Array.from(state.favorites);
+    
+    // Get serving preferences as array for backup
+    const servingPreferences = Array.from(state.servingPreferences.values());
 
     return {
       metadata: {
@@ -468,6 +544,7 @@ export class CalciumService {
       preferences: state.settings,
       customFoods: customFoods,
       favorites: favorites,
+      servingPreferences: servingPreferences,
       journalEntries
     };
   }
@@ -498,6 +575,11 @@ export class CalciumService {
         await this.restoreFavorites(backupData.favorites);
       }
       
+      // Restore serving preferences
+      if (backupData.servingPreferences && Array.isArray(backupData.servingPreferences)) {
+        await this.restoreServingPreferences(backupData.servingPreferences);
+      }
+      
       // Restore journal entries to localStorage
       if (backupData.journalEntries) {
         for (const [date, foods] of Object.entries(backupData.journalEntries)) {
@@ -511,6 +593,7 @@ export class CalciumService {
       await this.loadSettings();
       await this.loadCustomFoods();
       await this.loadFavorites();
+      await this.loadServingPreferences();
       await this.loadDailyFoods();
       await this.applySortToFoods();
       
@@ -531,26 +614,30 @@ export class CalciumService {
     }
     keysToRemove.forEach(key => localStorage.removeItem(key));
     
-    // Clear IndexedDB custom foods and favorites
+    // Clear IndexedDB custom foods, favorites, and serving preferences
     if (this.db) {
-      const transaction = this.db.transaction(['customFoods', 'favorites'], 'readwrite');
+      const transaction = this.db.transaction(['customFoods', 'favorites', 'servingPreferences'], 'readwrite');
       const customFoodsStore = transaction.objectStore('customFoods');
       const favoritesStore = transaction.objectStore('favorites');
+      const servingPreferencesStore = transaction.objectStore('servingPreferences');
       
       await new Promise<void>((resolve, reject) => {
         const clearCustomFoods = customFoodsStore.clear();
         const clearFavorites = favoritesStore.clear();
+        const clearServingPreferences = servingPreferencesStore.clear();
         
         let completedCount = 0;
         const checkComplete = () => {
           completedCount++;
-          if (completedCount === 2) resolve();
+          if (completedCount === 3) resolve();
         };
         
         clearCustomFoods.onsuccess = checkComplete;
         clearFavorites.onsuccess = checkComplete;
+        clearServingPreferences.onsuccess = checkComplete;
         clearCustomFoods.onerror = () => reject(clearCustomFoods.error);
         clearFavorites.onerror = () => reject(clearFavorites.error);
+        clearServingPreferences.onerror = () => reject(clearServingPreferences.error);
       });
     }
   }
@@ -582,6 +669,43 @@ export class CalciumService {
     });
   }
 
+  async saveServingPreference(foodId: number, quantity: number, unit: string): Promise<void> {
+    if (!this.db) return;
+
+    const preference: UserServingPreference = {
+      foodId,
+      preferredQuantity: quantity,
+      preferredUnit: unit,
+      lastUsed: new Date().toISOString()
+    };
+
+    return new Promise((resolve, reject) => {
+      const transaction = this.db!.transaction(['servingPreferences'], 'readwrite');
+      const store = transaction.objectStore('servingPreferences');
+      const request = store.put(preference);
+
+      request.onsuccess = () => {
+        // Update the local state
+        calciumState.update(state => {
+          const newPreferences = new Map(state.servingPreferences);
+          newPreferences.set(foodId, preference);
+          return { ...state, servingPreferences: newPreferences };
+        });
+        resolve();
+      };
+
+      request.onerror = () => {
+        console.error('Error saving serving preference:', request.error);
+        reject(request.error);
+      };
+    });
+  }
+
+  getServingPreference(foodId: number): UserServingPreference | null {
+    const state = get(calciumState);
+    return state.servingPreferences.get(foodId) || null;
+  }
+
   /**
    * Get all journal entries from localStorage for reporting
    */
@@ -606,22 +730,26 @@ export class CalciumService {
     return journalData;
   }
 
-  async toggleFavorite(foodName: string): Promise<void> {
+  async toggleFavorite(foodId: number): Promise<void> {
     if (!this.db) return;
 
     const state = get(calciumState);
     const favorites = new Set(state.favorites);
+    
+    // Find food name for toast message
+    const food = DEFAULT_FOOD_DATABASE.find(f => f.id === foodId);
+    const foodName = food ? food.name : `Food ID ${foodId}`;
 
     return new Promise((resolve, reject) => {
       const transaction = this.db!.transaction(['favorites'], 'readwrite');
       const store = transaction.objectStore('favorites');
 
-      if (favorites.has(foodName)) {
+      if (favorites.has(foodId)) {
         // Remove from favorites
-        const request = store.delete(foodName);
+        const request = store.delete(foodId);
         
         request.onsuccess = () => {
-          favorites.delete(foodName);
+          favorites.delete(foodId);
           calciumState.update(state => ({ ...state, favorites }));
           showToast(`Removed ${foodName} from favorites`, 'success');
           resolve();
@@ -635,14 +763,14 @@ export class CalciumService {
       } else {
         // Add to favorites
         const favoriteData = {
-          foodName,
+          foodId,
           dateAdded: new Date().toISOString()
         };
         
         const request = store.put(favoriteData);
 
         request.onsuccess = () => {
-          favorites.add(foodName);
+          favorites.add(foodId);
           calciumState.update(state => ({ ...state, favorites }));
           showToast(`Added ${foodName} to favorites`, 'success');
           resolve();
@@ -667,7 +795,7 @@ export class CalciumService {
 
       request.onsuccess = () => {
         const favoriteRecords = request.result || [];
-        const favorites = new Set(favoriteRecords.map((record: any) => record.foodName));
+        const favorites = new Set(favoriteRecords.map((record: any) => record.foodId));
         
         calciumState.update(state => ({ ...state, favorites }));
         resolve();
@@ -682,15 +810,62 @@ export class CalciumService {
     });
   }
 
-  private async restoreFavorites(favoritesArray: string[]): Promise<void> {
+  private async loadServingPreferences(): Promise<void> {
+    if (!this.db) return;
+
+    return new Promise((resolve) => {
+      const transaction = this.db!.transaction(['servingPreferences'], 'readonly');
+      const store = transaction.objectStore('servingPreferences');
+      const request = store.getAll();
+
+      request.onsuccess = () => {
+        const preferenceRecords = request.result || [];
+        const servingPreferences = new Map();
+        
+        for (const record of preferenceRecords) {
+          servingPreferences.set(record.foodId, record);
+        }
+        
+        calciumState.update(state => ({ ...state, servingPreferences }));
+        resolve();
+      };
+
+      request.onerror = () => {
+        console.error('Error loading serving preferences:', request.error);
+        // Initialize with empty map on error
+        calciumState.update(state => ({ ...state, servingPreferences: new Map() }));
+        resolve();
+      };
+    });
+  }
+
+  private async restoreFavorites(favoritesArray: (number | string)[]): Promise<void> {
     if (!this.db) return;
 
     return new Promise((resolve, reject) => {
       const transaction = this.db!.transaction(['favorites'], 'readwrite');
       const store = transaction.objectStore('favorites');
 
+      // Convert legacy name-based favorites to ID-based
+      const foodIds: number[] = [];
+      
+      for (const favorite of favoritesArray) {
+        if (typeof favorite === 'number') {
+          // New format: already an ID
+          foodIds.push(favorite);
+        } else if (typeof favorite === 'string') {
+          // Legacy format: convert name to ID
+          const databaseFood = DEFAULT_FOOD_DATABASE.find(food => food.name === favorite);
+          if (databaseFood) {
+            foodIds.push(databaseFood.id);
+          } else {
+            console.warn(`Could not find food ID for legacy favorite: ${favorite}`);
+          }
+        }
+      }
+
       let completedCount = 0;
-      const expectedCount = favoritesArray.length;
+      const expectedCount = foodIds.length;
 
       if (expectedCount === 0) {
         resolve();
@@ -701,22 +876,66 @@ export class CalciumService {
         completedCount++;
         if (completedCount === expectedCount) {
           // Update the state after all favorites are restored
-          const favorites = new Set(favoritesArray);
+          const favorites = new Set(foodIds);
           calciumState.update(state => ({ ...state, favorites }));
+          
+          if (favoritesArray.some(f => typeof f === 'string')) {
+            showToast(`Migrated ${foodIds.length} favorites from legacy backup`, 'success');
+          }
+          
           resolve();
         }
       };
 
-      for (const foodName of favoritesArray) {
+      for (const foodId of foodIds) {
         const favoriteData = {
-          foodName,
+          foodId,
           dateAdded: new Date().toISOString()
         };
         
         const request = store.put(favoriteData);
         request.onsuccess = checkComplete;
         request.onerror = () => {
-          console.error(`Error restoring favorite: ${foodName}`, request.error);
+          console.error(`Error restoring favorite: ${foodId}`, request.error);
+          checkComplete(); // Continue even if one fails
+        };
+      }
+    });
+  }
+
+  private async restoreServingPreferences(preferencesArray: UserServingPreference[]): Promise<void> {
+    if (!this.db) return;
+
+    return new Promise((resolve, reject) => {
+      const transaction = this.db!.transaction(['servingPreferences'], 'readwrite');
+      const store = transaction.objectStore('servingPreferences');
+
+      let completedCount = 0;
+      const expectedCount = preferencesArray.length;
+
+      if (expectedCount === 0) {
+        resolve();
+        return;
+      }
+
+      const checkComplete = () => {
+        completedCount++;
+        if (completedCount === expectedCount) {
+          // Update the state after all preferences are restored
+          const servingPreferences = new Map();
+          for (const pref of preferencesArray) {
+            servingPreferences.set(pref.foodId, pref);
+          }
+          calciumState.update(state => ({ ...state, servingPreferences }));
+          resolve();
+        }
+      };
+
+      for (const preference of preferencesArray) {
+        const request = store.put(preference);
+        request.onsuccess = checkComplete;
+        request.onerror = () => {
+          console.error(`Error restoring serving preference for food ${preference.foodId}`, request.error);
           checkComplete(); // Continue even if one fails
         };
       }

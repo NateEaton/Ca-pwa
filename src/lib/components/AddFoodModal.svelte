@@ -29,6 +29,7 @@
   // Current selected food data for unit conversion
   let currentFoodData = null;
   let isSelectedFromSearch = false;
+  let usingPreference = false;
   
   // Unit conversion
   const unitConverter = new UnitConverter();
@@ -153,9 +154,27 @@
     // Parse food measure using UnitConverter for better parsing
     parsedFoodMeasure = unitConverter.parseUSDAMeasure(food.measure);
     
-    // Set initial serving size from parsed measure
-    servingQuantity = parsedFoodMeasure.originalQuantity;
-    servingUnit = parsedFoodMeasure.detectedUnit;
+    // Check for saved serving preferences for database foods
+    const calciumService = getCalciumServiceSync();
+    usingPreference = false;
+    
+    if (!food.isCustom && food.id && calciumService) {
+      const savedPreference = calciumService.getServingPreference(food.id);
+      if (savedPreference) {
+        servingQuantity = savedPreference.preferredQuantity;
+        servingUnit = savedPreference.preferredUnit;
+        usingPreference = true;
+        
+        // Recalculate calcium for preferred serving
+        updateCalcium();
+      }
+    }
+    
+    if (!usingPreference) {
+      // Use default serving size from parsed measure
+      servingQuantity = parsedFoodMeasure.originalQuantity;
+      servingUnit = parsedFoodMeasure.detectedUnit;
+    }
     
     // Generate unit suggestions if the unit type is known
     if (parsedFoodMeasure.unitType !== 'unknown') {
@@ -242,7 +261,28 @@
     
     const calciumService = getCalciumServiceSync();
     if (calciumService) {
-      await calciumService.toggleFavorite(currentFoodData.name);
+      await calciumService.toggleFavorite(currentFoodData.id);
+    }
+  }
+
+  function resetToOriginalServing() {
+    if (!parsedFoodMeasure || !currentFoodData) return;
+    
+    // Reset to original database values
+    servingQuantity = parsedFoodMeasure.originalQuantity;
+    servingUnit = parsedFoodMeasure.detectedUnit;
+    usingPreference = false;
+    
+    // Recalculate calcium with original serving
+    updateCalcium();
+    
+    // Regenerate unit suggestions for original unit
+    if (parsedFoodMeasure.unitType !== 'unknown') {
+      unitSuggestions = unitConverter.detectBestAlternativeUnits(
+        parsedFoodMeasure.detectedUnit,
+        parsedFoodMeasure.originalQuantity
+      );
+      showUnitSuggestions = unitSuggestions.length > 0;
     }
   }
 
@@ -306,6 +346,17 @@
           // console.log('Custom food selected from search, not saving as new definition');
         } else {
           // console.log('Not in custom mode, skipping custom food save');
+        }
+        
+        // Save serving preference for database foods if different from default
+        if (!isCustomMode && currentFoodData && !currentFoodData.isCustom && currentFoodData.id) {
+          const defaultQuantity = parsedFoodMeasure ? parsedFoodMeasure.originalQuantity : 1;
+          const defaultUnit = parsedFoodMeasure ? parsedFoodMeasure.detectedUnit : 'serving';
+          
+          // Save preference if user changed the serving size/unit
+          if (servingQuantity !== defaultQuantity || servingUnit !== defaultUnit) {
+            await calciumService.saveServingPreference(currentFoodData.id, servingQuantity, servingUnit);
+          }
         }
         
         await calciumService.addFood(foodData);
@@ -378,13 +429,13 @@
             {#if !isCustomMode && currentFoodData && !currentFoodData.isCustom}
               <button 
                 class="favorite-modal-btn"
-                class:favorite={$calciumState.favorites.has(currentFoodData.name)}
+                class:favorite={$calciumState.favorites.has(currentFoodData.id)}
                 on:click={toggleCurrentFoodFavorite}
-                title={$calciumState.favorites.has(currentFoodData.name) ? "Remove from favorites" : "Add to favorites"}
+                title={$calciumState.favorites.has(currentFoodData.id) ? "Remove from favorites" : "Add to favorites"}
                 type="button"
               >
                 <span class="material-icons">
-                  {$calciumState.favorites.has(currentFoodData.name) ? "star" : "star_border"}
+                  {$calciumState.favorites.has(currentFoodData.id) ? "star" : "star_border"}
                 </span>
               </button>
             {/if}
@@ -430,7 +481,19 @@
         </div>
 
         <div class="form-group">
-          <label class="form-label">Serving Size</label>
+          <div class="form-label-row">
+            <label class="form-label">Serving Size</label>
+            {#if usingPreference && !isCustomMode && !editingFood}
+              <button 
+                class="reset-serving-btn"
+                on:click={resetToOriginalServing}
+                title="Reset to original database serving size"
+                type="button"
+              >
+                <span class="material-icons">refresh</span>
+              </button>
+            {/if}
+          </div>
           <div class="serving-row">
             <div class="serving-quantity">
               <input
@@ -915,6 +978,28 @@
 
   .favorite-modal-btn .material-icons {
     font-size: var(--icon-size-lg);
+  }
+
+  .reset-serving-btn {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: var(--spacing-xs);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+  }
+
+  .reset-serving-btn:hover {
+    background-color: var(--divider);
+    color: var(--primary-color);
+  }
+
+  .reset-serving-btn .material-icons {
+    font-size: var(--icon-size-md);
   }
 
   .spin {

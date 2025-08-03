@@ -34,7 +34,8 @@ export interface BackupData {
   };
   preferences: CalciumSettings;
   customFoods: CustomFood[];
-  favorites?: string[];
+  favorites?: (number | string)[]; // Support both legacy (string) and new (number) formats
+  servingPreferences?: UserServingPreference[];
   journalEntries: Record<string, FoodEntry[]>;
 }
 
@@ -42,15 +43,24 @@ export interface CalciumState {
   currentDate: string;
   foods: FoodEntry[];
   customFoods: CustomFood[];
-  favorites: Set<string>;
+  favorites: Set<number>;
+  servingPreferences: Map<number, UserServingPreference>;
   settings: CalciumSettings;
   isLoading: boolean;
 }
 
 export interface USDAFood {
+  id: number;
   name: string;
   calcium: number;
   measure: string;
   isCustom: false;
   isFavorite?: boolean;
+}
+
+export interface UserServingPreference {
+  foodId: number;
+  preferredQuantity: number;
+  preferredUnit: string;
+  lastUsed: string;
 }

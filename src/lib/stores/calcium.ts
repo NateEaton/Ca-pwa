@@ -1,5 +1,5 @@
 import { writable, derived, get } from 'svelte/store';
-import type { CalciumState, FoodEntry, CustomFood, CalciumSettings } from '$lib/types/calcium';
+import type { CalciumState, FoodEntry, CustomFood, CalciumSettings, UserServingPreference } from '$lib/types/calcium';
 
 // Toast store for notifications
 export const toastStore = writable<{ message: string; type: 'info' | 'success' | 'error' | 'warning' }>({
@@ -24,7 +24,8 @@ export const calciumState = writable<CalciumState>({
   currentDate: getTodayString(),
   foods: [], // This array will be sorted in-place by CalciumService
   customFoods: [],
-  favorites: new Set<string>(),
+  favorites: new Set<number>(),
+  servingPreferences: new Map<number, UserServingPreference>(),
   settings: {
     dailyGoal: 1000,
     sortBy: 'time',

@@ -19,10 +19,10 @@
     if (selectedFilter === "all") {
       foods = [...DEFAULT_FOOD_DATABASE, ...$calciumState.customFoods];
     } else if (selectedFilter === "database") {
-      foods = [...DEFAULT_FOOD_DATABASE].filter(food => !$calciumState.favorites.has(food.name));
+      foods = [...DEFAULT_FOOD_DATABASE].filter(food => !$calciumState.favorites.has(food.id));
     } else if (selectedFilter === "user") {
       // Include custom foods and database favorites
-      const databaseFavorites = [...DEFAULT_FOOD_DATABASE].filter(food => $calciumState.favorites.has(food.name));
+      const databaseFavorites = [...DEFAULT_FOOD_DATABASE].filter(food => $calciumState.favorites.has(food.id));
       foods = [...databaseFavorites, ...$calciumState.customFoods];
     }
     
@@ -45,8 +45,8 @@
           comparison = a.calcium - b.calcium;
           break;
         case "type":
-          const aType = (a.isCustom || $calciumState.favorites.has(a.name)) ? "User" : "Database";
-          const bType = (b.isCustom || $calciumState.favorites.has(b.name)) ? "User" : "Database";
+          const aType = (a.isCustom || $calciumState.favorites.has(a.id)) ? "User" : "Database";
+          const bType = (b.isCustom || $calciumState.favorites.has(b.id)) ? "User" : "Database";
           comparison = aType.localeCompare(bType);
           break;
       }
@@ -101,7 +101,7 @@
     
     const calciumService = getCalciumServiceSync();
     if (calciumService) {
-      await calciumService.toggleFavorite(food.name);
+      await calciumService.toggleFavorite(food.id);
     }
   }
 </script>
@@ -216,18 +216,18 @@
           <div class="food-calcium">
             <div class="calcium-amount">{food.calcium}mg</div>
             <div class="food-type">
-              {(food.isCustom || $calciumState.favorites.has(food.name)) ? "User" : "Database"}
+              {(food.isCustom || $calciumState.favorites.has(food.id)) ? "User" : "Database"}
             </div>
           </div>
           {#if !food.isCustom}
             <button 
               class="favorite-btn"
-              class:favorite={$calciumState.favorites.has(food.name)}
+              class:favorite={$calciumState.favorites.has(food.id)}
               on:click={() => toggleFavorite(food)}
-              title={$calciumState.favorites.has(food.name) ? "Remove from favorites" : "Add to favorites"}
+              title={$calciumState.favorites.has(food.id) ? "Remove from favorites" : "Add to favorites"}
             >
               <span class="material-icons">
-                {$calciumState.favorites.has(food.name) ? "star" : "star_border"}
+                {$calciumState.favorites.has(food.id) ? "star" : "star_border"}
               </span>
             </button>
           {/if}
