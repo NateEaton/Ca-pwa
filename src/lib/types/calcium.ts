@@ -34,6 +34,7 @@ export interface BackupData {
   };
   preferences: CalciumSettings;
   customFoods: CustomFood[];
+  favorites?: string[];
   journalEntries: Record<string, FoodEntry[]>;
 }
 
@@ -41,6 +42,7 @@ export interface CalciumState {
   currentDate: string;
   foods: FoodEntry[];
   customFoods: CustomFood[];
+  favorites: Set<string>;
   settings: CalciumSettings;
   isLoading: boolean;
 }
@@ -50,4 +52,5 @@ export interface USDAFood {
   calcium: number;
   measure: string;
   isCustom: false;
+  isFavorite?: boolean;
 }

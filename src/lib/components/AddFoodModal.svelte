@@ -130,7 +130,7 @@
     // Debounce search
     searchTimeout = setTimeout(() => {
       if (foodName.trim().length >= 2) {
-        searchResults = searchFoods(foodName.trim(), $calciumState.customFoods);
+        searchResults = searchFoods(foodName.trim(), $calciumState.customFoods, $calciumState.favorites);
         showSearchResults = searchResults.length > 0;
       } else {
         searchResults = [];
@@ -235,6 +235,15 @@
 
   function handleDeleteCancel() {
     showDeleteConfirm = false;
+  }
+
+  async function toggleCurrentFoodFavorite() {
+    if (isCustomMode || !currentFoodData || currentFoodData.isCustom) return;
+    
+    const calciumService = getCalciumServiceSync();
+    if (calciumService) {
+      await calciumService.toggleFavorite(currentFoodData.name);
+    }
   }
 
   async function handleSubmit() {
@@ -364,7 +373,22 @@
 
       <form class="modal-body" on:submit|preventDefault={handleSubmit}>
         <div class="form-group">
-          <label class="form-label">Food Name</label>
+          <div class="form-label-row">
+            <label class="form-label">Food Name</label>
+            {#if !isCustomMode && currentFoodData && !currentFoodData.isCustom}
+              <button 
+                class="favorite-modal-btn"
+                class:favorite={$calciumState.favorites.has(currentFoodData.name)}
+                on:click={toggleCurrentFoodFavorite}
+                title={$calciumState.favorites.has(currentFoodData.name) ? "Remove from favorites" : "Add to favorites"}
+                type="button"
+              >
+                <span class="material-icons">
+                  {$calciumState.favorites.has(currentFoodData.name) ? "star" : "star_border"}
+                </span>
+              </button>
+            {/if}
+          </div>
           <input
             id="foodName"
             type="text"
@@ -650,11 +674,17 @@
     margin-bottom: var(--spacing-lg);
   }
 
-  .form-label {
-    display: block;
+  .form-label-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
     margin-bottom: var(--spacing-sm);
+  }
+
+  .form-label {
     font-weight: 500;
     color: var(--text-primary);
+    margin: 0;
   }
 
   .form-input {
@@ -859,6 +889,32 @@
 
   .btn-primary:hover:not(:disabled) {
     background-color: var(--primary-color-dark);
+  }
+
+  .favorite-modal-btn {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: var(--spacing-xs);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+  }
+
+  .favorite-modal-btn:hover {
+    background-color: var(--divider);
+    color: var(--primary-color);
+  }
+
+  .favorite-modal-btn.favorite {
+    color: var(--primary-color);
+  }
+
+  .favorite-modal-btn .material-icons {
+    font-size: var(--icon-size-lg);
   }
 
   .spin {

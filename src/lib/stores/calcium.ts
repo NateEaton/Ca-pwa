@@ -24,6 +24,7 @@ export const calciumState = writable<CalciumState>({
   currentDate: getTodayString(),
   foods: [], // This array will be sorted in-place by CalciumService
   customFoods: [],
+  favorites: new Set<string>(),
   settings: {
     dailyGoal: 1000,
     sortBy: 'time',

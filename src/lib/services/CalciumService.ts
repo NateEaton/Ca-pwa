@@ -11,6 +11,7 @@ export class CalciumService {
     await this.loadSettings();
     await this.loadDailyFoods();
     await this.loadCustomFoods();
+    await this.loadFavorites();
     
     // Apply initial sort after loading
     await this.applySortToFoods();
@@ -20,7 +21,7 @@ export class CalciumService {
 
   private async initializeIndexedDB(): Promise<void> {
     return new Promise((resolve, reject) => {
-      const request = indexedDB.open('CalciumTracker', 3);
+      const request = indexedDB.open('CalciumTracker', 4);
       
       request.onerror = () => {
         console.error('IndexedDB error:', request.error);
@@ -46,6 +47,10 @@ export class CalciumService {
 
         if (!db.objectStoreNames.contains('migrations')) {
           db.createObjectStore('migrations', { keyPath: 'name' });
+        }
+
+        if (!db.objectStoreNames.contains('favorites')) {
+          db.createObjectStore('favorites', { keyPath: 'foodName' });
         }
       };
     });
@@ -450,6 +455,9 @@ export class CalciumService {
 
     // Get custom foods directly from IndexedDB to ensure we have the latest
     const customFoods = await this.getAllCustomFoods();
+    
+    // Get favorites as array for backup
+    const favorites = Array.from(state.favorites);
 
     return {
       metadata: {
@@ -459,6 +467,7 @@ export class CalciumService {
       },
       preferences: state.settings,
       customFoods: customFoods,
+      favorites: favorites,
       journalEntries
     };
   }
@@ -484,6 +493,11 @@ export class CalciumService {
         }
       }
       
+      // Restore favorites
+      if (backupData.favorites && Array.isArray(backupData.favorites)) {
+        await this.restoreFavorites(backupData.favorites);
+      }
+      
       // Restore journal entries to localStorage
       if (backupData.journalEntries) {
         for (const [date, foods] of Object.entries(backupData.journalEntries)) {
@@ -496,6 +510,7 @@ export class CalciumService {
       // Reload data into stores
       await this.loadSettings();
       await this.loadCustomFoods();
+      await this.loadFavorites();
       await this.loadDailyFoods();
       await this.applySortToFoods();
       
@@ -516,14 +531,26 @@ export class CalciumService {
     }
     keysToRemove.forEach(key => localStorage.removeItem(key));
     
-    // Clear IndexedDB custom foods
+    // Clear IndexedDB custom foods and favorites
     if (this.db) {
-      const transaction = this.db.transaction(['customFoods'], 'readwrite');
-      const store = transaction.objectStore('customFoods');
+      const transaction = this.db.transaction(['customFoods', 'favorites'], 'readwrite');
+      const customFoodsStore = transaction.objectStore('customFoods');
+      const favoritesStore = transaction.objectStore('favorites');
+      
       await new Promise<void>((resolve, reject) => {
-        const request = store.clear();
-        request.onsuccess = () => resolve();
-        request.onerror = () => reject(request.error);
+        const clearCustomFoods = customFoodsStore.clear();
+        const clearFavorites = favoritesStore.clear();
+        
+        let completedCount = 0;
+        const checkComplete = () => {
+          completedCount++;
+          if (completedCount === 2) resolve();
+        };
+        
+        clearCustomFoods.onsuccess = checkComplete;
+        clearFavorites.onsuccess = checkComplete;
+        clearCustomFoods.onerror = () => reject(clearCustomFoods.error);
+        clearFavorites.onerror = () => reject(clearFavorites.error);
       });
     }
   }
@@ -577,6 +604,123 @@ export class CalciumService {
     }
 
     return journalData;
+  }
+
+  async toggleFavorite(foodName: string): Promise<void> {
+    if (!this.db) return;
+
+    const state = get(calciumState);
+    const favorites = new Set(state.favorites);
+
+    return new Promise((resolve, reject) => {
+      const transaction = this.db!.transaction(['favorites'], 'readwrite');
+      const store = transaction.objectStore('favorites');
+
+      if (favorites.has(foodName)) {
+        // Remove from favorites
+        const request = store.delete(foodName);
+        
+        request.onsuccess = () => {
+          favorites.delete(foodName);
+          calciumState.update(state => ({ ...state, favorites }));
+          showToast(`Removed ${foodName} from favorites`, 'success');
+          resolve();
+        };
+
+        request.onerror = () => {
+          console.error('Error removing favorite:', request.error);
+          showToast('Failed to remove favorite', 'error');
+          reject(request.error);
+        };
+      } else {
+        // Add to favorites
+        const favoriteData = {
+          foodName,
+          dateAdded: new Date().toISOString()
+        };
+        
+        const request = store.put(favoriteData);
+
+        request.onsuccess = () => {
+          favorites.add(foodName);
+          calciumState.update(state => ({ ...state, favorites }));
+          showToast(`Added ${foodName} to favorites`, 'success');
+          resolve();
+        };
+
+        request.onerror = () => {
+          console.error('Error adding favorite:', request.error);
+          showToast('Failed to add favorite', 'error');
+          reject(request.error);
+        };
+      }
+    });
+  }
+
+  private async loadFavorites(): Promise<void> {
+    if (!this.db) return;
+
+    return new Promise((resolve) => {
+      const transaction = this.db!.transaction(['favorites'], 'readonly');
+      const store = transaction.objectStore('favorites');
+      const request = store.getAll();
+
+      request.onsuccess = () => {
+        const favoriteRecords = request.result || [];
+        const favorites = new Set(favoriteRecords.map((record: any) => record.foodName));
+        
+        calciumState.update(state => ({ ...state, favorites }));
+        resolve();
+      };
+
+      request.onerror = () => {
+        console.error('Error loading favorites:', request.error);
+        // Initialize with empty set on error
+        calciumState.update(state => ({ ...state, favorites: new Set() }));
+        resolve();
+      };
+    });
+  }
+
+  private async restoreFavorites(favoritesArray: string[]): Promise<void> {
+    if (!this.db) return;
+
+    return new Promise((resolve, reject) => {
+      const transaction = this.db!.transaction(['favorites'], 'readwrite');
+      const store = transaction.objectStore('favorites');
+
+      let completedCount = 0;
+      const expectedCount = favoritesArray.length;
+
+      if (expectedCount === 0) {
+        resolve();
+        return;
+      }
+
+      const checkComplete = () => {
+        completedCount++;
+        if (completedCount === expectedCount) {
+          // Update the state after all favorites are restored
+          const favorites = new Set(favoritesArray);
+          calciumState.update(state => ({ ...state, favorites }));
+          resolve();
+        }
+      };
+
+      for (const foodName of favoritesArray) {
+        const favoriteData = {
+          foodName,
+          dateAdded: new Date().toISOString()
+        };
+        
+        const request = store.put(favoriteData);
+        request.onsuccess = checkComplete;
+        request.onerror = () => {
+          console.error(`Error restoring favorite: ${foodName}`, request.error);
+          checkComplete(); // Continue even if one fails
+        };
+      }
+    });
   }
 
 }

@@ -3,6 +3,7 @@
   import { calciumState } from "$lib/stores/calcium";
   import { DEFAULT_FOOD_DATABASE } from "$lib/data/foodDatabase";
   import { goto } from "$app/navigation";
+  import { getCalciumServiceSync } from "$lib/services/CalciumServiceSingleton";
 
   let searchQuery = "";
   let selectedFilter = "all";
@@ -18,9 +19,11 @@
     if (selectedFilter === "all") {
       foods = [...DEFAULT_FOOD_DATABASE, ...$calciumState.customFoods];
     } else if (selectedFilter === "database") {
-      foods = [...DEFAULT_FOOD_DATABASE];
-    } else if (selectedFilter === "custom") {
-      foods = [...$calciumState.customFoods];
+      foods = [...DEFAULT_FOOD_DATABASE].filter(food => !$calciumState.favorites.has(food.name));
+    } else if (selectedFilter === "user") {
+      // Include custom foods and database favorites
+      const databaseFavorites = [...DEFAULT_FOOD_DATABASE].filter(food => $calciumState.favorites.has(food.name));
+      foods = [...databaseFavorites, ...$calciumState.customFoods];
     }
     
     // Apply search
@@ -42,8 +45,8 @@
           comparison = a.calcium - b.calcium;
           break;
         case "type":
-          const aType = a.isCustom ? "Custom" : "Database";
-          const bType = b.isCustom ? "Custom" : "Database";
+          const aType = (a.isCustom || $calciumState.favorites.has(a.name)) ? "User" : "Database";
+          const bType = (b.isCustom || $calciumState.favorites.has(b.name)) ? "User" : "Database";
           comparison = aType.localeCompare(bType);
           break;
       }
@@ -91,6 +94,15 @@
   function getSortIcon(sort) {
     if (sortBy !== sort) return "unfold_more";
     return sortOrder === "desc" ? "expand_more" : "expand_less";
+  }
+
+  async function toggleFavorite(food) {
+    if (food.isCustom) return; // Only allow favorites for database foods
+    
+    const calciumService = getCalciumServiceSync();
+    if (calciumService) {
+      await calciumService.toggleFavorite(food.name);
+    }
   }
 </script>
 
@@ -150,11 +162,11 @@
         </div>
         <div 
           class="sort-option" 
-          class:active={selectedFilter === "custom"}
-          on:click={() => handleFilterClick("custom")}
+          class:active={selectedFilter === "user"}
+          on:click={() => handleFilterClick("user")}
         >
-          <span class="material-icons">build</span>
-          <span>Custom</span>
+          <span class="material-icons">person</span>
+          <span>User</span>
         </div>
       </div>
     </div>
@@ -204,9 +216,21 @@
           <div class="food-calcium">
             <div class="calcium-amount">{food.calcium}mg</div>
             <div class="food-type">
-              {food.isCustom ? "Custom" : "Database"}
+              {(food.isCustom || $calciumState.favorites.has(food.name)) ? "User" : "Database"}
             </div>
           </div>
+          {#if !food.isCustom}
+            <button 
+              class="favorite-btn"
+              class:favorite={$calciumState.favorites.has(food.name)}
+              on:click={() => toggleFavorite(food)}
+              title={$calciumState.favorites.has(food.name) ? "Remove from favorites" : "Add to favorites"}
+            >
+              <span class="material-icons">
+                {$calciumState.favorites.has(food.name) ? "star" : "star_border"}
+              </span>
+            </button>
+          {/if}
         </div>
       {:else}
         <div class="empty-state">
@@ -414,6 +438,7 @@
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
+    position: relative;
   }
 
   .food-item.custom {
@@ -480,6 +505,33 @@
     line-height: 1.5;
     color: var(--text-secondary);
     margin: 0;
+  }
+
+  .favorite-btn {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    margin-left: 8px;
+  }
+
+  .favorite-btn:hover {
+    background-color: var(--divider);
+    color: var(--primary-color);
+  }
+
+  .favorite-btn.favorite {
+    color: var(--primary-color);
+  }
+
+  .favorite-btn .material-icons {
+    font-size: 20px;
   }
 
 

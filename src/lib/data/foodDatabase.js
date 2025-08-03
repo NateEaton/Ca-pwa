@@ -2068,7 +2068,7 @@ const SEARCH_STOPWORDS = [
 ];
 
 // Helper function to search foods
-export function searchFoods(query, customFoods = []) {
+export function searchFoods(query, customFoods = [], favorites = new Set()) {
   if (!query || query.length < 2) return [];
 
   const keywords = query
@@ -2108,7 +2108,12 @@ export function searchFoods(query, customFoods = []) {
       // Must match at least one keyword
       if (!hasMatch) return null;
 
-      // Prioritize custom foods at the top
+      // Prioritize favorites first (highest priority)
+      if (favorites.has(food.name)) {
+        score += 2000;
+      }
+
+      // Prioritize custom foods second
       if (food.isCustom) {
         score += 1000;
       }
