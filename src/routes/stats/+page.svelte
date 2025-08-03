@@ -1783,26 +1783,6 @@
       padding-bottom: 5rem;
     }
 
-    .calendar-popup {
-      left: 50%;
-      transform: translateX(-50%);
-      margin-top: var(--spacing-sm);
-      width: calc(100vw - 2 * var(--spacing-lg));
-      max-width: 20rem;
-    }
-
-    .date-input {
-      padding: var(--spacing-md);
-      font-size: var(--input-font-min); /* Prevent iOS zoom */
-      width: 100%;
-    }
-
-    .today-btn {
-      width: 100%;
-      justify-content: center;
-      padding: var(--spacing-md) var(--spacing-lg);
-    }
-
     .view-option span:not(.material-icons) {
       display: none;
     }

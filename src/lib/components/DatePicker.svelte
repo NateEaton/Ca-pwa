@@ -249,39 +249,4 @@
     outline: none;
     border-color: var(--primary-color);
   }
-
-  /* Mobile responsive */
-  @media (max-width: 30rem) {
-    /* 480px equivalent */
-    .current-date-btn {
-      min-width: 10rem; /* 160px equivalent - ensure space for text and icon */
-      font-size: var(--font-size-lg);
-      padding: var(--spacing-md) var(--spacing-lg);
-    }
-
-    .date-navigation {
-      justify-content: space-between;
-    }
-
-    .date-input {
-      padding: var(--spacing-md);
-      font-size: var(--input-font-min); /* Prevent iOS zoom */
-      width: 100%;
-    }
-
-    .today-btn {
-      width: 100%;
-      justify-content: center;
-      padding: var(--spacing-md) var(--spacing-lg);
-    }
-
-    .calendar-popup {
-      left: var(--spacing-lg);
-      right: var(--spacing-lg);
-      transform: none;
-      margin-top: var(--spacing-sm);
-      width: auto;
-      max-width: none;
-    }
-  }
 </style>
