@@ -706,6 +706,31 @@ export class CalciumService {
     return state.servingPreferences.get(foodId) || null;
   }
 
+  async deleteServingPreference(foodId: number): Promise<void> {
+    if (!this.db) return;
+
+    return new Promise((resolve, reject) => {
+      const transaction = this.db!.transaction(['servingPreferences'], 'readwrite');
+      const store = transaction.objectStore('servingPreferences');
+      const request = store.delete(foodId);
+
+      request.onsuccess = () => {
+        // Update the local state
+        calciumState.update(state => {
+          const newPreferences = new Map(state.servingPreferences);
+          newPreferences.delete(foodId);
+          return { ...state, servingPreferences: newPreferences };
+        });
+        resolve();
+      };
+
+      request.onerror = () => {
+        console.error('Error deleting serving preference:', request.error);
+        reject(request.error);
+      };
+    });
+  }
+
   /**
    * Get all journal entries from localStorage for reporting
    */
@@ -732,6 +757,13 @@ export class CalciumService {
 
   async toggleFavorite(foodId: number): Promise<void> {
     if (!this.db) return;
+    
+    // Validate foodId
+    if (!foodId || typeof foodId !== 'number' || foodId <= 0) {
+      console.error('Invalid foodId for toggleFavorite:', foodId);
+      showToast('Cannot favorite this food', 'error');
+      return;
+    }
 
     const state = get(calciumState);
     const favorites = new Set(state.favorites);

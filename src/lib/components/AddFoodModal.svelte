@@ -2,7 +2,7 @@
   import { createEventDispatcher } from "svelte";
   import { getCalciumServiceSync } from "$lib/services/CalciumServiceSingleton";
   import { calciumState } from "$lib/stores/calcium";
-  import { searchFoods } from "$lib/data/foodDatabase";
+  import { searchFoods, DEFAULT_FOOD_DATABASE } from "$lib/data/foodDatabase";
   import UnitConverter from "$lib/services/UnitConverter.js";
   import ConfirmDialog from "./ConfirmDialog.svelte";
 
@@ -30,6 +30,7 @@
   let currentFoodData = null;
   let isSelectedFromSearch = false;
   let usingPreference = false;
+  let hasResetToOriginal = false;
   
   // Unit conversion
   const unitConverter = new UnitConverter();
@@ -59,6 +60,14 @@
         isCustom: editingFood.isCustom || false
       };
       
+      // If not a custom food, try to find the corresponding database food to get the ID
+      if (!editingFood.isCustom) {
+        const databaseFood = DEFAULT_FOOD_DATABASE.find(food => food.name === editingFood.name);
+        if (databaseFood) {
+          currentFoodData.id = databaseFood.id;
+        }
+      }
+      
       // Set up parsed measure for unit conversion
       parsedFoodMeasure = {
         originalQuantity: 1,
@@ -79,6 +88,7 @@
     isSubmitting = false;
     searchResults = [];
     showSearchResults = false;
+    hasResetToOriginal = false;
     
     if (!editingFood) {
       parsedFoodMeasure = null;
@@ -105,6 +115,7 @@
     searchResults = [];
     showSearchResults = false;
     errorMessage = "";
+    hasResetToOriginal = false;
 
     if (!isCustomMode) {
       // Focus food name input when switching to search mode
@@ -219,6 +230,7 @@
   function selectUnitSuggestion(suggestion) {
     servingQuantity = suggestion.quantity;
     servingUnit = suggestion.unit;
+    hasResetToOriginal = false; // User changed from reset values
     updateCalcium();
     showUnitSuggestions = false;
   }
@@ -259,6 +271,12 @@
   async function toggleCurrentFoodFavorite() {
     if (isCustomMode || !currentFoodData || currentFoodData.isCustom) return;
     
+    // Validate that we have a valid food ID
+    if (!currentFoodData.id || typeof currentFoodData.id !== 'number') {
+      console.error('Cannot toggle favorite - invalid food ID:', currentFoodData);
+      return;
+    }
+    
     const calciumService = getCalciumServiceSync();
     if (calciumService) {
       await calciumService.toggleFavorite(currentFoodData.id);
@@ -272,6 +290,7 @@
     servingQuantity = parsedFoodMeasure.originalQuantity;
     servingUnit = parsedFoodMeasure.detectedUnit;
     usingPreference = false;
+    hasResetToOriginal = true;
     
     // Recalculate calcium with original serving
     updateCalcium();
@@ -348,13 +367,16 @@
           // console.log('Not in custom mode, skipping custom food save');
         }
         
-        // Save serving preference for database foods if different from default
+        // Handle serving preference for database foods
         if (!isCustomMode && currentFoodData && !currentFoodData.isCustom && currentFoodData.id) {
           const defaultQuantity = parsedFoodMeasure ? parsedFoodMeasure.originalQuantity : 1;
           const defaultUnit = parsedFoodMeasure ? parsedFoodMeasure.detectedUnit : 'serving';
           
-          // Save preference if user changed the serving size/unit
-          if (servingQuantity !== defaultQuantity || servingUnit !== defaultUnit) {
+          if (hasResetToOriginal || (servingQuantity === defaultQuantity && servingUnit === defaultUnit)) {
+            // User reset to original or values match default - delete any existing preference
+            await calciumService.deleteServingPreference(currentFoodData.id);
+          } else if (servingQuantity !== defaultQuantity || servingUnit !== defaultUnit) {
+            // Save preference if user changed the serving size/unit
             await calciumService.saveServingPreference(currentFoodData.id, servingQuantity, servingUnit);
           }
         }
@@ -457,10 +479,17 @@
             <div class="search-results">
               {#each searchResults as food}
                 <div class="search-item" class:custom-food={food.isCustom} on:click={() => selectFood(food)}>
-                  <div class="search-item-name">{food.name}</div>
-                  <div class="search-item-details">
-                    {food.calcium}mg per {food.measure}
+                  <div class="search-item-content">
+                    <div class="search-item-name">{food.name}</div>
+                    <div class="search-item-details">
+                      {food.calcium}mg per {food.measure}
+                    </div>
                   </div>
+                  {#if !food.isCustom && food.id && $calciumState.favorites.has(food.id)}
+                    <div class="search-item-favorite">
+                      <span class="material-icons">star</span>
+                    </div>
+                  {/if}
                 </div>
               {/each}
             </div>
@@ -500,7 +529,7 @@
                 type="number"
                 class="form-input"
                 bind:value={servingQuantity}
-                on:input={updateCalcium}
+                on:input={() => { hasResetToOriginal = false; updateCalcium(); }}
                 placeholder="1"
                 min="0.01"
                 step="0.01"
@@ -512,6 +541,7 @@
                 type="text"
                 class="form-input serving-unit-input"
                 bind:value={servingUnit}
+                on:input={() => { hasResetToOriginal = false; }}
                 placeholder={isCustomMode ? "cups, oz, etc." : "cups"}
                 readonly={!isCustomMode}
                 disabled={isSubmitting || (!isCustomMode && !editingFood && !isSelectedFromSearch)}
@@ -812,6 +842,9 @@
     border-bottom: 1px solid var(--divider);
     border-left: 3px solid var(--primary-color);
     transition: background-color 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
   }
   
   .search-item.custom-food {
@@ -826,6 +859,10 @@
     border-bottom: none;
   }
 
+  .search-item-content {
+    flex: 1;
+  }
+
   .search-item-name {
     font-weight: 500;
     color: var(--text-primary);
@@ -835,6 +872,16 @@
     font-size: var(--font-size-sm);
     color: var(--text-secondary);
     margin-top: var(--spacing-xs);
+  }
+
+  .search-item-favorite {
+    flex-shrink: 0;
+    margin-left: var(--spacing-sm);
+  }
+
+  .search-item-favorite .material-icons {
+    font-size: var(--icon-size-md);
+    color: var(--primary-color);
   }
 
   .unit-suggestions {

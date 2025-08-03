@@ -2444,12 +2444,12 @@ export function searchFoods(query, customFoods = [], favorites = new Set()) {
 
       // Prioritize favorites first (highest priority)
       if (favorites.has(food.id)) {
-        score += 2000;
+        score += 10000;
       }
 
       // Prioritize custom foods second
       if (food.isCustom) {
-        score += 1000;
+        score += 5000;
       }
 
       // Boost score for foods with higher calcium content
