@@ -1,4 +1,5 @@
 <script>
+  import { onMount, onDestroy } from "svelte";
   import { calciumState } from "$lib/stores/calcium";
   import { DEFAULT_FOOD_DATABASE } from "$lib/data/foodDatabase";
   import { goto } from "$app/navigation";
@@ -56,6 +57,21 @@
   function handleBackClick() {
     goto('/');
   }
+
+  function handleKeydown(event) {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      handleBackClick();
+    }
+  }
+
+  onMount(() => {
+    document.addEventListener("keydown", handleKeydown);
+  });
+
+  onDestroy(() => {
+    document.removeEventListener("keydown", handleKeydown);
+  });
 
   function handleFilterClick(filter) {
     selectedFilter = filter;

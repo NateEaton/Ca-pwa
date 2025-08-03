@@ -61,11 +61,11 @@
 
   function handleTouchMove(event) {
     if (!touchStartX || !touchStartY) return;
-    
+
     const touch = event.touches[0];
     const diffX = touchStartX - touch.clientX;
     const diffY = touchStartY - touch.clientY;
-    
+
     // Determine if this is a vertical scroll (ignore horizontal swipes)
     if (Math.abs(diffY) > Math.abs(diffX)) {
       isScrolling = true;
@@ -84,12 +84,15 @@
     const touch = event.changedTouches[0];
     const diffX = touchStartX - touch.clientX;
     const diffY = touchStartY - touch.clientY;
-    
+
     // Minimum swipe distance (50px)
     const minSwipeDistance = 50;
-    
+
     // Ensure horizontal swipe is dominant
-    if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > minSwipeDistance) {
+    if (
+      Math.abs(diffX) > Math.abs(diffY) &&
+      Math.abs(diffX) > minSwipeDistance
+    ) {
       if (diffX > 0) {
         // Swipe left - go to next period
         navigateNext();
@@ -98,7 +101,7 @@
         navigatePrevious();
       }
     }
-    
+
     touchStartX = 0;
     touchStartY = 0;
     isScrolling = false;
@@ -107,7 +110,7 @@
   onMount(async () => {
     resetToCurrentDate();
     await switchView("weekly");
-    
+
     // Add keyboard event listener
     document.addEventListener("keydown", handleKeydown);
   });
@@ -115,7 +118,7 @@
   onDestroy(() => {
     // Clean up event listeners
     document.removeEventListener("keydown", handleKeydown);
-    
+
     if (summaryCardElement) {
       summaryCardElement.removeEventListener("touchstart", handleTouchStart);
       summaryCardElement.removeEventListener("touchmove", handleTouchMove);
@@ -330,14 +333,26 @@
     const weekEndDate = new Date(weekStart);
     weekEndDate.setDate(weekStart.getDate() + 6);
 
-    let subtitle = `${weekStart.toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-    })} - ${weekEndDate.toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    })}`;
+    // Conditionally include year based on screen size
+    const isSmallScreen =
+      typeof window !== "undefined" && window.innerWidth <= 480;
+
+    let subtitle = isSmallScreen
+      ? `${weekStart.toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+        })} - ${weekEndDate.toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+        })}`
+      : `${weekStart.toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+        })} - ${weekEndDate.toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+          year: "numeric",
+        })}`;
 
     return {
       title: "Average",
@@ -609,13 +624,13 @@
     selectedBarIndex = -1;
     isDetailMode = false;
     originalSummaryData = null;
-    
+
     // Remove selected state from all bars
     if (chartCanvas) {
       chartCanvas.querySelectorAll(".chart-bar.selected").forEach((bar) => {
         bar.classList.remove("selected");
       });
-      
+
       // Remove detail line if it exists
       const detailLine = chartCanvas.querySelector(".chart-detail-line");
       if (detailLine) {
@@ -669,9 +684,14 @@
         // Position the line at the center of the selected bar
         const barRect = bars[index].getBoundingClientRect();
         const containerRect = chartCanvas.getBoundingClientRect();
-        const linePosition = barRect.left - containerRect.left + barRect.width / 2 - 1;
+        const linePosition =
+          barRect.left - containerRect.left + barRect.width / 2 - 1;
+
+        // Line extends 110% height for better visual coverage
 
         detailLine.style.left = `${linePosition}px`;
+        detailLine.style.top = `0px`;
+        detailLine.style.height = `110%`;
         chartCanvas.appendChild(detailLine);
       }
     }
@@ -757,9 +777,15 @@
 
   // Set up touch listeners when summary card element becomes available
   $: if (summaryCardElement) {
-    summaryCardElement.addEventListener("touchstart", handleTouchStart, { passive: false });
-    summaryCardElement.addEventListener("touchmove", handleTouchMove, { passive: false });
-    summaryCardElement.addEventListener("touchend", handleTouchEnd, { passive: false });
+    summaryCardElement.addEventListener("touchstart", handleTouchStart, {
+      passive: false,
+    });
+    summaryCardElement.addEventListener("touchmove", handleTouchMove, {
+      passive: false,
+    });
+    summaryCardElement.addEventListener("touchend", handleTouchEnd, {
+      passive: false,
+    });
   }
 
   $: if (currentData) {
@@ -841,7 +867,10 @@
         }
       } else {
         // Use chartLabel for monthly view (day numbers), shortDate for others
-        label.textContent = (currentView === "monthly" && item.chartLabel) ? item.chartLabel : item.shortDate;
+        label.textContent =
+          currentView === "monthly" && item.chartLabel
+            ? item.chartLabel
+            : item.shortDate;
       }
       chartLabels.appendChild(label);
     });
@@ -857,9 +886,14 @@
         // Position the line at the center of the selected bar using getBoundingClientRect
         const barRect = bars[selectedBarIndex].getBoundingClientRect();
         const containerRect = chartCanvas.getBoundingClientRect();
-        const linePosition = barRect.left - containerRect.left + barRect.width / 2 - 1;
+        const linePosition =
+          barRect.left - containerRect.left + barRect.width / 2 - 1;
+
+        // Line extends 110% height for better visual coverage
 
         detailLine.style.left = `${linePosition}px`;
+        detailLine.style.top = `0px`;
+        detailLine.style.height = `110%`;
         chartCanvas.appendChild(detailLine);
       }
     }
@@ -981,7 +1015,11 @@
 
     {#if currentData}
       <!-- Summary Card -->
-      <div class="stats-summary-card" class:detail-mode={isDetailMode} bind:this={summaryCardElement}>
+      <div
+        class="stats-summary-card"
+        class:detail-mode={isDetailMode}
+        bind:this={summaryCardElement}
+      >
         <div class="stats-period-container">
           <button
             class="stats-nav-btn stats-nav-prev"
@@ -992,9 +1030,11 @@
           <div class="stats-period-wrapper">
             <div
               class="stats-period"
+              class:is-current-period={isAtCurrentPeriod}
               on:click={() => (showDatePicker = !showDatePicker)}
             >
               {currentData.subtitle}
+              <span class="material-icons">calendar_today</span>
             </div>
             {#if showDatePicker}
               <div class="calendar-popup">
@@ -1271,6 +1311,7 @@
   }
 
   .stats-summary-card.detail-mode {
+    background-color: var(--custom-food-bg);
     border-color: var(--secondary-color);
     box-shadow: 0 4px 12px rgba(255, 193, 7, 0.2);
   }
@@ -1286,6 +1327,77 @@
     position: relative;
     display: flex;
     justify-content: center;
+  }
+
+  .stats-period {
+    font-size: var(--font-size-lg);
+    font-weight: 600;
+    color: var(--text-primary);
+    cursor: pointer;
+    padding: var(--spacing-sm) var(--spacing-lg);
+    border-radius: var(--spacing-sm);
+    transition: background-color 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    min-width: 10rem; /* 160px equivalent - wider for better mobile experience */
+    justify-content: center;
+  }
+
+  .calendar-popup {
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--surface);
+    border-radius: var(--spacing-sm);
+    box-shadow: var(--shadow-lg);
+    padding: var(--spacing-lg);
+    z-index: 1000;
+    margin-top: var(--spacing-sm);
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-lg);
+    border: 1px solid var(--divider);
+  }
+
+  .date-input {
+    border: 1px solid var(--divider);
+    border-radius: var(--spacing-xs);
+    padding: var(--spacing-sm);
+    font-size: var(--font-size-base);
+    background: var(--background);
+    color: var(--text-primary);
+  }
+
+  .date-input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+  }
+
+  .today-btn {
+    background: var(--primary-color);
+    color: white;
+    border: none;
+    padding: var(--spacing-sm) var(--spacing-lg);
+    border-radius: var(--spacing-sm);
+    cursor: pointer;
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    justify-content: center;
+    transition: all 0.2s;
+  }
+
+  .today-btn:hover {
+    background: var(--primary-color-dark);
+    transform: translateY(-1px);
+  }
+
+  .today-btn .material-icons {
+    font-size: var(--icon-size-sm);
   }
 
   .stats-nav-btn {
@@ -1309,17 +1421,41 @@
   }
 
   .stats-period {
-    font-size: var(--font-size-base);
-    font-weight: 500;
+    font-size: var(--font-size-lg);
+    font-weight: 600;
     color: var(--text-primary);
     cursor: pointer;
-    padding: var(--spacing-xs) var(--spacing-sm);
-    border-radius: var(--spacing-xs);
+    padding: var(--spacing-sm) var(--spacing-lg);
+    border-radius: var(--spacing-sm);
     transition: background-color 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    min-width: 8rem; /* 128px equivalent - match main page */
+    justify-content: center;
   }
 
   .stats-period:hover {
-    background-color: var(--divider);
+    background-color: var(--surface-variant);
+  }
+
+  .stats-period .material-icons {
+    font-size: var(--icon-size-md);
+    color: var(--text-secondary);
+  }
+
+  .stats-period.is-current-period {
+    background-color: var(--primary-color);
+    color: white;
+    font-weight: 700;
+  }
+
+  .stats-period.is-current-period:hover {
+    background-color: var(--primary-color-dark);
+  }
+
+  .stats-period.is-current-period .material-icons {
+    color: white;
   }
 
   .calendar-popup {
@@ -1521,9 +1657,12 @@
     align-self: end;
   }
 
-  :global(.chart-bar:hover) {
-    opacity: 0.8;
-    transform: scaleY(1.05);
+  /* Disable hover effects on touch devices to prevent stuck hover states */
+  @media (hover: hover) and (pointer: fine) {
+    :global(.chart-bar:hover) {
+      opacity: 0.8;
+      transform: scaleY(1.05);
+    }
   }
 
   :global(.chart-bar.selected) {
@@ -1560,8 +1699,6 @@
 
   :global(.chart-detail-line) {
     position: absolute;
-    top: 0;
-    height: 100%;
     width: 2px;
     background-color: var(--secondary-color);
     opacity: 0;
@@ -1644,6 +1781,26 @@
     .stats-content {
       padding: var(--spacing-md);
       padding-bottom: 5rem;
+    }
+
+    .calendar-popup {
+      left: 50%;
+      transform: translateX(-50%);
+      margin-top: var(--spacing-sm);
+      width: calc(100vw - 2 * var(--spacing-lg));
+      max-width: 20rem;
+    }
+
+    .date-input {
+      padding: var(--spacing-md);
+      font-size: var(--input-font-min); /* Prevent iOS zoom */
+      width: 100%;
+    }
+
+    .today-btn {
+      width: 100%;
+      justify-content: center;
+      padding: var(--spacing-md) var(--spacing-lg);
     }
 
     .view-option span:not(.material-icons) {

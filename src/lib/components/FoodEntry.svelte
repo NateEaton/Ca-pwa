@@ -1,33 +1,17 @@
 <script>
   import { createEventDispatcher } from "svelte";
-  import ConfirmDialog from "./ConfirmDialog.svelte";
 
   export let food;
   export let index;
 
   const dispatch = createEventDispatcher();
 
-  let showDeleteConfirm = false;
-
-  function handleEdit() {
+  function handleCardClick() {
     dispatch("edit", { food, index });
-  }
-
-  function handleDeleteClick() {
-    showDeleteConfirm = true;
-  }
-
-  function handleDeleteConfirm() {
-    dispatch("delete", { food, index });
-    showDeleteConfirm = false;
-  }
-
-  function handleDeleteCancel() {
-    showDeleteConfirm = false;
   }
 </script>
 
-<div class="food-entry" class:custom-food={food.isCustom}>
+<div class="food-entry" class:custom-food={food.isCustom} on:click={handleCardClick} role="button" tabindex="0">
   <div class="food-main">
     <div class="food-info">
       <div class="food-name">
@@ -47,31 +31,7 @@
       <span class="calcium-unit">mg</span>
     </div>
   </div>
-
-  <div class="food-actions">
-    <button class="action-btn edit" on:click={handleEdit} title="Edit food">
-      <span class="material-icons">edit</span>
-    </button>
-    <button
-      class="action-btn delete"
-      on:click={handleDeleteClick}
-      title="Delete food"
-    >
-      <span class="material-icons">delete</span>
-    </button>
-  </div>
 </div>
-
-<ConfirmDialog
-  bind:show={showDeleteConfirm}
-  title="Delete Food"
-  message={food.name}
-  confirmText="Delete"
-  cancelText="Cancel"
-  type="danger"
-  on:confirm={handleDeleteConfirm}
-  on:cancel={handleDeleteCancel}
-/>
 
 <style>
   .food-entry {
@@ -81,13 +41,12 @@
     padding: var(--spacing-lg);
     margin-bottom: var(--spacing-sm);
     transition: all 0.2s;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
+    cursor: pointer;
   }
 
   .food-entry:hover {
     box-shadow: var(--shadow);
+    background-color: var(--surface-variant);
   }
 
   .food-entry.custom-food {
@@ -99,7 +58,6 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    flex: 1;
     gap: var(--spacing-lg);
   }
 
@@ -114,6 +72,7 @@
     display: flex;
     align-items: center;
     gap: var(--spacing-sm);
+    font-size: var(--font-size-base);
   }
 
   .custom-badge {
@@ -128,7 +87,7 @@
   }
 
   .food-details {
-    font-size: var(--font-size-sm);
+    font-size: var(--font-size-base);
     color: var(--text-secondary);
   }
 
@@ -150,83 +109,23 @@
     color: var(--text-secondary);
   }
 
-  .food-actions {
-    display: flex;
-    gap: var(--spacing-xs);
-    flex-shrink: 0;
-    margin-left: var(--spacing-lg);
-  }
-
-  .action-btn {
-    background: none;
-    border: none;
-    padding: var(--spacing-sm);
-    border-radius: 50%;
-    cursor: pointer;
-    color: var(--text-secondary);
-    transition: all 0.2s;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 2rem; /* 32px equivalent */
-    min-height: 2rem;
-  }
-
-  .action-btn:hover {
-    background-color: var(--surface-variant);
-  }
-
-  .action-btn.edit:hover {
-    color: var(--primary-color);
-    background-color: var(--primary-alpha-10);
-  }
-
-  .action-btn.delete:hover {
-    color: var(--error-color);
-    background-color: var(--error-alpha-10);
-  }
-
-  .action-btn .material-icons {
-    font-size: var(--icon-size-md);
-  }
 
   /* Mobile responsive */
   @media (max-width: 30rem) { /* 480px equivalent */
     .food-entry {
       padding: var(--spacing-md);
-      flex-direction: column;
-      align-items: stretch;
-    }
-
-    .food-main {
-      margin-bottom: var(--spacing-sm);
-    }
-
-    .food-actions {
-      align-self: flex-end;
-      margin-left: 0;
     }
 
     .food-name {
-      font-size: var(--font-size-sm);
+      font-size: var(--font-size-base);
     }
 
     .food-details {
-      font-size: var(--font-size-xs);
+      font-size: var(--font-size-base);
     }
 
     .calcium-amount {
       font-size: var(--font-size-lg);
-    }
-
-    .action-btn {
-      min-width: 1.75rem; /* 28px equivalent */
-      min-height: 1.75rem;
-      padding: var(--spacing-xs);
-    }
-
-    .action-btn .material-icons {
-      font-size: var(--icon-size-sm);
     }
   }
 </style>

@@ -90,8 +90,8 @@
     background: var(--surface);
     border-radius: var(--spacing-md);
     box-shadow: var(--shadow-lg);
-    width: 100%;
-    max-width: 25rem; /* 400px equivalent */
+    width: 80%;
+    max-width: 30rem; /* 480px equivalent - 80% of app container */
     padding: var(--spacing-2xl);
     display: flex;
     flex-direction: column;

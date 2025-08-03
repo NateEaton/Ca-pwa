@@ -61,7 +61,7 @@ export class CalciumService {
       const legacyCustomFoods = this.getLegacyCustomFoods();
       
       if (legacyCustomFoods.length > 0) {
-        console.log(`Migrating ${legacyCustomFoods.length} custom foods to IndexedDB...`);
+        // console.log(`Migrating ${legacyCustomFoods.length} custom foods to IndexedDB...`);
         
         for (const food of legacyCustomFoods) {
           await this.saveCustomFoodToIndexedDB({
@@ -276,9 +276,9 @@ export class CalciumService {
   }
 
   async saveCustomFood(foodData: { name: string; calcium: number; measure: string }): Promise<CustomFood | null> {
-    console.log('Saving custom food:', foodData);
+    // console.log('Saving custom food:', foodData);
     const result = await this.saveCustomFoodToIndexedDB(foodData);
-    console.log('Custom food saved:', result);
+    // console.log('Custom food saved:', result);
     return result;
   }
 
@@ -288,7 +288,7 @@ export class CalciumService {
       return null;
     }
 
-    console.log('Creating custom food object:', foodData);
+    // console.log('Creating custom food object:', foodData);
     const customFood: Omit<CustomFood, 'id'> = {
       ...foodData,
       isCustom: true,
@@ -303,7 +303,7 @@ export class CalciumService {
 
         request.onsuccess = () => {
           const savedFood: CustomFood = { ...customFood, id: request.result as number };
-          console.log('Successfully saved custom food to IndexedDB:', savedFood);
+          // console.log('Successfully saved custom food to IndexedDB:', savedFood);
           
           calciumState.update(state => ({
             ...state,
@@ -530,7 +530,7 @@ export class CalciumService {
 
   private async getAllCustomFoods(): Promise<CustomFood[]> {
     if (!this.db) {
-      console.log('No database connection for custom foods');
+      // console.log('No database connection for custom foods');
       return [];
     }
 
@@ -544,7 +544,7 @@ export class CalciumService {
           ...food,
           isCustom: true
         }));
-        console.log('Found custom foods for backup:', customFoods.length, customFoods);
+        // console.log('Found custom foods for backup:', customFoods.length, customFoods);
         resolve(customFoods);
       };
 

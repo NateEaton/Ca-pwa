@@ -8,6 +8,8 @@
   } from "$lib/utils/dateUtils";
 
   export let currentDate;
+  export let displayText = null; // Optional custom display text
+  export let showTodayButton = true; // Always show today button option
 
   const dispatch = createEventDispatcher();
   let showCalendar = false;
@@ -15,6 +17,8 @@
   // Check if current date is today for styling
   $: isCurrentDateToday = isToday(currentDate);
 
+  // Use custom display text if provided, otherwise format date
+  $: dateDisplayText = displayText || formatDate(currentDate);
 
   function toggleCalendar() {
     showCalendar = !showCalendar;
@@ -60,7 +64,6 @@
     }
   }
 
-
   onMount(() => {
     // Add keyboard event listener
     document.addEventListener("keydown", handleKeydown);
@@ -85,7 +88,7 @@
       class:is-today={isCurrentDateToday}
       on:click={toggleCalendar}
     >
-      {formatDate(currentDate)}
+      {dateDisplayText}
       <span class="material-icons">calendar_today</span>
     </button>
 
@@ -102,7 +105,7 @@
         on:change={handleCalendarChange}
         class="date-input"
       />
-      {#if !isCurrentDateToday}
+      {#if showTodayButton && (!isCurrentDateToday || showTodayButton === "always")}
         <button class="today-btn" on:click={goToToday}>
           <span class="material-icons">today</span>
           Today
@@ -165,7 +168,7 @@
     display: flex;
     align-items: center;
     gap: var(--spacing-sm);
-    min-width: 10rem; /* 160px equivalent */
+    min-width: 10rem; /* 160px equivalent - ensure space for text and icon */
     justify-content: center;
   }
 
@@ -248,10 +251,11 @@
   }
 
   /* Mobile responsive */
-  @media (max-width: 30rem) { /* 480px equivalent */
+  @media (max-width: 30rem) {
+    /* 480px equivalent */
     .current-date-btn {
-      min-width: 11.25rem; /* 180px equivalent */
-      font-size: var(--font-size-base);
+      min-width: 10rem; /* 160px equivalent - ensure space for text and icon */
+      font-size: var(--font-size-lg);
       padding: var(--spacing-md) var(--spacing-lg);
     }
 

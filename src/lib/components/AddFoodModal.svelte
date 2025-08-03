@@ -4,6 +4,7 @@
   import { calciumState } from "$lib/stores/calcium";
   import { searchFoods } from "$lib/data/foodDatabase";
   import UnitConverter from "$lib/services/UnitConverter.js";
+  import ConfirmDialog from "./ConfirmDialog.svelte";
 
   export let show = false;
   export let editingFood = null;
@@ -17,6 +18,7 @@
   let searchResults = [];
   let showSearchResults = false;
   let searchTimeout;
+  let showDeleteConfirm = false;
 
   // Form fields
   let foodName = "";
@@ -211,6 +213,30 @@
     }
   }
 
+  function handleDeleteClick() {
+    showDeleteConfirm = true;
+  }
+
+  async function handleDeleteConfirm() {
+    try {
+      const calciumService = getCalciumServiceSync();
+      if (!calciumService) {
+        throw new Error('CalciumService not initialized');
+      }
+
+      await calciumService.removeFood(editingIndex);
+      showDeleteConfirm = false;
+      closeModal();
+      dispatch("foodDeleted");
+    } catch (error) {
+      console.error('Error deleting food:', error);
+    }
+  }
+
+  function handleDeleteCancel() {
+    showDeleteConfirm = false;
+  }
+
   async function handleSubmit() {
     if (isSubmitting) return;
 
@@ -219,6 +245,7 @@
       errorMessage = "Food name is required";
       return;
     }
+
 
     const calciumValue = parseInt(calcium);
     if (!calciumValue || calciumValue <= 0) {
@@ -259,17 +286,17 @@
       } else {
         // Only save as custom food definition if it's truly new (not selected from search)
         if (isCustomMode && !isSelectedFromSearch) {
-          console.log('About to save custom food in custom mode');
+          // console.log('About to save custom food in custom mode');
           await calciumService.saveCustomFood({
             name: foodName.trim(),
             calcium: calciumValue,
             measure: `${servingQuantity} ${servingUnit.trim()}`
           });
-          console.log('Custom food save completed');
+          // console.log('Custom food save completed');
         } else if (isSelectedFromSearch) {
-          console.log('Custom food selected from search, not saving as new definition');
+          // console.log('Custom food selected from search, not saving as new definition');
         } else {
-          console.log('Not in custom mode, skipping custom food save');
+          // console.log('Not in custom mode, skipping custom food save');
         }
         
         await calciumService.addFood(foodData);
@@ -310,7 +337,16 @@
         </div>
 
         <div class="modal-header-right">
-          {#if !editingFood}
+          {#if editingFood}
+            <button
+              class="delete-btn"
+              on:click={handleDeleteClick}
+              disabled={isSubmitting}
+              title="Delete Food"
+            >
+              <span class="material-icons">delete</span>
+            </button>
+          {:else}
             <button
               class="custom-food-toggle"
               class:active={isCustomMode}
@@ -365,7 +401,7 @@
             placeholder="0"
             min="1"
             step="1"
-            disabled={isSubmitting}
+            disabled={isSubmitting || (!isCustomMode && !editingFood && !isSelectedFromSearch)}
           />
         </div>
 
@@ -381,7 +417,7 @@
                 placeholder="1"
                 min="0.01"
                 step="0.01"
-                disabled={isSubmitting}
+                disabled={isSubmitting || (!isCustomMode && !editingFood && !isSelectedFromSearch)}
               />
             </div>
             <div class="serving-unit">
@@ -391,7 +427,7 @@
                 bind:value={servingUnit}
                 placeholder={isCustomMode ? "cups, oz, etc." : "cups"}
                 readonly={!isCustomMode}
-                disabled={isSubmitting}
+                disabled={isSubmitting || (!isCustomMode && !editingFood && !isSelectedFromSearch)}
               />
             </div>
           </div>
@@ -435,7 +471,7 @@
           >
             Cancel
           </button>
-          <button type="submit" class="btn btn-primary" disabled={isSubmitting}>
+          <button type="submit" class="btn btn-primary" disabled={isSubmitting || (!isCustomMode && !editingFood && !isSelectedFromSearch)}>
             {#if isSubmitting}
               <span class="material-icons spin">hourglass_empty</span>
             {/if}
@@ -446,6 +482,17 @@
     </div>
   </div>
 {/if}
+
+<ConfirmDialog
+  bind:show={showDeleteConfirm}
+  title="Delete Food"
+  message={editingFood?.name || ''}
+  confirmText="Delete"
+  cancelText="Cancel"
+  type="danger"
+  on:confirm={handleDeleteConfirm}
+  on:cancel={handleDeleteCancel}
+/>
 
 <style>
   .modal-backdrop {
@@ -558,6 +605,30 @@
   }
 
   .custom-food-toggle:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .delete-btn {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: var(--spacing-sm);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    font-size: var(--icon-size-lg);
+  }
+
+  .delete-btn:hover:not(:disabled) {
+    background-color: var(--error-alpha-10);
+    color: var(--error-color);
+  }
+
+  .delete-btn:disabled {
     opacity: 0.5;
     cursor: not-allowed;
   }

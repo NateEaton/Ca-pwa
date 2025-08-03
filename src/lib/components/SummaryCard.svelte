@@ -11,7 +11,9 @@
   let summaryCardElement;
 
   // Calculate progress percentage
-  $: progressPercentage = Math.min((dailyTotal / dailyGoal) * 100, 100);
+  $: actualPercentage = (dailyTotal / dailyGoal) * 100;
+  $: progressPercentage = Math.min(actualPercentage, 100);
+  $: displayPercentage = Math.round(actualPercentage);
 
   // Touch handling
   let touchStartX = 0;
@@ -111,10 +113,11 @@
           <div class="progress-bar">
             <div
               class="progress-fill"
+              class:incomplete={actualPercentage < 100}
               style="width: {progressPercentage}%"
             ></div>
           </div>
-          <div class="progress-text">{Math.round(progressPercentage)}%</div>
+          <div class="progress-text">{displayPercentage}%</div>
         </div>
       </div>
 
@@ -231,6 +234,10 @@
     background: var(--primary-color);
     border-radius: var(--spacing-xs);
     transition: width 0.3s ease;
+  }
+
+  .progress-fill.incomplete {
+    background: var(--error-color);
   }
 
   .progress-text {
