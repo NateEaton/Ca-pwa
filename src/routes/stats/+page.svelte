@@ -45,10 +45,6 @@
         event.preventDefault();
         navigateNext();
         break;
-      case "Escape":
-        event.preventDefault();
-        handleBackClick();
-        break;
     }
   }
 
@@ -134,9 +130,6 @@
     lastReferenceDate = null;
   }
 
-  function handleBackClick() {
-    goto("/");
-  }
 
   async function switchView(viewType) {
     const currentReferenceDate = lastReferenceDate || getCurrentPeriodDate();
@@ -959,22 +952,6 @@
 </svelte:head>
 
 <div class="stats-page">
-  <!-- Header -->
-  <header class="header">
-    <div class="header-content">
-      <div class="header-left">
-        <button class="back-button" on:click={handleBackClick}>
-          <span class="material-icons">arrow_back</span>
-        </button>
-      </div>
-      <div class="header-center">
-        <h1>Statistics</h1>
-      </div>
-      <div class="header-right">
-        <!-- Empty for symmetry -->
-      </div>
-    </div>
-  </header>
 
   <div class="stats-content">
     <!-- Time Period Controls -->
@@ -1172,86 +1149,16 @@
 
 <style>
   .stats-page {
-    position: fixed;
-    top: 0;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 100%;
-    max-width: 480px;
-    height: 100vh;
     background-color: var(--background);
-    z-index: 2000;
-    overflow: hidden;
-    box-shadow: var(--shadow);
-  }
-
-  .header {
-    background: var(--primary-color);
-    color: white;
-    padding: var(--spacing-lg);
-    position: sticky;
-    top: 0;
-    z-index: 100;
-    box-shadow: var(--shadow);
-    flex-shrink: 0;
-  }
-
-  .header-content {
-    display: grid;
-    grid-template-columns: var(--touch-target-min) 1fr var(--touch-target-min);
-    align-items: center;
-    max-width: 30rem; /* 480px equivalent but fluid */
-    margin: 0 auto;
-  }
-
-  .header-left {
+    min-height: 100vh;
     display: flex;
-    align-items: center;
-  }
-
-  .header-center {
-    text-align: center;
-  }
-
-  .header-center h1 {
-    font-size: var(--font-size-xl);
-    font-weight: 600;
-    margin: 0;
-  }
-
-  .header-right {
-    display: flex;
-    justify-content: flex-end;
-  }
-
-  .back-button {
-    background: none;
-    border: none;
-    color: white;
-    cursor: pointer;
-    padding: var(--spacing-sm);
-    border-radius: 50%;
-    transition: background-color 0.2s ease;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-width: var(--touch-target-min);
-    min-height: var(--touch-target-min);
-  }
-
-  .back-button:hover {
-    background-color: rgba(255, 255, 255, 0.1);
-  }
-
-  .back-button .material-icons {
-    font-size: var(--icon-size-lg);
+    flex-direction: column;
   }
 
   .stats-content {
     flex: 1;
     overflow-y: auto;
     padding: var(--spacing-lg);
-    padding-bottom: 5rem; /* 80px converted to rem */
   }
 
   .stats-view-controls {

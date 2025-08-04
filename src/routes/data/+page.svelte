@@ -57,24 +57,6 @@
     filteredFoods = foods;
   }
 
-  function handleBackClick() {
-    goto('/');
-  }
-
-  function handleKeydown(event) {
-    if (event.key === "Escape") {
-      event.preventDefault();
-      handleBackClick();
-    }
-  }
-
-  onMount(() => {
-    document.addEventListener("keydown", handleKeydown);
-  });
-
-  onDestroy(() => {
-    document.removeEventListener("keydown", handleKeydown);
-  });
 
   function handleFilterClick(filter) {
     selectedFilter = filter;
@@ -111,22 +93,6 @@
 </svelte:head>
 
 <div class="data-page">
-  <!-- Header -->
-  <header class="header">
-    <div class="header-content">
-      <div class="header-left">
-        <button class="back-button" on:click={handleBackClick}>
-          <span class="material-icons">arrow_back</span>
-        </button>
-      </div>
-      <div class="header-center">
-        <h1>Data</h1>
-      </div>
-      <div class="header-right">
-        <!-- Empty for symmetry -->
-      </div>
-    </div>
-  </header>
 
   <div class="content">
     <!-- Search -->
@@ -248,79 +214,10 @@
 
 <style>
   .data-page {
-    position: fixed;
-    top: 0;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 100%;
-    max-width: 30rem; /* 480px equivalent */
-    height: 100vh;
     background-color: var(--background);
-    z-index: 2000;
-    overflow: hidden;
-    box-shadow: var(--shadow);
+    min-height: 100vh;
     display: flex;
     flex-direction: column;
-  }
-
-  .header {
-    background: var(--primary-color);
-    color: white;
-    padding: var(--spacing-lg);
-    position: sticky;
-    top: 0;
-    z-index: 100;
-    box-shadow: var(--shadow);
-    flex-shrink: 0;
-  }
-
-  .header-content {
-    display: grid;
-    grid-template-columns: 2.5rem 1fr 2.5rem; /* 40px equivalent */
-    align-items: center;
-    max-width: 30rem; /* 480px equivalent */
-    margin: 0 auto;
-  }
-
-  .header-left {
-    display: flex;
-    align-items: center;
-  }
-
-  .header-center {
-    text-align: center;
-  }
-
-  .header-right {
-    display: flex;
-    justify-content: flex-end;
-  }
-
-  .header-center h1 {
-    font-size: var(--font-size-xl);
-    font-weight: 600;
-    margin: 0;
-  }
-
-  .back-button {
-    background: none;
-    border: none;
-    color: white;
-    cursor: pointer;
-    padding: var(--spacing-sm);
-    border-radius: 50%;
-    transition: background-color 0.2s ease;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .back-button:hover {
-    background-color: rgba(255, 255, 255, 0.1);
-  }
-
-  .back-button .material-icons {
-    font-size: var(--icon-size-xl);
   }
 
   .content {

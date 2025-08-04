@@ -1,6 +1,7 @@
 <script>
   import { goto } from '$app/navigation';
   import { page } from '$app/stores';
+  import { showToast } from '$lib/stores/calcium';
   
   export let pageTitle = "Tracking";
   
@@ -19,6 +20,13 @@
 
   function handleMenuItemClick(path) {
     closeMenu();
+    
+    // Show "Future feature" toast for Settings and Profile
+    if (path === '/settings' || path === '/profile') {
+      showToast('Future feature', 'info');
+      return;
+    }
+    
     goto(path);
   }
 

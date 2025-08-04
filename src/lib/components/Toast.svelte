@@ -1,39 +1,60 @@
 <script>
   import { toastStore } from "$lib/stores/calcium";
+  import { tick } from "svelte";
 
-  let toastElement;
+  let isVisible = false;
+  let currentTimeout;
+  let message = "";
+  let type = "info";
 
-  // Subscribe to toast store and handle display
-  $: if ($toastStore.message) {
+  // Reactive statement to handle toast store changes
+  $: if ($toastStore.message && $toastStore.message.trim() !== '') {
     showToast($toastStore.message, $toastStore.type);
   }
 
-  function showToast(message, type = "info") {
-    if (toastElement) {
-      toastElement.textContent = message;
-      toastElement.className = `toast toast-${type} show`;
-
-      // Auto-hide after 3 seconds
-      setTimeout(() => {
-        if (toastElement) {
-          toastElement.classList.remove("show");
-        }
-        // Clear the store message after animation
-        setTimeout(() => {
-          toastStore.set({ message: "", type: "info" });
-        }, 300);
-      }, 3000);
+  async function showToast(newMessage, newType = "info") {
+    // Clear any existing timeout
+    if (currentTimeout) {
+      clearTimeout(currentTimeout);
     }
+
+    // Set message and type
+    message = newMessage;
+    type = newType;
+    
+    // Wait for DOM update, then show
+    await tick();
+    isVisible = true;
+
+    // Auto-hide after 5 seconds
+    currentTimeout = setTimeout(() => {
+      hideToast();
+    }, 5000);
+  }
+
+  function hideToast() {
+    isVisible = false;
+    
+    // Clear the store after animation completes
+    setTimeout(() => {
+      toastStore.set({ message: "", type: "info" });
+      message = "";
+      type = "info";
+    }, 300);
   }
 </script>
 
 <div
-  bind:this={toastElement}
   class="toast"
+  class:show={isVisible}
+  class:toast-success={type === 'success'}
+  class:toast-error={type === 'error'}
+  class:toast-warning={type === 'warning'}
+  class:toast-info={type === 'info'}
   aria-live="polite"
   aria-atomic="true"
 >
-  {$toastStore.message}
+  {message}
 </div>
 
 <style>
@@ -41,21 +62,23 @@
     position: fixed;
     bottom: 2rem;
     left: 50%;
-    transform: translateX(-50%) translateY(100px);
-    background: var(--text-primary);
-    color: var(--surface);
-    padding: 0.75rem 1.5rem;
-    border-radius: 24px;
+    transform: translateX(-50%) translateY(100%);
+    background: var(--surface);
+    color: var(--text-primary);
+    padding: 1rem 1.5rem;
+    border-radius: 8px;
+    border: 1px solid var(--divider);
     box-shadow: var(--shadow-lg);
     z-index: 1100;
     font-size: 0.9rem;
     font-weight: 500;
-    max-width: calc(100vw - 2rem);
+    max-width: min(400px, calc(100vw - 4rem));
     text-align: center;
     opacity: 0;
     visibility: hidden;
-    transition: all 0.3s ease;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     pointer-events: none;
+    white-space: nowrap;
   }
 
   .toast.show {
@@ -64,34 +87,39 @@
     transform: translateX(-50%) translateY(0);
   }
 
-  .toast-success {
+  .toast.toast-success {
     background: var(--success-color, #4caf50);
     color: white;
+    border-color: var(--success-color, #4caf50);
   }
 
-  .toast-error {
+  .toast.toast-error {
     background: var(--error-color, #f44336);
     color: white;
+    border-color: var(--error-color, #f44336);
   }
 
-  .toast-warning {
+  .toast.toast-warning {
     background: var(--warning-color, #ff9800);
     color: white;
+    border-color: var(--warning-color, #ff9800);
   }
 
-  .toast-info {
+  .toast.toast-info {
     background: var(--info-color, #2196f3);
     color: white;
+    border-color: var(--info-color, #2196f3);
   }
 
   /* Mobile responsive */
   @media (max-width: 480px) {
     .toast {
-      bottom: 1.5rem;
+      bottom: 2rem;
       left: 1rem;
       right: 1rem;
-      transform: translateY(100px);
+      transform: translateY(100%);
       max-width: none;
+      white-space: normal;
     }
 
     .toast.show {

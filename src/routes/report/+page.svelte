@@ -265,16 +265,6 @@
     window.print();
   }
 
-  function handleBack() {
-    goto('/');
-  }
-
-  function handleKeydown(event) {
-    if (event.key === "Escape") {
-      event.preventDefault();
-      handleBack();
-    }
-  }
 
   onMount(async () => {
     try {
@@ -288,13 +278,7 @@
       isLoading = false;
     }
 
-    // Add keyboard event listener
-    document.addEventListener("keydown", handleKeydown);
-  });
-
-  onDestroy(() => {
-    // Clean up event listeners
-    document.removeEventListener("keydown", handleKeydown);
+    // No keyboard event listeners needed
   });
 
   $: yearlyChartData = reportData ? getYearlyChartData(reportData.yearlyChart, reportData.metadata.dailyGoal) : null;
@@ -306,24 +290,6 @@
 </svelte:head>
 
 <div class="report-page">
-  <!-- Header -->
-  <header class="header">
-    <div class="header-content">
-      <div class="header-left">
-        <button class="back-button" on:click={handleBack}>
-          <span class="material-icons">arrow_back</span>
-        </button>
-      </div>
-      <div class="header-center">
-        <h1>Report</h1>
-      </div>
-      <div class="header-right">
-        <button class="print-button" on:click={handlePrint} title="Print Report">
-          <span class="material-icons">print</span>
-        </button>
-      </div>
-    </div>
-  </header>
 
   <div class="report-content">
     {#if isLoading}
@@ -449,6 +415,13 @@
     <!-- Scroll spacer -->
     <div class="scroll-spacer" aria-hidden="true"></div>
   </div>
+
+  <!-- FAB Container -->
+  <div class="fab-container">
+    <button class="fab" title="Print Report" on:click={handlePrint}>
+      <span class="fab-icon material-icons">print</span>
+    </button>
+  </div>
 </div>
 
 <style>
@@ -459,67 +432,47 @@
     flex-direction: column;
   }
 
-  .header {
-    background: var(--primary-color);
-    color: white;
-    padding: 1rem;
-    position: sticky;
-    top: 0;
-    z-index: 100;
-    box-shadow: var(--shadow);
-    flex-shrink: 0;
-  }
-
-  .header-content {
-    display: grid;
-    grid-template-columns: 40px 1fr 40px;
-    align-items: center;
-    max-width: 480px;
+  /* Floating Action Button Container */
+  .fab-container {
+    position: fixed;
+    bottom: max(var(--spacing-xl), env(safe-area-inset-bottom));
+    right: max(var(--spacing-xl), env(safe-area-inset-right));
+    left: max(var(--spacing-xl), env(safe-area-inset-left));
+    max-width: 27.5rem; /* 440px equivalent */
     margin: 0 auto;
-  }
-
-  .header-left {
-    display: flex;
-    align-items: center;
-  }
-
-  .header-center {
-    text-align: center;
-  }
-
-  .header-center h1 {
-    font-size: var(--font-size-xl);
-    font-weight: 600;
-    margin: 0;
-  }
-
-  .header-right {
     display: flex;
     justify-content: flex-end;
+    align-items: center;
+    pointer-events: none;
+    z-index: 1000;
   }
 
-  .back-button,
-  .print-button {
-    background: none;
-    border: none;
+  .fab-container .fab {
+    pointer-events: auto;
+    background: var(--primary-color);
     color: white;
-    cursor: pointer;
-    padding: 8px;
+    border: none;
+    box-shadow: var(--shadow-lg);
+    width: 3.5rem; /* 56px equivalent */
+    height: 3.5rem;
     border-radius: 50%;
+    cursor: pointer;
+    transition:
+      transform 0.2s,
+      box-shadow 0.2s;
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: background-color 0.2s ease;
   }
 
-  .back-button:hover,
-  .print-button:hover {
-    background-color: rgba(255, 255, 255, 0.1);
+  .fab-container .fab:hover {
+    transform: scale(1.1);
+    box-shadow: var(--shadow-lg);
   }
 
-  .back-button .material-icons,
-  .print-button .material-icons {
-    font-size: 24px;
+  .fab-container .fab .fab-icon {
+    font-size: var(--icon-size-lg);
+    font-family: "Material Icons";
   }
 
 
@@ -852,23 +805,36 @@
       grid-template-columns: 1fr;
     }
 
-
     .recent-activity-table th,
     .recent-activity-table td {
       padding: 8px 4px;
       font-size: 0.8rem;
     }
+
+    .fab-container {
+      bottom: max(var(--spacing-md), env(safe-area-inset-bottom));
+      right: max(var(--spacing-xl), env(safe-area-inset-right));
+      left: max(var(--spacing-xl), env(safe-area-inset-left));
+      max-width: 100%;
+      padding: 0 var(--spacing-sm);
+    }
+
+    .fab-container .fab .fab-icon {
+      font-size: var(--icon-size-lg);
+    }
   }
 
   /* Print styles */
   @media print {
-    .header {
+    /* Hide header and navigation when printing */
+    :global(.app-container > header),
+    :global(.app-container .header),
+    :global(header) {
       display: none !important;
     }
 
-    .back-button,
-    .print-button {
-      display: none;
+    .fab-container {
+      display: none !important;
     }
 
     .report-content {

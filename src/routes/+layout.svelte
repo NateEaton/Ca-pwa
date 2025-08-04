@@ -8,7 +8,7 @@
   import "../app.css";
 
   // Don't show loading spinner or header on pages that have their own layout
-  $: isSubPage = $page.route?.id === '/data' || $page.route?.id === '/stats' || $page.route?.id === '/report';
+  $: isSubPage = false; // All pages now use the main layout with Header
   
   // Determine page title based on current route
   $: pageTitle = (() => {
