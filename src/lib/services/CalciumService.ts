@@ -554,40 +554,62 @@ export class CalciumService {
       // Clear existing data
       await this.clearAllData();
       
+      // Small delay to ensure transactions are completed
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
       // Restore preferences/settings
       if (backupData.preferences) {
         calciumState.update(state => ({
           ...state,
           settings: backupData.preferences
         }));
-        this.saveSettings();
+        await this.saveSettings();
       }
       
       // Restore custom foods to IndexedDB
       if (backupData.customFoods && Array.isArray(backupData.customFoods)) {
         for (const customFood of backupData.customFoods) {
-          await this.saveCustomFoodToIndexedDB(customFood);
+          try {
+            await this.saveCustomFoodToIndexedDB(customFood);
+          } catch (error) {
+            console.warn('Failed to restore custom food:', customFood.name, error);
+          }
         }
       }
       
       // Restore favorites
       if (backupData.favorites && Array.isArray(backupData.favorites)) {
-        await this.restoreFavorites(backupData.favorites);
+        try {
+          await this.restoreFavorites(backupData.favorites);
+        } catch (error) {
+          console.warn('Failed to restore favorites:', error);
+        }
       }
       
       // Restore serving preferences
       if (backupData.servingPreferences && Array.isArray(backupData.servingPreferences)) {
-        await this.restoreServingPreferences(backupData.servingPreferences);
+        try {
+          await this.restoreServingPreferences(backupData.servingPreferences);
+        } catch (error) {
+          console.warn('Failed to restore serving preferences:', error);
+        }
       }
       
       // Restore journal entries to localStorage
       if (backupData.journalEntries) {
         for (const [date, foods] of Object.entries(backupData.journalEntries)) {
           if (Array.isArray(foods)) {
-            localStorage.setItem(`calcium_foods_${date}`, JSON.stringify(foods));
+            try {
+              localStorage.setItem(`calcium_foods_${date}`, JSON.stringify(foods));
+            } catch (error) {
+              console.warn('Failed to restore journal entry for date:', date, error);
+            }
           }
         }
       }
+      
+      // Small delay before reloading
+      await new Promise(resolve => setTimeout(resolve, 200));
       
       // Reload data into stores
       await this.loadSettings();
@@ -599,7 +621,7 @@ export class CalciumService {
       
     } catch (error) {
       console.error('Error restoring backup:', error);
-      throw new Error('Failed to restore backup data');
+      throw error;
     }
   }
 
@@ -614,31 +636,41 @@ export class CalciumService {
     }
     keysToRemove.forEach(key => localStorage.removeItem(key));
     
-    // Clear IndexedDB custom foods, favorites, and serving preferences
-    if (this.db) {
-      const transaction = this.db.transaction(['customFoods', 'favorites', 'servingPreferences'], 'readwrite');
-      const customFoodsStore = transaction.objectStore('customFoods');
-      const favoritesStore = transaction.objectStore('favorites');
-      const servingPreferencesStore = transaction.objectStore('servingPreferences');
-      
-      await new Promise<void>((resolve, reject) => {
-        const clearCustomFoods = customFoodsStore.clear();
-        const clearFavorites = favoritesStore.clear();
-        const clearServingPreferences = servingPreferencesStore.clear();
-        
-        let completedCount = 0;
-        const checkComplete = () => {
-          completedCount++;
-          if (completedCount === 3) resolve();
-        };
-        
-        clearCustomFoods.onsuccess = checkComplete;
-        clearFavorites.onsuccess = checkComplete;
-        clearServingPreferences.onsuccess = checkComplete;
-        clearCustomFoods.onerror = () => reject(clearCustomFoods.error);
-        clearFavorites.onerror = () => reject(clearFavorites.error);
-        clearServingPreferences.onerror = () => reject(clearServingPreferences.error);
+    // Clear IndexedDB stores one by one to avoid transaction issues
+    if (!this.db) {
+      console.warn('Database connection not available for clearing IndexedDB data');
+      return;
+    }
+
+    const clearStore = async (storeName: string) => {
+      return new Promise<void>((resolve, reject) => {
+        try {
+          const transaction = this.db!.transaction([storeName], 'readwrite');
+          const store = transaction.objectStore(storeName);
+          const request = store.clear();
+          
+          request.onsuccess = () => resolve();
+          request.onerror = () => reject(request.error);
+          transaction.onerror = () => reject(transaction.error);
+          transaction.onabort = () => reject(new Error(`Transaction aborted for ${storeName}`));
+        } catch (error) {
+          reject(error);
+        }
       });
+    };
+
+    try {
+      // Clear each store with a small delay between operations
+      await clearStore('customFoods');
+      await new Promise(resolve => setTimeout(resolve, 50));
+      
+      await clearStore('favorites');
+      await new Promise(resolve => setTimeout(resolve, 50));
+      
+      await clearStore('servingPreferences');
+    } catch (error) {
+      console.error('Error clearing IndexedDB data:', error);
+      // Don't throw here - we want to continue with the restore process
     }
   }
 

@@ -152,26 +152,16 @@
 
   async function generateMonthlyChartData(allData) {
     const today = new Date();
+    const thirtyDaysAgo = new Date(today);
+    thirtyDaysAgo.setDate(today.getDate() - 29); // 30 days total including today
     
-    // Find the most recent month with data, or use current month
-    const allDates = Object.keys(allData).sort().reverse();
-    let targetMonth = today;
-    
-    if (allDates.length > 0) {
-      const latestDate = new Date(allDates[0]);
-      // If latest data is from a different month, use that month
-      if (latestDate.getMonth() !== today.getMonth() || latestDate.getFullYear() !== today.getFullYear()) {
-        targetMonth = latestDate;
-      }
-    }
-
-    const year = targetMonth.getFullYear();
-    const month = targetMonth.getMonth();
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
     const monthlyData = [];
 
-    for (let day = 1; day <= daysInMonth; day++) {
-      const date = new Date(year, month, day);
+    // Generate data for last 30 days
+    for (let i = 0; i < 30; i++) {
+      const date = new Date(thirtyDaysAgo);
+      date.setDate(thirtyDaysAgo.getDate() + i);
+      
       const dateStr = date.getFullYear() + "-" + 
                      String(date.getMonth() + 1).padStart(2, "0") + "-" + 
                      String(date.getDate()).padStart(2, "0");
@@ -186,7 +176,7 @@
 
       monthlyData.push({
         date: dateStr,
-        day: day.toString(),
+        day: date.getDate().toString(),
         fullDate: date.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
         value: totalCalcium,
         goalMet,
@@ -195,9 +185,12 @@
       });
     }
 
+    const startDate = thirtyDaysAgo.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+    const endDate = today.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+
     return {
       data: monthlyData,
-      monthName: targetMonth.toLocaleDateString("en-US", { year: "numeric", month: "long" })
+      monthName: `Last 30 Days (${startDate} - ${endDate})`
     };
   }
 

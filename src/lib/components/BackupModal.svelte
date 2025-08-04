@@ -52,6 +52,7 @@
       0
     );
     const customFoodsCount = backupData.customFoods.length;
+    const favoritesCount = backupData.favorites ? backupData.favorites.length : 0;
 
     let dateRange = "No journal entries";
     if (dates.length > 0) {
@@ -66,6 +67,7 @@
     return `<strong>What will be backed up:</strong><br>
 • ${totalDays} journal days with ${totalFoodEntries} food entries<br>
 • ${customFoodsCount} custom food definitions<br>
+• ${favoritesCount} favorite foods<br>
 • Date range: ${dateRange}`;
   }
 

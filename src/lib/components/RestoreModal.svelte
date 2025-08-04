@@ -7,11 +7,17 @@
   let restoreMessage = "";
   let restoreError = "";
   let fileInput;
+  let showPreview = false;
+  let backupData = null;
+  let backupStats = "";
 
   function handleClose() {
     show = false;
     restoreMessage = "";
     restoreError = "";
+    showPreview = false;
+    backupData = null;
+    backupStats = "";
   }
 
   function handleBackdropClick(event) {
@@ -31,6 +37,37 @@
     fileInput.click();
   }
 
+  function calculateStats(backupData) {
+    const dates = Object.keys(backupData.journalEntries || {});
+    const totalDays = dates.length;
+    const totalFoodEntries = Object.values(backupData.journalEntries || {}).reduce(
+      (sum, dayFoods) => sum + dayFoods.length,
+      0
+    );
+    const customFoodsCount = (backupData.customFoods || []).length;
+    const favoritesCount = (backupData.favorites || []).length;
+    const createdAt = backupData.metadata?.createdAt 
+      ? new Date(backupData.metadata.createdAt).toLocaleDateString()
+      : "Unknown";
+
+    let dateRange = "No journal entries";
+    if (dates.length > 0) {
+      dates.sort();
+      const firstDate = new Date(dates[0]).toLocaleDateString();
+      const lastDate = new Date(dates[dates.length - 1]).toLocaleDateString();
+      dateRange = dates.length === 1 
+        ? `${firstDate}`
+        : `${firstDate} to ${lastDate}`;
+    }
+
+    return `<strong>Backup contents:</strong><br>
+• Created: ${createdAt}<br>
+• ${totalDays} journal days with ${totalFoodEntries} food entries<br>
+• ${customFoodsCount} custom food definitions<br>
+• ${favoritesCount} favorite foods<br>
+• Date range: ${dateRange}`;
+  }
+
   async function handleFileSelect(event) {
     const file = event.target.files[0];
     if (!file) return;
@@ -40,21 +77,48 @@
       return;
     }
 
-    isRestoring = true;
     restoreError = "";
     restoreMessage = "Reading backup file...";
 
     try {
       const fileContent = await file.text();
-      const backupData = JSON.parse(fileContent);
+      const parsedBackupData = JSON.parse(fileContent);
       
       // Validate backup structure
-      if (!backupData.metadata || !backupData.journalEntries || !backupData.customFoods) {
+      if (!parsedBackupData.metadata || !parsedBackupData.journalEntries) {
         throw new Error("Invalid backup file format");
       }
 
-      restoreMessage = "Restoring data...";
+      // Store backup data and show preview
+      backupData = parsedBackupData;
+      backupStats = calculateStats(backupData);
+      showPreview = true;
+      restoreMessage = "";
       
+    } catch (error) {
+      console.error('Error reading backup file:', error);
+      restoreError = error.message || "Failed to read backup file";
+      restoreMessage = "";
+    } finally {
+      // Reset file input
+      event.target.value = "";
+    }
+  }
+
+  function handleBackToFileSelect() {
+    showPreview = false;
+    backupData = null;
+    backupStats = "";
+    restoreError = "";
+  }
+
+  async function handleConfirmRestore() {
+    if (!backupData || isRestoring) return;
+
+    isRestoring = true;
+    restoreMessage = "Restoring data...";
+
+    try {
       const calciumService = getCalciumServiceSync();
       if (!calciumService) {
         throw new Error('CalciumService not initialized');
@@ -75,8 +139,6 @@
       restoreMessage = "";
     } finally {
       isRestoring = false;
-      // Reset file input
-      event.target.value = "";
     }
   }
 </script>
@@ -93,59 +155,112 @@
           </button>
         </div>
         <div class="modal-header-center">
-          <h2 id="restore-title" class="modal-title">Restore Backup</h2>
+          <h2 id="restore-title" class="modal-title">
+            {showPreview ? "Confirm Restore" : "Restore Backup"}
+          </h2>
         </div>
       </div>
       
       <div class="modal-body">
         <div class="restore-content">
-          <div class="restore-warning">
-            <div class="warning-icon">
-              <span class="material-icons">restore</span>
+          {#if !showPreview}
+            <!-- Step 1: File Selection -->
+            <div class="restore-warning">
+              <div class="warning-icon">
+                <span class="material-icons">restore</span>
+              </div>
+              <div class="warning-text">
+                <strong>Restore from backup file</strong>
+                <p>This will replace all current data with the contents of your backup file. This action cannot be undone.</p>
+              </div>
             </div>
-            <div class="warning-text">
-              <strong>Restore from backup file</strong>
-              <p>This will replace all current data with the contents of your backup file. This action cannot be undone.</p>
-            </div>
-          </div>
-          
-          {#if restoreMessage}
-            <div class="restore-status success">
-              {restoreMessage}
-            </div>
-          {/if}
-          
-          {#if restoreError}
-            <div class="restore-status error">
-              <span class="material-icons">error</span>
-              {restoreError}
-            </div>
-          {/if}
-          
-          <div class="restore-actions">
-            <!-- Hidden file input -->
-            <input
-              bind:this={fileInput}
-              type="file"
-              accept=".json"
-              on:change={handleFileSelect}
-              style="display: none;"
-            />
             
-            <button 
-              class="restore-btn" 
-              on:click={triggerFileSelect}
-              disabled={isRestoring}
-            >
-              {#if isRestoring}
-                <span class="material-icons spinning">sync</span>
-                Restoring...
-              {:else}
+            {#if restoreMessage}
+              <div class="restore-status success">
+                {restoreMessage}
+              </div>
+            {/if}
+            
+            {#if restoreError}
+              <div class="restore-status error">
+                <span class="material-icons">error</span>
+                {restoreError}
+              </div>
+            {/if}
+            
+            <div class="restore-actions">
+              <!-- Hidden file input -->
+              <input
+                bind:this={fileInput}
+                type="file"
+                accept=".json"
+                on:change={handleFileSelect}
+                style="display: none;"
+              />
+              
+              <button 
+                class="restore-btn" 
+                on:click={triggerFileSelect}
+                disabled={isRestoring}
+              >
                 <span class="material-icons">upload_file</span>
                 Select Backup File
-              {/if}
-            </button>
-          </div>
+              </button>
+            </div>
+          {:else}
+            <!-- Step 2: Preview and Confirmation -->
+            <div class="restore-warning">
+              <div class="warning-icon">
+                <span class="material-icons">warning</span>
+              </div>
+              <div class="warning-text">
+                <strong>Confirm data restore</strong>
+                <p>This will permanently replace all your current data. Make sure you have a recent backup if needed.</p>
+              </div>
+            </div>
+            
+            <div class="backup-stats">
+              {@html backupStats}
+            </div>
+            
+            {#if restoreMessage}
+              <div class="restore-status success">
+                {restoreMessage}
+              </div>
+            {/if}
+            
+            {#if restoreError}
+              <div class="restore-status error">
+                <span class="material-icons">error</span>
+                {restoreError}
+              </div>
+            {/if}
+            
+            <div class="restore-actions">
+              <button 
+                class="restore-btn secondary" 
+                on:click={handleBackToFileSelect}
+                disabled={isRestoring}
+              >
+                <span class="material-icons">arrow_back</span>
+                Choose Different File
+              </button>
+              
+              <button 
+                class="restore-btn primary" 
+                on:click={handleConfirmRestore}
+                disabled={isRestoring}
+              >
+                {#if isRestoring}
+                  <span class="material-icons spinning">sync</span>
+                  Restoring...
+                {:else}
+                  <span class="material-icons">restore</span>
+                  Restore Data
+                {/if}
+              </button>
+            </div>
+          {/if}
         </div>
       </div>
     </div>
@@ -291,8 +406,24 @@
     border: 1px solid rgba(244, 67, 54, 0.2);
   }
 
+  .backup-stats {
+    background-color: var(--surface-variant);
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 20px;
+    border: 1px solid var(--divider);
+    color: var(--text-secondary);
+    line-height: 1.6;
+  }
+
   .restore-actions {
-    text-align: center;
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+  }
+
+  .restore-actions:has(.secondary) {
+    flex-direction: column;
   }
 
   .restore-btn {
@@ -306,12 +437,32 @@
     cursor: pointer;
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     gap: 8px;
     transition: background-color 0.2s;
+    flex: 1;
   }
 
   .restore-btn:hover:not(:disabled) {
     background-color: #f57c00;
+  }
+
+  .restore-btn.secondary {
+    background-color: var(--surface-variant);
+    color: var(--text-primary);
+    border: 1px solid var(--divider);
+  }
+
+  .restore-btn.secondary:hover:not(:disabled) {
+    background-color: var(--divider);
+  }
+
+  .restore-btn.primary {
+    background-color: #d32f2f;
+  }
+
+  .restore-btn.primary:hover:not(:disabled) {
+    background-color: #b71c1c;
   }
 
   .restore-btn:disabled {

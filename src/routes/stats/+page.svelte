@@ -720,7 +720,8 @@
     return journalData;
   }
 
-  function calculateGoalAchievement() {
+  // Reactive statement for goal achievement
+  $: goalAchievement = (() => {
     if (!currentData?.data.length) return 0;
 
     if (currentView === "daily") {
@@ -737,9 +738,10 @@
 
     const goalsAchieved = validDays.filter((item) => item.goalMet).length;
     return Math.round((goalsAchieved / validDays.length) * 100);
-  }
+  })();
 
-  function getTrackingInfo() {
+  // Reactive statement for tracking info
+  $: trackingInfo = (() => {
     if (!currentData?.data.length) return "0 periods";
 
     switch (currentView) {
@@ -767,7 +769,7 @@
       default:
         return `${currentData.data.length} periods`;
     }
-  }
+  })();
 
   $: isAtCurrentPeriod =
     (currentView === "daily" && currentDayOffset >= 0) ||
@@ -1149,7 +1151,7 @@
             <span class="material-icons">trending_up</span>
           </div>
           <div class="stat-content">
-            <div class="stat-value">{calculateGoalAchievement()}%</div>
+            <div class="stat-value">{goalAchievement}%</div>
             <div class="stat-label">Goal Achieved</div>
           </div>
         </div>
@@ -1159,7 +1161,7 @@
             <span class="material-icons">schedule</span>
           </div>
           <div class="stat-content">
-            <div class="stat-value">{getTrackingInfo()}</div>
+            <div class="stat-value">{trackingInfo}</div>
             <div class="stat-label">Tracked</div>
           </div>
         </div>
