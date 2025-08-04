@@ -1,57 +1,42 @@
 <script>
   import { goto } from '$app/navigation';
-  import AboutDialog from './AboutDialog.svelte';
-  import BackupModal from './BackupModal.svelte';
-  import RestoreModal from './RestoreModal.svelte';
+  import { page } from '$app/stores';
   
-  let showMenu = false;
-  let showAboutDialog = false;
-  let showBackupModal = false;
-  let showRestoreModal = false;
+  export let pageTitle = "Tracking";
+  
+  let showSlideoutMenu = false;
+  
+  // Determine current page for highlighting
+  $: currentPath = $page.route?.id || '/';
 
   function toggleMenu() {
-    showMenu = !showMenu;
+    showSlideoutMenu = !showSlideoutMenu;
   }
 
   function closeMenu() {
-    showMenu = false;
+    showSlideoutMenu = false;
   }
 
-  function handleAboutClick() {
+  function handleMenuItemClick(path) {
     closeMenu();
-    showAboutDialog = true;
+    goto(path);
   }
 
-  function handleBackupClick() {
-    closeMenu();
-    showBackupModal = true;
+  function handleKeydown(event) {
+    if (event.key === "Escape" && showSlideoutMenu) {
+      event.preventDefault();
+      closeMenu();
+    }
   }
 
-  function handleRestoreClick() {
-    closeMenu();
-    showRestoreModal = true;
-  }
-
-  function handleReportClick() {
-    closeMenu();
-    goto('/report');
-  }
-
-
-  // Close menu when clicking outside
-  function handleOutsideClick(event) {
-    if (
-      showMenu &&
-      event.target &&
-      !event.target.closest(".hamburger-menu") &&
-      !event.target.closest(".hamburger-btn")
-    ) {
-      showMenu = false;
+  function handleBackdropClick(event) {
+    if (event.target === event.currentTarget) {
+      closeMenu();
     }
   }
 </script>
 
-<svelte:window on:click={handleOutsideClick} />
+<svelte:window on:keydown={handleKeydown} />
 
 <header class="header">
   <div class="header-content">
@@ -59,36 +44,56 @@
       <span class="material-icons">menu</span>
     </button>
 
-    <h1 class="app-title">My Calcium</h1>
+    <h1 class="page-title">{pageTitle}</h1>
 
     <div class="header-spacer"></div>
   </div>
 
-  {#if showMenu}
-    <div class="hamburger-menu">
-      <button class="menu-item" on:click={handleBackupClick}>
-        <span class="material-icons">backup</span>
-        <span>Backup Data</span>
-      </button>
-      <button class="menu-item" on:click={handleRestoreClick}>
-        <span class="material-icons">restore</span>
-        <span>Restore Data</span>
-      </button>
-      <button class="menu-item" on:click={handleReportClick}>
-        <span class="material-icons">assessment</span>
-        <span>Generate Report</span>
-      </button>
-      <button class="menu-item" on:click={handleAboutClick}>
-        <span class="material-icons">info</span>
-        <span>About</span>
-      </button>
+  <!-- Slide-out Menu -->
+  {#if showSlideoutMenu}
+    <!-- svelte-ignore a11y-click-events-have-key-events -->
+    <!-- svelte-ignore a11y-no-static-element-interactions -->
+    <div class="menu-backdrop" on:click={handleBackdropClick}>
+      <div class="slide-out-menu">
+        <div class="menu-header">
+          <h2>My Calcium</h2>
+        </div>
+        
+        <div class="menu-main">
+          <button class="menu-item" class:current={currentPath === '/'} on:click={() => handleMenuItemClick('/')}>
+            <span class="material-icons">home</span>
+            <span>Tracking</span>
+          </button>
+          <button class="menu-item" class:current={currentPath === '/stats'} on:click={() => handleMenuItemClick('/stats')}>
+            <span class="material-icons">analytics</span>
+            <span>Statistics</span>
+          </button>
+          <button class="menu-item" class:current={currentPath === '/data'} on:click={() => handleMenuItemClick('/data')}>
+            <span class="material-icons">table_chart</span>
+            <span>Database</span>
+          </button>
+          <button class="menu-item" class:current={currentPath === '/report'} on:click={() => handleMenuItemClick('/report')}>
+            <span class="material-icons">assessment</span>
+            <span>Report</span>
+          </button>
+        </div>
+        
+        <div class="menu-bottom">
+          <div class="menu-divider"></div>
+          <button class="menu-item" class:current={currentPath === '/settings'} on:click={() => handleMenuItemClick('/settings')}>
+            <span class="material-icons">settings</span>
+            <span>Settings</span>
+          </button>
+          <button class="menu-item" class:current={currentPath === '/profile'} on:click={() => handleMenuItemClick('/profile')}>
+            <span class="material-icons">person</span>
+            <span>Profile</span>
+          </button>
+        </div>
+      </div>
     </div>
   {/if}
 </header>
 
-<AboutDialog bind:show={showAboutDialog} />
-<BackupModal bind:show={showBackupModal} />
-<RestoreModal bind:show={showRestoreModal} />
 
 <style>
   .header {
@@ -130,11 +135,12 @@
     background-color: var(--hover-overlay);
   }
 
-  .app-title {
+  .page-title {
     font-size: var(--font-size-xl);
     font-weight: 600;
     margin: 0;
-    text-align: center;
+    text-align: left;
+    padding-left: var(--spacing-md);
     grid-column: 2;
   }
 
@@ -142,16 +148,66 @@
     grid-column: 3;
   }
 
-  .hamburger-menu {
+  .menu-backdrop {
+    position: fixed;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100%;
+    max-width: 480px;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 999;
+    opacity: 1;
+    transition: opacity 0.3s ease;
+  }
+
+  .slide-out-menu {
     position: absolute;
-    top: 100%;
-    left: var(--spacing-lg);
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: 80%;
+    max-width: 320px;
     background: var(--surface);
-    border-radius: var(--spacing-sm);
+    transform: translateX(0);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
     box-shadow: var(--shadow-lg);
-    min-width: 12.5rem; /* 200px converted */
-    z-index: 200;
-    overflow: hidden;
+  }
+
+  .menu-header {
+    background: var(--primary-color);
+    color: white;
+    padding: var(--spacing-lg);
+    flex-shrink: 0;
+    min-height: var(--header-height);
+    display: flex;
+    align-items: center;
+  }
+
+  .menu-header h2 {
+    font-size: var(--font-size-xl);
+    font-weight: 600;
+    margin: 0;
+  }
+
+  .menu-main {
+    flex: 1;
+    padding: var(--spacing-lg) 0;
+  }
+
+  .menu-bottom {
+    flex-shrink: 0;
+    padding-bottom: max(var(--spacing-lg), env(safe-area-inset-bottom));
+  }
+
+  .menu-divider {
+    height: 1px;
+    background: var(--divider);
+    margin: var(--spacing-md) var(--spacing-lg);
   }
 
   .menu-item {
@@ -178,6 +234,20 @@
   .menu-item:hover {
     background-color: var(--surface-variant);
   }
+  
+  .menu-item.current {
+    background-color: var(--primary-alpha-10);
+    color: var(--primary-color);
+  }
+  
+  .menu-item.current .material-icons {
+    color: var(--primary-color);
+  }
+  
+  .menu-item.current:hover {
+    background-color: var(--primary-alpha-10);
+    opacity: 0.8;
+  }
 
   .hamburger-btn .material-icons {
     font-size: var(--icon-size-lg);
@@ -198,9 +268,22 @@
       font-size: var(--font-size-lg); /* Slightly smaller on mobile */
     }
 
-    .hamburger-menu {
-      left: var(--spacing-sm);
-      right: var(--spacing-sm);
+    .menu-backdrop {
+      left: 0;
+      transform: none;
+      max-width: 100%;
+    }
+
+    .slide-out-menu {
+      width: 85%;
+      max-width: 300px;
+      height: 100vh;
+      height: 100dvh; /* Use dynamic viewport height on mobile */
+    }
+
+    .page-title {
+      font-size: var(--font-size-lg);
+      padding-left: var(--spacing-sm);
     }
   }
 </style>

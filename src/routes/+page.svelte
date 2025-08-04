@@ -5,7 +5,6 @@
     dailyTotal,
     dailyGoal,
   } from "$lib/stores/calcium";
-  import { goto } from "$app/navigation";
   import { CalciumService } from "$lib/services/CalciumService";
   import FoodEntry from "$lib/components/FoodEntry.svelte";
   import SummaryCard from "$lib/components/SummaryCard.svelte";
@@ -119,12 +118,6 @@
 
   <!-- FAB Container -->
   <div class="fab-container">
-    <button class="fab" id="statsFab" title="View Statistics" on:click={() => goto('/stats')}>
-      <span class="fab-icon material-icons">analytics</span>
-    </button>
-    <button class="fab" id="dataFab" title="Browse Data" on:click={() => goto('/data')}>
-      <span class="fab-icon material-icons">table_chart</span>
-    </button>
     <button class="fab" id="addFab" title="Add Food" on:click={handleAddFood}>
       <span class="fab-icon material-icons">add</span>
     </button>
@@ -207,10 +200,9 @@
     max-width: 27.5rem; /* 440px equivalent */
     margin: 0 auto;
     display: flex;
-    justify-content: space-between;
+    justify-content: flex-end;
     align-items: center;
     pointer-events: none;
-    gap: var(--spacing-md);
   }
 
   .fab-container .fab {
@@ -260,7 +252,6 @@
       right: max(var(--spacing-xl), env(safe-area-inset-right));
       left: max(var(--spacing-xl), env(safe-area-inset-left));
       max-width: 100%;
-      gap: var(--spacing-sm);
       padding: 0 var(--spacing-sm);
     }
 

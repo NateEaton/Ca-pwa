@@ -9,6 +9,19 @@
 
   // Don't show loading spinner or header on pages that have their own layout
   $: isSubPage = $page.route?.id === '/data' || $page.route?.id === '/stats' || $page.route?.id === '/report';
+  
+  // Determine page title based on current route
+  $: pageTitle = (() => {
+    switch ($page.route?.id) {
+      case '/stats': return 'Statistics';
+      case '/data': return 'Database';
+      case '/report': return 'Report';
+      case '/settings': return 'Settings';
+      case '/profile': return 'Profile';
+      case '/backup': return 'Backup & Restore';
+      default: return 'Tracking';
+    }
+  })();
 
   // Theme detection and management
   function initializeTheme() {
@@ -39,7 +52,7 @@
   <slot />
 {:else}
   <div class="app-container">
-    <Header />
+    <Header {pageTitle} />
 
     <main class="main-content">
       {#if $calciumState.isLoading}
