@@ -112,18 +112,22 @@
   }
 
   /* Mobile responsive */
+  /*
   @media (max-width: 480px) {
     .toast {
       bottom: 2rem;
       left: 1rem;
       right: 1rem;
       transform: translateY(100%);
-      max-width: none;
+      max-width: calc(100vw - 2rem);
       white-space: normal;
+      padding: 0.75rem 1rem;
+      font-size: 0.85rem;
     }
 
     .toast.show {
       transform: translateY(0);
     }
   }
+  */
 </style>
