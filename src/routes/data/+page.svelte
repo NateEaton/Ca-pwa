@@ -1,6 +1,6 @@
 <script>
   import { onMount, onDestroy } from "svelte";
-  import { calciumState } from "$lib/stores/calcium";
+  import { calciumState, showToast } from "$lib/stores/calcium";
   import { DEFAULT_FOOD_DATABASE } from "$lib/data/foodDatabase";
   import { goto } from "$app/navigation";
   import { getCalciumServiceSync } from "$lib/services/CalciumServiceSingleton";
@@ -10,6 +10,10 @@
   let sortBy = "calcium";
   let sortOrder = "desc";
   let filteredFoods = [];
+  
+  // Delete confirmation modal state
+  let showDeleteModal = false;
+  let foodToDelete = null;
 
   // Filter and sort foods
   $: {
@@ -45,8 +49,8 @@
           comparison = a.calcium - b.calcium;
           break;
         case "type":
-          const aType = (a.isCustom || $calciumState.favorites.has(a.id)) ? "User" : "Database";
-          const bType = (b.isCustom || $calciumState.favorites.has(b.id)) ? "User" : "Database";
+          const aType = a.isCustom ? "User" : "Database";
+          const bType = b.isCustom ? "User" : "Database";
           comparison = aType.localeCompare(bType);
           break;
       }
@@ -85,6 +89,35 @@
     if (calciumService) {
       await calciumService.toggleFavorite(food.id);
     }
+  }
+
+  function confirmDeleteFood(food) {
+    foodToDelete = food;
+    showDeleteModal = true;
+  }
+
+  function cancelDelete() {
+    showDeleteModal = false;
+    foodToDelete = null;
+  }
+
+  async function handleDeleteFood() {
+    if (!foodToDelete) return;
+    
+    const calciumService = getCalciumServiceSync();
+    if (calciumService) {
+      try {
+        await calciumService.deleteCustomFood(foodToDelete.id);
+        showToast(`Deleted ${foodToDelete.name}`, 'success');
+      } catch (error) {
+        console.error('Error deleting custom food:', error);
+        showToast('Failed to delete food', 'error');
+      }
+    }
+    
+    // Close modal
+    showDeleteModal = false;
+    foodToDelete = null;
   }
 </script>
 
@@ -182,7 +215,7 @@
           <div class="food-calcium">
             <div class="calcium-amount">{food.calcium}mg</div>
             <div class="food-type">
-              {(food.isCustom || $calciumState.favorites.has(food.id)) ? "User" : "Database"}
+              {food.isCustom ? "User" : "Database"}
             </div>
           </div>
           {#if !food.isCustom}
@@ -195,6 +228,14 @@
               <span class="material-icons">
                 {$calciumState.favorites.has(food.id) ? "star" : "star_border"}
               </span>
+            </button>
+          {:else}
+            <button 
+              class="delete-btn"
+              on:click={() => confirmDeleteFood(food)}
+              title="Delete custom food"
+            >
+              <span class="material-icons">delete</span>
             </button>
           {/if}
         </div>
@@ -211,6 +252,27 @@
   </div>
 
 </div>
+
+<!-- Delete Confirmation Modal -->
+{#if showDeleteModal && foodToDelete}
+  <div class="modal-backdrop" on:click={cancelDelete}>
+    <div class="delete-modal" role="dialog" aria-labelledby="delete-title" aria-modal="true">
+      <div class="modal-header">
+        <h3 id="delete-title">Delete Custom Food</h3>
+      </div>
+      
+      <div class="modal-body">
+        <p>Are you sure you want to delete <strong>{foodToDelete.name}</strong>?</p>
+        <p class="warning-text">This action cannot be undone. Past journal entries will keep this food's data.</p>
+      </div>
+      
+      <div class="modal-actions">
+        <button class="cancel-btn" on:click={cancelDelete}>Cancel</button>
+        <button class="delete-btn-modal" on:click={handleDeleteFood}>Delete</button>
+      </div>
+    </div>
+  </div>
+{/if}
 
 <style>
   .data-page {
@@ -431,6 +493,123 @@
     font-size: 20px;
   }
 
+  .delete-btn {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    margin-left: 8px;
+  }
+
+  .delete-btn:hover {
+    background-color: var(--divider);
+    color: var(--error-color);
+  }
+
+  .delete-btn .material-icons {
+    font-size: 20px;
+  }
+
+  /* Delete Confirmation Modal */
+  .modal-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: var(--modal-backdrop);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 1rem;
+  }
+
+  .delete-modal {
+    background-color: var(--surface);
+    border-radius: 8px;
+    box-shadow: var(--shadow-lg);
+    width: 90%;
+    max-width: 400px;
+    overflow: hidden;
+  }
+
+  .delete-modal .modal-header {
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid var(--divider);
+    background-color: var(--surface);
+  }
+
+  .delete-modal .modal-header h3 {
+    margin: 0;
+    color: var(--text-primary);
+    font-size: 1.125rem;
+    font-weight: 600;
+  }
+
+  .delete-modal .modal-body {
+    padding: 1.5rem;
+  }
+
+  .delete-modal .modal-body p {
+    margin: 0 0 1rem 0;
+    color: var(--text-primary);
+    line-height: 1.5;
+  }
+
+  .delete-modal .modal-body p:last-child {
+    margin-bottom: 0;
+  }
+
+  .warning-text {
+    color: var(--text-secondary) !important;
+    font-size: 0.9rem;
+  }
+
+  .modal-actions {
+    padding: 1rem 1.5rem;
+    display: flex;
+    gap: 0.75rem;
+    justify-content: flex-end;
+    background-color: var(--surface-variant);
+  }
+
+  .cancel-btn {
+    background: var(--surface);
+    color: var(--text-primary);
+    border: 1px solid var(--divider);
+    border-radius: 6px;
+    padding: 0.5rem 1rem;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: background-color 0.2s;
+  }
+
+  .cancel-btn:hover {
+    background-color: var(--divider);
+  }
+
+  .delete-btn-modal {
+    background: var(--error-color);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 0.5rem 1rem;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: opacity 0.2s;
+  }
+
+  .delete-btn-modal:hover {
+    opacity: 0.9;
+  }
 
   /* Mobile responsive */
   @media (max-width: 30rem) { /* 480px equivalent */

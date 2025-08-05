@@ -127,7 +127,7 @@
         <button class="back-btn" on:click={handleClose} aria-label="Close backup dialog">
           <span class="material-icons">arrow_back</span>
         </button>
-        <h2 id="backup-title" class="modal-title">Create Backup</h2>
+        <h2 id="backup-title" class="modal-title">Backup</h2>
         <div class="header-spacer"></div>
       </div>
       
@@ -140,8 +140,8 @@
               <span class="material-icons">backup</span>
             </div>
             <div class="info-text">
-              <h3>Save Your Data</h3>
-              <p>Download a backup file containing all your journal entries, custom foods, and preferences.</p>
+              <h3>Download Your Data</h3>
+              <p>Creates a backup file with all journal entries, custom foods, and preferences.</p>
             </div>
           </div>
           

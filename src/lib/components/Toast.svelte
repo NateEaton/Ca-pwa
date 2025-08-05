@@ -72,13 +72,15 @@
     z-index: 1100;
     font-size: 0.9rem;
     font-weight: 500;
-    max-width: min(400px, calc(100vw - 4rem));
+    max-width: min(288px, calc(100vw - 4rem)); /* 60% of 480px app container */
     text-align: center;
     opacity: 0;
     visibility: hidden;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     pointer-events: none;
-    white-space: nowrap;
+    white-space: normal;
+    word-wrap: break-word;
+    line-height: 1.4;
   }
 
   .toast.show {

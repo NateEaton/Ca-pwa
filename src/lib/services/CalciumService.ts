@@ -393,7 +393,6 @@ export class CalciumService {
             customFoods: [...state.customFoods, savedFood]
           }));
           
-          showToast('Custom food saved', 'success');
           resolve(savedFood);
         };
 
@@ -826,7 +825,6 @@ export class CalciumService {
         request.onsuccess = () => {
           favorites.delete(foodId);
           calciumState.update(state => ({ ...state, favorites }));
-          showToast(`Removed ${foodName} from favorites`, 'success');
           resolve();
         };
 
@@ -847,7 +845,6 @@ export class CalciumService {
         request.onsuccess = () => {
           favorites.add(foodId);
           calciumState.update(state => ({ ...state, favorites }));
-          showToast(`Added ${foodName} to favorites`, 'success');
           resolve();
         };
 

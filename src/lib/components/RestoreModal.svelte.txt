@@ -1,6 +1,5 @@
 <script>
   import { getCalciumServiceSync } from "$lib/services/CalciumServiceSingleton";
-  import { showToast } from "$lib/stores/calcium";
   import { tick } from 'svelte';
 
   export let show = false;
@@ -14,24 +13,10 @@
   let previewStats = "";
   let restoreStats = "";
   let disableHandlers = false; // Disable handlers temporarily during transitions
-  
-  // Button references for autofocus
-  let confirmButton;
-  let completeButton;
-  
-  // Autofocus buttons when states change
-  $: if (showPreview && confirmButton && !isRestoring) {
-    setTimeout(() => confirmButton?.focus(), 100);
-  }
-  
-  $: if (restoreComplete && completeButton) {
-    setTimeout(() => completeButton?.focus(), 100);
-  }
 
-  function handleClose(reason = 'unknown') {
+  function handleClose() {
     // Enhanced logging for debugging
     console.log('Close attempt:', {
-      reason,
       isRestoring,
       restoreComplete, 
       showPreview,
@@ -75,27 +60,18 @@
 
   function handleBackdropClick(event) {
     // Prevent accidental closing during restore process or when showing completion
-    if (isRestoring || restoreComplete) {
-      console.log('Backdrop click blocked:', isRestoring ? 'restoring' : 'completed');
-      return;
-    }
+    if (isRestoring || restoreComplete) return;
     
     // Only close if clicking the backdrop itself, not child elements
     if (event.target === event.currentTarget) {
-      handleClose('backdrop-click');
-    } else {
-      console.log('Backdrop click ignored: hit child element');
+      handleClose();
     }
   }
 
   function handleKeydown(event) {
-    if (event.key === "Escape") {
-      // Prevent closing during restore process or when showing completion
-      if (isRestoring || restoreComplete) {
-        console.log('Escape key blocked:', isRestoring ? 'restoring' : 'completed');
-        return;
-      }
-      handleClose('escape-key');
+    // Prevent closing during restore process or when showing completion
+    if (event.key === "Escape" && !isRestoring && !restoreComplete) {
+      handleClose();
     }
   }
 
@@ -233,7 +209,7 @@
         <button 
           class="back-btn" 
           class:disabled={isRestoring}
-          on:click={() => handleClose('back-button')} 
+          on:click={handleClose} 
           aria-label="Close restore dialog"
           disabled={isRestoring}
         >
@@ -345,7 +321,6 @@
                 class="restore-btn primary" 
                 on:click={handleConfirmRestore}
                 disabled={isRestoring}
-                bind:this={confirmButton}
               >
                 {#if isRestoring}
                   <span class="material-icons spinning">sync</span>
@@ -378,7 +353,6 @@
               <button 
                 class="restore-btn primary" 
                 on:click={handleCompleteRestore}
-                bind:this={completeButton}
               >
                 <span class="material-icons">refresh</span>
                 Close & Refresh
@@ -646,15 +620,6 @@
   .restore-btn:disabled {
     opacity: 0.6;
     cursor: not-allowed;
-  }
-
-  .restore-btn:focus {
-    outline: none;
-    box-shadow: 0 0 0 3px var(--primary-alpha-10);
-  }
-
-  .restore-btn.primary:focus {
-    box-shadow: 0 0 0 3px rgba(211, 47, 47, 0.3);
   }
 
   .restore-btn .material-icons {

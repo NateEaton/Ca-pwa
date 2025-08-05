@@ -42,7 +42,7 @@ html {
   --secondary-color: #ffc107;
 
   /* Status colors */
-  --success-color: #4CAF50;
+  --success-color: var(--primary-color); /* Use primary blue for brand consistency */
   --warning-color: #FF9800;
   --error-color: #F44336;
   --info-color: #2196F3;
