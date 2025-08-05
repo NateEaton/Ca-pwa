@@ -21,47 +21,71 @@
   
   // Autofocus buttons when states change
   $: if (showPreview && confirmButton && !isRestoring) {
+    console.log('🎯 RESTORE MODAL - Autofocusing confirm button');
     setTimeout(() => confirmButton?.focus(), 100);
   }
   
   $: if (restoreComplete && completeButton) {
+    console.log('🎯 RESTORE MODAL - Autofocusing complete button');
     setTimeout(() => completeButton?.focus(), 100);
   }
-
-  function handleClose(reason = 'unknown') {
-    // Enhanced logging for debugging
-    console.log('Close attempt:', {
-      reason,
+  
+  // Log show state changes
+  $: {
+    console.log('📺 RESTORE MODAL - Show state changed:', {
+      show,
       isRestoring,
-      restoreComplete, 
+      restoreComplete,
       showPreview,
       disableHandlers,
       timestamp: new Date().toISOString()
     });
+  }
+
+  function handleClose(reason = 'unknown') {
+    // Enhanced logging for debugging
+    console.log('🔍 RESTORE MODAL - Close attempt:', {
+      reason,
+      show,
+      isRestoring,
+      restoreComplete, 
+      showPreview,
+      disableHandlers,
+      timestamp: new Date().toISOString(),
+      callStack: new Error().stack
+    });
 
     // Only allow closing if not in critical states
     if (isRestoring) {
-      console.log('Prevented close during restore');
+      console.log('🚫 RESTORE MODAL - Prevented close during restore');
       return;
     }
     
     if (restoreComplete) {
-      console.log('Prevented close during completion display');
+      console.log('🚫 RESTORE MODAL - Prevented close during completion display');
       return;
     }
 
     // Additional protection: don't close if handlers are disabled
     if (disableHandlers) {
-      console.log('Prevented close during handler cooldown');
+      console.log('🚫 RESTORE MODAL - Prevented close during handler cooldown');
       return;
     }
     
-    console.log('Closing restore modal');
+    console.log('✅ RESTORE MODAL - Closing modal, calling resetModalState');
     resetModalState();
   }
 
   // Separate function for clean state reset
   function resetModalState() {
+    console.log('🔄 RESTORE MODAL - resetModalState called, current state:', {
+      show,
+      isRestoring,
+      restoreComplete,
+      showPreview,
+      disableHandlers
+    });
+    
     show = false;
     restoreComplete = false;
     restoreError = "";
@@ -71,30 +95,61 @@
     restoreStats = "";
     isRestoring = false;
     disableHandlers = false;
+    
+    console.log('🔄 RESTORE MODAL - resetModalState complete, new state:', {
+      show,
+      isRestoring,
+      restoreComplete,
+      showPreview,
+      disableHandlers
+    });
   }
 
   function handleBackdropClick(event) {
+    console.log('🖱️ RESTORE MODAL - Backdrop click detected:', {
+      target: event.target?.tagName,
+      currentTarget: event.currentTarget?.tagName,
+      isTargetCurrentTarget: event.target === event.currentTarget,
+      targetClasses: event.target?.className,
+      currentTargetClasses: event.currentTarget?.className,
+      isRestoring,
+      restoreComplete,
+      disableHandlers,
+      timestamp: new Date().toISOString()
+    });
+    
     // Prevent accidental closing during restore process or when showing completion
     if (isRestoring || restoreComplete) {
-      console.log('Backdrop click blocked:', isRestoring ? 'restoring' : 'completed');
+      console.log('🚫 RESTORE MODAL - Backdrop click blocked:', isRestoring ? 'restoring' : 'completed');
       return;
     }
     
     // Only close if clicking the backdrop itself, not child elements
     if (event.target === event.currentTarget) {
+      console.log('✅ RESTORE MODAL - Valid backdrop click, calling handleClose');
       handleClose('backdrop-click');
     } else {
-      console.log('Backdrop click ignored: hit child element');
+      console.log('⚠️ RESTORE MODAL - Backdrop click ignored: hit child element');
     }
   }
 
   function handleKeydown(event) {
+    console.log('⌨️ RESTORE MODAL - Keydown event:', {
+      key: event.key,
+      code: event.code,
+      isRestoring,
+      restoreComplete,
+      disableHandlers,
+      timestamp: new Date().toISOString()
+    });
+    
     if (event.key === "Escape") {
       // Prevent closing during restore process or when showing completion
       if (isRestoring || restoreComplete) {
-        console.log('Escape key blocked:', isRestoring ? 'restoring' : 'completed');
+        console.log('🚫 RESTORE MODAL - Escape key blocked:', isRestoring ? 'restoring' : 'completed');
         return;
       }
+      console.log('✅ RESTORE MODAL - Valid escape key, calling handleClose');
       handleClose('escape-key');
     }
   }
@@ -177,8 +232,18 @@
   }
 
   async function handleConfirmRestore() {
-    if (!backupData || isRestoring) return;
+    console.log('🔄 RESTORE MODAL - handleConfirmRestore called:', {
+      hasBackupData: !!backupData,
+      isRestoring,
+      timestamp: new Date().toISOString()
+    });
+    
+    if (!backupData || isRestoring) {
+      console.log('🚫 RESTORE MODAL - Restore blocked:', { hasBackupData: !!backupData, isRestoring });
+      return;
+    }
 
+    console.log('▶️ RESTORE MODAL - Starting restore process');
     isRestoring = true;
     restoreError = "";
 
@@ -188,40 +253,51 @@
         throw new Error('CalciumService not initialized');
       }
 
+      console.log('🔄 RESTORE MODAL - Calling calciumService.restoreFromBackup');
       await calciumService.restoreFromBackup(backupData);
       
       // Set completion state
+      console.log('📊 RESTORE MODAL - Calculating restore stats');
       restoreStats = calculateStats(backupData);
       
       // Wait for DOM updates to complete before proceeding
+      console.log('⏳ RESTORE MODAL - Waiting for DOM tick');
       await tick();
       
-      console.log('Setting restoreComplete to true');
+      console.log('✅ RESTORE MODAL - Setting restoreComplete to true');
       restoreComplete = true;
       
     } catch (error) {
-      console.error('Error restoring backup:', error);
+      console.error('❌ RESTORE MODAL - Error restoring backup:', error);
       restoreError = error.message || "Failed to restore backup";
     } finally {
+      console.log('🏁 RESTORE MODAL - Restore process complete, cleaning up');
       isRestoring = false;
       
       // Disable handlers temporarily to prevent premature closing
+      console.log('🔒 RESTORE MODAL - Disabling handlers for 500ms');
       disableHandlers = true;
       
       // Re-enable handlers after brief delay
       setTimeout(() => {
+        console.log('🔓 RESTORE MODAL - Re-enabling handlers');
         disableHandlers = false;
       }, 500);
     }
   }
 
   function handleCompleteRestore() {
-    console.log('User initiated completion');
+    console.log('🎯 RESTORE MODAL - User initiated completion (Close & Refresh button)');
     
     // Force close and reload - override all protection
+    console.log('🔄 RESTORE MODAL - Calling resetModalState before reload');
     resetModalState();
     
-    setTimeout(() => window.location.reload(), 100);
+    console.log('🔄 RESTORE MODAL - Scheduling page reload in 100ms');
+    setTimeout(() => {
+      console.log('🔄 RESTORE MODAL - Executing window.location.reload()');
+      window.location.reload();
+    }, 100);
   }
 </script>
 

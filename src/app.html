@@ -4,6 +4,20 @@
 <meta charset="utf-8" />
 <link rel="icon" href="%sveltekit.assets%/favicon.ico" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
+<!-- Apply theme immediately to prevent flash -->
+<script>
+(function() {
+  try {
+    const savedTheme = localStorage.getItem('calcium_theme') || 'auto';
+    const systemPrefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const actualTheme = savedTheme === 'auto' ? (systemPrefersDark ? 'dark' : 'light') : savedTheme;
+    document.documentElement.setAttribute('data-theme', actualTheme);
+  } catch (e) {
+    // Fallback to light theme if localStorage fails
+    document.documentElement.setAttribute('data-theme', 'light');
+  }
+})();
+</script>
 <!-- Preload Material Icons font for faster loading -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>

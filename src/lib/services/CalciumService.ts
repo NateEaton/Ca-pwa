@@ -84,13 +84,11 @@ export class CalciumService {
         }
 
         this.clearLegacyCustomFoods();
-        showToast(`Migrated ${legacyCustomFoods.length} custom foods to improved storage`, 'success');
       }
 
       await this.setMigrationStatus('customFoodsToIndexedDB', true);
     } catch (error) {
       console.error('Custom foods migration failed:', error);
-      showToast('Some custom foods may need to be re-added', 'warning');
     }
   }
 
@@ -149,14 +147,12 @@ export class CalciumService {
             });
           }
 
-          showToast(`Migrated ${favoriteFoodIds.length} favorites to new system`, 'success');
         }
       }
 
       await this.setMigrationStatus('favoritesToIDs', true);
     } catch (error) {
       console.error('Favorites migration failed:', error);
-      showToast('Some favorites may need to be re-added', 'warning');
     }
   }
 
@@ -282,7 +278,6 @@ export class CalciumService {
 
     await this.applySortToFoods();
     await this.saveDailyFoods();
-    showToast('Food added successfully', 'success');
   }
 
   // FIXED: Now uses correct index from sorted array
@@ -301,7 +296,6 @@ export class CalciumService {
     }));
 
     await this.saveDailyFoods();
-    showToast(`Removed ${removedFood.name}`, 'success');
   }
 
   // FIXED: Now uses correct index from sorted array
@@ -324,7 +318,6 @@ export class CalciumService {
     // Re-sort after update in case sort field changed
     await this.applySortToFoods();
     await this.saveDailyFoods();
-    showToast('Food updated successfully', 'success');
   }
 
   async changeDate(newDate: string): Promise<void> {
@@ -352,10 +345,6 @@ export class CalciumService {
     }));
 
     await this.saveSettings();
-    
-    if (newSettings.dailyGoal) {
-      showToast('Goal updated successfully', 'success');
-    }
   }
 
   async saveCustomFood(foodData: { name: string; calcium: number; measure: string }): Promise<CustomFood | null> {
@@ -426,8 +415,6 @@ export class CalciumService {
           ...state,
           customFoods: state.customFoods.filter(food => food.id !== id)
         }));
-        
-        showToast('Custom food deleted', 'success');
         resolve();
       };
 
@@ -950,10 +937,6 @@ export class CalciumService {
           // Update the state after all favorites are restored
           const favorites = new Set(foodIds);
           calciumState.update(state => ({ ...state, favorites }));
-          
-          if (favoritesArray.some(f => typeof f === 'string')) {
-            showToast(`Migrated ${foodIds.length} favorites from legacy backup`, 'success');
-          }
           
           resolve();
         }
