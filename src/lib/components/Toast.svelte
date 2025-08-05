@@ -26,10 +26,10 @@
     await tick();
     isVisible = true;
 
-    // Auto-hide after 5 seconds
+    // Auto-hide after 3 seconds
     currentTimeout = setTimeout(() => {
       hideToast();
-    }, 5000);
+    }, 3000);
   }
 
   function hideToast() {

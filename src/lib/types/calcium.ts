@@ -24,6 +24,7 @@ export interface CalciumSettings {
   dailyGoal: number;
   sortBy: 'time' | 'name' | 'calcium';
   sortOrder: 'asc' | 'desc';
+  theme?: 'auto' | 'light' | 'dark';
 }
 
 export interface BackupData {

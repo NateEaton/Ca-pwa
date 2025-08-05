@@ -21,8 +21,8 @@
   function handleMenuItemClick(path) {
     closeMenu();
     
-    // Show "Future feature" toast for Settings and Profile
-    if (path === '/settings' || path === '/profile') {
+    // Show "Future feature" toast for Profile only
+    if (path === '/profile') {
       showToast('Future feature', 'info');
       return;
     }

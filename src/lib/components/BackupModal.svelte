@@ -12,13 +12,18 @@
   }
 
   function handleBackdropClick(event) {
+    // Prevent accidental closing during backup generation
+    if (isGenerating) return;
+    
+    // Only close if clicking the backdrop itself, not child elements
     if (event.target === event.currentTarget) {
       handleClose();
     }
   }
 
   function handleKeydown(event) {
-    if (event.key === "Escape") {
+    // Prevent closing during backup generation
+    if (event.key === "Escape" && !isGenerating) {
       handleClose();
     }
   }
@@ -115,40 +120,43 @@
 </script>
 
 {#if show}
-  <!-- svelte-ignore a11y-click-events-have-key-events -->
-  <!-- svelte-ignore a11y-no-static-element-interactions -->
-  <div class="modal-backdrop" on:click={handleBackdropClick}>
-    <div class="modal" role="dialog" aria-labelledby="backup-title" aria-modal="true">
+  <div class="modal-backdrop full-screen" on:click={handleBackdropClick}>
+    <div class="modal-container full-screen" role="dialog" aria-labelledby="backup-title" aria-modal="true">
+      <!-- Modal Header -->
       <div class="modal-header">
-        <div class="modal-header-left">
-          <button class="back-btn" on:click={handleClose} aria-label="Close backup dialog">
-            <span class="material-icons">arrow_back</span>
-          </button>
-        </div>
-        <div class="modal-header-center">
-          <h2 id="backup-title" class="modal-title">Create Backup</h2>
-        </div>
+        <button class="back-btn" on:click={handleClose} aria-label="Close backup dialog">
+          <span class="material-icons">arrow_back</span>
+        </button>
+        <h2 id="backup-title" class="modal-title">Create Backup</h2>
+        <div class="header-spacer"></div>
       </div>
       
-      <div class="modal-body">
+      <!-- Modal Content -->
+      <div class="modal-content">
         <div class="backup-content">
-          <div class="backup-warning">
-            <div class="warning-icon">
+          <!-- Backup Info Section -->
+          <div class="backup-info">
+            <div class="info-icon">
               <span class="material-icons">backup</span>
             </div>
-            <div class="warning-text">
-              <strong>Create backup of your data</strong>
-              <p>This will save all your journal entries, custom foods, and preferences to a file on your device.</p>
+            <div class="info-text">
+              <h3>Save Your Data</h3>
+              <p>Download a backup file containing all your journal entries, custom foods, and preferences.</p>
             </div>
           </div>
           
-          <div class="backup-stats">
-            {@html backupStats}
+          <!-- Current Data Summary -->
+          <div class="data-summary">
+            <h4>What Will Be Backed Up</h4>
+            <div class="backup-stats">
+              {@html backupStats}
+            </div>
           </div>
           
+          <!-- Action Button -->
           <div class="backup-actions">
             <button 
-              class="backup-btn" 
+              class="backup-btn primary" 
               on:click={handleBackupDownload}
               disabled={isGenerating}
             >
@@ -170,126 +178,131 @@
 <svelte:window on:keydown={handleKeydown} />
 
 <style>
-  .modal-backdrop {
+  /* Full-screen modal backdrop */
+  .modal-backdrop.full-screen {
     position: fixed;
     top: 0;
     left: 0;
     right: 0;
     bottom: 0;
     background-color: var(--modal-backdrop);
+    z-index: 1000;
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: 1000;
-    padding: 1rem;
   }
 
-  .modal {
+  /* Full-screen modal container */
+  .modal-container.full-screen {
+    width: 100%;
+    height: 100%;
+    max-width: 480px; /* Match app container width */
     background-color: var(--surface);
-    border-radius: 8px;
-    box-shadow: var(--shadow-lg);
-    width: 90%;
-    max-width: 432px;
-    max-height: 90vh;
-    overflow: hidden;
+    border-radius: 0;
+    margin: 0;
     display: flex;
     flex-direction: column;
+    overflow: hidden;
   }
 
+  /* Modal header */
   .modal-header {
-    display: flex;
+    display: grid;
+    grid-template-columns: var(--touch-target-min) 1fr var(--touch-target-min);
     align-items: center;
-    padding: 16px 20px;
-    border-bottom: 1px solid var(--divider);
-    background-color: var(--surface);
-    flex-shrink: 0;
-    position: relative;
-  }
-
-  .modal-header-left {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  .modal-header-center {
-    position: absolute;
-    left: 50%;
-    transform: translateX(-50%);
+    padding: var(--spacing-lg);
+    background-color: var(--primary-color);
+    color: white;
+    min-height: var(--header-height);
   }
 
   .back-btn {
     background: none;
     border: none;
-    color: var(--text-secondary);
-    cursor: pointer;
-    padding: 0;
+    color: white;
+    padding: var(--spacing-sm);
     border-radius: 50%;
+    cursor: pointer;
+    transition: background-color 0.2s;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 24px;
+    min-width: var(--touch-target-min);
+    min-height: var(--touch-target-min);
   }
 
-  .back-btn .material-icons {
-    font-size: 24px;
+  .back-btn:hover {
+    background-color: var(--hover-overlay);
   }
 
   .modal-title {
-    font-size: 1.25rem;
+    font-size: var(--font-size-xl);
     font-weight: 600;
     margin: 0;
-    color: var(--text-primary);
+    text-align: left;
   }
 
-  .modal-body {
-    padding: 20px;
-    overflow-y: auto;
+  .header-spacer {
+    /* Balances the back button */
+  }
+
+  /* Modal content */
+  .modal-content {
     flex: 1;
+    padding: var(--spacing-xl);
+    overflow-y: auto;
   }
 
   .backup-content {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-2xl);
     color: var(--text-primary);
   }
 
-  .backup-warning {
+  .backup-info {
     display: flex;
-    gap: 12px;
-    padding: 16px;
+    gap: var(--spacing-lg);
+    padding: var(--spacing-lg);
     background-color: var(--primary-alpha-5);
     border-radius: 8px;
-    margin-bottom: 20px;
     border: 1px solid var(--primary-alpha-10);
   }
 
-  .warning-icon {
+  .info-icon {
     flex-shrink: 0;
   }
 
-  .warning-icon .material-icons {
+  .info-icon .material-icons {
     font-size: 24px;
     color: var(--primary-color);
   }
 
-  .warning-text strong {
-    display: block;
+  .info-text h3 {
     color: var(--text-primary);
-    margin-bottom: 4px;
-    font-size: 1.1rem;
+    margin: 0 0 var(--spacing-sm) 0;
+    font-size: var(--font-size-lg);
   }
 
-  .warning-text p {
+  .info-text p {
     color: var(--text-secondary);
     margin: 0;
     line-height: 1.5;
   }
 
-  .backup-stats {
+  .data-summary {
     background-color: var(--surface-variant);
     border-radius: 8px;
-    padding: 16px;
-    margin-bottom: 20px;
+    padding: var(--spacing-lg);
     border: 1px solid var(--divider);
+  }
+
+  .data-summary h4 {
+    color: var(--text-primary);
+    margin: 0 0 var(--spacing-md) 0;
+  }
+
+  .backup-stats {
     color: var(--text-secondary);
     line-height: 1.6;
   }
@@ -298,26 +311,27 @@
     text-align: center;
   }
 
-  .backup-btn {
+  .backup-btn.primary {
     background-color: var(--primary-color);
     color: white;
     border: none;
     border-radius: 8px;
-    padding: 12px 24px;
-    font-size: 1rem;
+    padding: var(--spacing-md) var(--spacing-xl);
+    font-size: var(--font-size-base);
     font-weight: 500;
     cursor: pointer;
     display: inline-flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--spacing-sm);
     transition: background-color 0.2s;
+    min-height: var(--touch-target-min);
   }
 
-  .backup-btn:hover:not(:disabled) {
+  .backup-btn.primary:hover:not(:disabled) {
     background-color: var(--primary-color-dark);
   }
 
-  .backup-btn:disabled {
+  .backup-btn.primary:disabled {
     opacity: 0.6;
     cursor: not-allowed;
   }
@@ -337,34 +351,31 @@
 
   /* Mobile responsive */
   @media (max-width: 480px) {
-    .modal-backdrop {
-      padding: 0.5rem;
+    .modal-backdrop.full-screen {
+      /* Prevent touch scrolling on backdrop */
+      touch-action: none;
+    }
+    
+    .modal-container.full-screen {
+      width: 100vw;
+      height: 100vh;
+      max-width: none;
+      /* Re-enable touch scrolling inside modal content */
+      touch-action: auto;
     }
 
-    .modal {
-      max-height: 95vh;
+    .backup-info {
+      padding: var(--spacing-md);
+      gap: var(--spacing-md);
     }
 
-    .modal-header {
-      padding: 1rem;
+    .data-summary {
+      padding: var(--spacing-md);
     }
 
-    .modal-body {
-      padding: 1rem;
-    }
-
-    .backup-warning {
-      padding: 12px;
-      gap: 8px;
-    }
-
-    .backup-stats {
-      padding: 12px;
-    }
-
-    .backup-btn {
-      padding: 10px 20px;
-      font-size: 0.9rem;
+    .backup-btn.primary {
+      padding: var(--spacing-sm) var(--spacing-lg);
+      font-size: var(--font-size-sm);
     }
   }
 </style>

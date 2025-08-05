@@ -18,28 +18,38 @@
       case '/report': return 'Report';
       case '/settings': return 'Settings';
       case '/profile': return 'Profile';
-      case '/backup': return 'Backup & Restore';
       default: return 'Tracking';
     }
   })();
 
   // Theme detection and management
   function initializeTheme() {
-    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)");
+    const savedTheme = localStorage.getItem('calcium_theme');
+    const theme = savedTheme || 'auto';
     
-    // Set initial theme
-    document.documentElement.setAttribute(
-      "data-theme",
-      prefersDark.matches ? "dark" : "light"
-    );
+    applyTheme(theme);
     
-    // Listen for system theme changes
-    prefersDark.addEventListener("change", (e) => {
-      document.documentElement.setAttribute(
-        "data-theme",
-        e.matches ? "dark" : "light"
-      );
-    });
+    // Only listen for system changes if theme is set to auto
+    if (theme === 'auto') {
+      const prefersDark = window.matchMedia("(prefers-color-scheme: dark)");
+      prefersDark.addEventListener("change", (e) => {
+        if (localStorage.getItem('calcium_theme') === 'auto' || !localStorage.getItem('calcium_theme')) {
+          document.documentElement.setAttribute(
+            "data-theme",
+            e.matches ? "dark" : "light"
+          );
+        }
+      });
+    }
+  }
+
+  function applyTheme(theme) {
+    if (theme === 'auto') {
+      const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+      document.documentElement.setAttribute("data-theme", prefersDark ? "dark" : "light");
+    } else {
+      document.documentElement.setAttribute("data-theme", theme);
+    }
   }
 
   onMount(async () => {

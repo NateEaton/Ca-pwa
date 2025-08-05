@@ -4,30 +4,49 @@
   export let show = false;
   
   let isRestoring = false;
-  let restoreMessage = "";
+  let restoreComplete = false;
   let restoreError = "";
   let fileInput;
   let showPreview = false;
   let backupData = null;
-  let backupStats = "";
+  let previewStats = "";
+  let restoreStats = "";
 
   function handleClose() {
+    // Only allow closing if not in the middle of restore or if explicitly called from completion
+    if (isRestoring) {
+      console.log('Prevented close during restore');
+      return;
+    }
+    
+    if (restoreComplete) {
+      console.log('Prevented close during completion display');
+      return;
+    }
+    
+    console.log('Closing restore modal');
     show = false;
-    restoreMessage = "";
+    restoreComplete = false;
     restoreError = "";
     showPreview = false;
     backupData = null;
-    backupStats = "";
+    previewStats = "";
+    restoreStats = "";
   }
 
   function handleBackdropClick(event) {
+    // Prevent accidental closing during restore process or when showing completion
+    if (isRestoring || restoreComplete) return;
+    
+    // Only close if clicking the backdrop itself, not child elements
     if (event.target === event.currentTarget) {
       handleClose();
     }
   }
 
   function handleKeydown(event) {
-    if (event.key === "Escape") {
+    // Prevent closing during restore process or when showing completion
+    if (event.key === "Escape" && !isRestoring && !restoreComplete) {
       handleClose();
     }
   }
@@ -78,7 +97,6 @@
     }
 
     restoreError = "";
-    restoreMessage = "Reading backup file...";
 
     try {
       const fileContent = await file.text();
@@ -91,14 +109,12 @@
 
       // Store backup data and show preview
       backupData = parsedBackupData;
-      backupStats = calculateStats(backupData);
+      previewStats = calculateStats(backupData);
       showPreview = true;
-      restoreMessage = "";
       
     } catch (error) {
       console.error('Error reading backup file:', error);
       restoreError = error.message || "Failed to read backup file";
-      restoreMessage = "";
     } finally {
       // Reset file input
       event.target.value = "";
@@ -108,7 +124,7 @@
   function handleBackToFileSelect() {
     showPreview = false;
     backupData = null;
-    backupStats = "";
+    previewStats = "";
     restoreError = "";
   }
 
@@ -116,7 +132,7 @@
     if (!backupData || isRestoring) return;
 
     isRestoring = true;
-    restoreMessage = "Restoring data...";
+    restoreError = "";
 
     try {
       const calciumService = getCalciumServiceSync();
@@ -126,70 +142,88 @@
 
       await calciumService.restoreFromBackup(backupData);
       
-      restoreMessage = "✅ Data restored successfully! Refreshing page...";
+      // Set completion state without auto-close
+      restoreStats = calculateStats(backupData);
       
-      // Refresh the page after successful restore
+      // Use setTimeout to ensure state update happens after any potential conflicting updates
       setTimeout(() => {
-        window.location.reload();
-      }, 2000);
+        console.log('Setting restoreComplete to true');
+        restoreComplete = true;
+        isRestoring = false;
+      }, 100);
       
     } catch (error) {
       console.error('Error restoring backup:', error);
       restoreError = error.message || "Failed to restore backup";
-      restoreMessage = "";
-    } finally {
       isRestoring = false;
     }
+  }
+
+  function handleCompleteRestore() {
+    // Force close and reload - override protection
+    show = false;
+    restoreComplete = false;
+    restoreError = "";
+    showPreview = false;
+    backupData = null;
+    previewStats = "";
+    restoreStats = "";
+    
+    setTimeout(() => window.location.reload(), 100);
   }
 </script>
 
 {#if show}
-  <!-- svelte-ignore a11y-click-events-have-key-events -->
-  <!-- svelte-ignore a11y-no-static-element-interactions -->
-  <div class="modal-backdrop" on:click={handleBackdropClick}>
-    <div class="modal" role="dialog" aria-labelledby="restore-title" aria-modal="true">
+  <div class="modal-backdrop full-screen" on:click={handleBackdropClick}>
+    <div class="modal-container full-screen" role="dialog" aria-labelledby="restore-title" aria-modal="true">
+      <!-- Modal Header -->
       <div class="modal-header">
-        <div class="modal-header-left">
-          <button class="back-btn" on:click={handleClose} aria-label="Close restore dialog">
-            <span class="material-icons">arrow_back</span>
-          </button>
-        </div>
-        <div class="modal-header-center">
-          <h2 id="restore-title" class="modal-title">
-            {showPreview ? "Confirm Restore" : "Restore Backup"}
-          </h2>
-        </div>
+        <button class="back-btn" on:click={handleClose} aria-label="Close restore dialog">
+          <span class="material-icons">arrow_back</span>
+        </button>
+        <h2 id="restore-title" class="modal-title">
+          {#if showPreview}
+            Confirm Restore
+          {:else if restoreComplete}
+            Restore Complete
+          {:else}
+            Restore Backup
+          {/if}
+        </h2>
+        <div class="header-spacer"></div>
       </div>
       
-      <div class="modal-body">
+      <!-- Modal Content -->
+      <div class="modal-content">
         <div class="restore-content">
-          {#if !showPreview}
+          {#if !showPreview && !restoreComplete}
             <!-- Step 1: File Selection -->
-            <div class="restore-warning">
-              <div class="warning-icon">
+            <div class="restore-info">
+              <div class="info-icon">
                 <span class="material-icons">restore</span>
               </div>
-              <div class="warning-text">
-                <strong>Restore from backup file</strong>
-                <p>This will replace all current data with the contents of your backup file. This action cannot be undone.</p>
+              <div class="info-text">
+                <h3>Restore from Backup</h3>
+                <p>Select a backup file to restore your data. This will replace all current data.</p>
               </div>
             </div>
             
-            {#if restoreMessage}
-              <div class="restore-status success">
-                {restoreMessage}
+            <div class="warning-box">
+              <span class="material-icons">warning</span>
+              <div class="warning-content">
+                <strong>Warning:</strong> This action will permanently replace all your current tracking data, 
+                custom foods, and preferences with the backup data. This cannot be undone.
               </div>
-            {/if}
+            </div>
             
             {#if restoreError}
-              <div class="restore-status error">
+              <div class="error-message">
                 <span class="material-icons">error</span>
-                {restoreError}
+                <span>{restoreError}</span>
               </div>
             {/if}
             
             <div class="restore-actions">
-              <!-- Hidden file input -->
               <input
                 bind:this={fileInput}
                 type="file"
@@ -199,40 +233,43 @@
               />
               
               <button 
-                class="restore-btn" 
+                class="restore-btn primary" 
                 on:click={triggerFileSelect}
-                disabled={isRestoring}
               >
                 <span class="material-icons">upload_file</span>
                 Select Backup File
               </button>
             </div>
-          {:else}
+            
+          {:else if showPreview && !restoreComplete}
             <!-- Step 2: Preview and Confirmation -->
-            <div class="restore-warning">
-              <div class="warning-icon">
-                <span class="material-icons">warning</span>
+            <div class="restore-info">
+              <div class="info-icon">
+                <span class="material-icons">preview</span>
               </div>
-              <div class="warning-text">
-                <strong>Confirm data restore</strong>
-                <p>This will permanently replace all your current data. Make sure you have a recent backup if needed.</p>
+              <div class="info-text">
+                <h3>Confirm Restore</h3>
+                <p>Review the backup contents below and confirm to proceed.</p>
               </div>
             </div>
             
-            <div class="backup-stats">
-              {@html backupStats}
+            <div class="backup-preview">
+              <h4>Backup Contents</h4>
+              <div class="preview-stats">{@html previewStats}</div>
             </div>
             
-            {#if restoreMessage}
-              <div class="restore-status success">
-                {restoreMessage}
+            <div class="warning-box">
+              <span class="material-icons">warning</span>
+              <div class="warning-content">
+                <strong>Final Warning:</strong> This will permanently replace all your current data. 
+                Make sure you have a recent backup if needed.
               </div>
-            {/if}
+            </div>
             
             {#if restoreError}
-              <div class="restore-status error">
+              <div class="error-message">
                 <span class="material-icons">error</span>
-                {restoreError}
+                <span>{restoreError}</span>
               </div>
             {/if}
             
@@ -260,6 +297,33 @@
                 {/if}
               </button>
             </div>
+            
+          {:else if restoreComplete}
+            <!-- Step 3: Completion (NO AUTO-CLOSE) -->
+            <div class="restore-info">
+              <div class="info-icon success">
+                <span class="material-icons">check_circle</span>
+              </div>
+              <div class="info-text">
+                <h3>Restore Complete</h3>
+                <p>Your data has been successfully restored from the backup file.</p>
+              </div>
+            </div>
+            
+            <div class="completion-message">
+              <div class="completion-stats">{@html restoreStats}</div>
+              <p>The page will refresh when you close this dialog to load your restored data.</p>
+            </div>
+            
+            <div class="restore-actions">
+              <button 
+                class="restore-btn primary" 
+                on:click={handleCompleteRestore}
+              >
+                <span class="material-icons">refresh</span>
+                Close & Refresh
+              </button>
+            </div>
           {/if}
         </div>
       </div>
@@ -270,155 +334,202 @@
 <svelte:window on:keydown={handleKeydown} />
 
 <style>
-  .modal-backdrop {
+  /* Full-screen modal backdrop */
+  .modal-backdrop.full-screen {
     position: fixed;
     top: 0;
     left: 0;
     right: 0;
     bottom: 0;
     background-color: var(--modal-backdrop);
+    z-index: 1000;
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: 1000;
-    padding: 1rem;
   }
 
-  .modal {
+  /* Full-screen modal container */
+  .modal-container.full-screen {
+    width: 100%;
+    height: 100%;
+    max-width: 480px; /* Match app container width */
     background-color: var(--surface);
-    border-radius: 8px;
-    box-shadow: var(--shadow-lg);
-    width: 90%;
-    max-width: 432px;
-    max-height: 90vh;
-    overflow: hidden;
+    border-radius: 0;
+    margin: 0;
     display: flex;
     flex-direction: column;
+    overflow: hidden;
   }
 
+  /* Modal header */
   .modal-header {
-    display: flex;
+    display: grid;
+    grid-template-columns: var(--touch-target-min) 1fr var(--touch-target-min);
     align-items: center;
-    padding: 16px 20px;
-    border-bottom: 1px solid var(--divider);
-    background-color: var(--surface);
-    flex-shrink: 0;
-    position: relative;
-  }
-
-  .modal-header-left {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  .modal-header-center {
-    position: absolute;
-    left: 50%;
-    transform: translateX(-50%);
+    padding: var(--spacing-lg);
+    background-color: var(--primary-color);
+    color: white;
+    min-height: var(--header-height);
   }
 
   .back-btn {
     background: none;
     border: none;
-    color: var(--text-secondary);
-    cursor: pointer;
-    padding: 0;
+    color: white;
+    padding: var(--spacing-sm);
     border-radius: 50%;
+    cursor: pointer;
+    transition: background-color 0.2s;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 24px;
+    min-width: var(--touch-target-min);
+    min-height: var(--touch-target-min);
   }
 
-  .back-btn .material-icons {
-    font-size: 24px;
+  .back-btn:hover {
+    background-color: var(--hover-overlay);
   }
 
   .modal-title {
-    font-size: 1.25rem;
+    font-size: var(--font-size-xl);
     font-weight: 600;
     margin: 0;
-    color: var(--text-primary);
+    text-align: left;
   }
 
-  .modal-body {
-    padding: 20px;
-    overflow-y: auto;
+  .header-spacer {
+    /* Balances the back button */
+  }
+
+  /* Modal content */
+  .modal-content {
     flex: 1;
+    padding: var(--spacing-xl);
+    overflow-y: auto;
   }
 
   .restore-content {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-2xl);
     color: var(--text-primary);
   }
 
-  .restore-warning {
+  .restore-info {
     display: flex;
-    gap: 12px;
-    padding: 16px;
-    background-color: rgba(255, 152, 0, 0.1);
+    gap: var(--spacing-lg);
+    padding: var(--spacing-lg);
+    background-color: var(--primary-alpha-5);
     border-radius: 8px;
-    margin-bottom: 20px;
-    border: 1px solid rgba(255, 152, 0, 0.2);
+    border: 1px solid var(--primary-alpha-10);
   }
 
-  .warning-icon {
+  .info-icon {
     flex-shrink: 0;
   }
 
-  .warning-icon .material-icons {
+  .info-icon .material-icons {
     font-size: 24px;
-    color: #ff9800;
+    color: var(--primary-color);
   }
 
-  .warning-text strong {
-    display: block;
+  .info-icon.success .material-icons {
+    color: #4caf50;
+  }
+
+  .info-text h3 {
     color: var(--text-primary);
-    margin-bottom: 4px;
-    font-size: 1.1rem;
+    margin: 0 0 var(--spacing-sm) 0;
+    font-size: var(--font-size-lg);
   }
 
-  .warning-text p {
+  .info-text p {
     color: var(--text-secondary);
     margin: 0;
     line-height: 1.5;
   }
 
-  .restore-status {
-    padding: 12px 16px;
+  .warning-box {
+    display: flex;
+    gap: var(--spacing-md);
+    padding: var(--spacing-lg);
+    background-color: rgba(255, 152, 0, 0.1);
     border-radius: 8px;
-    margin-bottom: 20px;
+    border: 1px solid rgba(255, 152, 0, 0.2);
+  }
+
+  .warning-box .material-icons {
+    font-size: 24px;
+    color: #ff9800;
+    flex-shrink: 0;
+  }
+
+  .warning-content {
+    color: var(--text-secondary);
+    line-height: 1.5;
+  }
+
+  .warning-content strong {
+    color: var(--text-primary);
+  }
+
+  .error-message {
     display: flex;
     align-items: center;
-    gap: 8px;
-    font-weight: 500;
-  }
-
-  .restore-status.success {
-    background-color: rgba(76, 175, 80, 0.1);
-    color: #4caf50;
-    border: 1px solid rgba(76, 175, 80, 0.2);
-  }
-
-  .restore-status.error {
+    gap: var(--spacing-sm);
+    padding: var(--spacing-md) var(--spacing-lg);
     background-color: rgba(244, 67, 54, 0.1);
     color: #f44336;
+    border-radius: 8px;
     border: 1px solid rgba(244, 67, 54, 0.2);
   }
 
-  .backup-stats {
+  .error-message .material-icons {
+    font-size: 20px;
+  }
+
+  .backup-preview {
     background-color: var(--surface-variant);
     border-radius: 8px;
-    padding: 16px;
-    margin-bottom: 20px;
+    padding: var(--spacing-lg);
     border: 1px solid var(--divider);
+  }
+
+  .backup-preview h4 {
+    color: var(--text-primary);
+    margin: 0 0 var(--spacing-md) 0;
+  }
+
+  .preview-stats {
     color: var(--text-secondary);
     line-height: 1.6;
   }
 
+  .completion-message {
+    background-color: var(--surface-variant);
+    border-radius: 8px;
+    padding: var(--spacing-lg);
+    border: 1px solid var(--divider);
+  }
+
+  .completion-stats {
+    color: var(--text-secondary);
+    line-height: 1.6;
+    margin-bottom: var(--spacing-md);
+    text-align: left;
+  }
+
+  .completion-message p {
+    color: var(--text-secondary);
+    margin: 0;
+    font-style: italic;
+    text-align: center;
+  }
+
   .restore-actions {
     display: flex;
-    gap: 12px;
+    gap: var(--spacing-md);
     justify-content: center;
   }
 
@@ -427,24 +538,28 @@
   }
 
   .restore-btn {
-    background-color: #ff9800;
-    color: white;
     border: none;
     border-radius: 8px;
-    padding: 12px 24px;
-    font-size: 1rem;
+    padding: var(--spacing-md) var(--spacing-xl);
+    font-size: var(--font-size-base);
     font-weight: 500;
     cursor: pointer;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 8px;
+    gap: var(--spacing-sm);
     transition: background-color 0.2s;
     flex: 1;
+    min-height: var(--touch-target-min);
   }
 
-  .restore-btn:hover:not(:disabled) {
-    background-color: #f57c00;
+  .restore-btn.primary {
+    background-color: #d32f2f;
+    color: white;
+  }
+
+  .restore-btn.primary:hover:not(:disabled) {
+    background-color: #b71c1c;
   }
 
   .restore-btn.secondary {
@@ -455,14 +570,6 @@
 
   .restore-btn.secondary:hover:not(:disabled) {
     background-color: var(--divider);
-  }
-
-  .restore-btn.primary {
-    background-color: #d32f2f;
-  }
-
-  .restore-btn.primary:hover:not(:disabled) {
-    background-color: #b71c1c;
   }
 
   .restore-btn:disabled {
@@ -485,30 +592,40 @@
 
   /* Mobile responsive */
   @media (max-width: 480px) {
-    .modal-backdrop {
-      padding: 0.5rem;
+    .modal-backdrop.full-screen {
+      /* Prevent touch scrolling on backdrop */
+      touch-action: none;
+    }
+    
+    .modal-container.full-screen {
+      width: 100vw;
+      height: 100vh;
+      max-width: none;
+      /* Re-enable touch scrolling inside modal content */
+      touch-action: auto;
     }
 
-    .modal {
-      max-height: 95vh;
+    .restore-info {
+      padding: var(--spacing-md);
+      gap: var(--spacing-md);
     }
 
-    .modal-header {
-      padding: 1rem;
+    .warning-box {
+      padding: var(--spacing-md);
+      gap: var(--spacing-sm);
     }
 
-    .modal-body {
-      padding: 1rem;
+    .backup-preview {
+      padding: var(--spacing-md);
     }
 
-    .restore-warning {
-      padding: 12px;
-      gap: 8px;
+    .completion-message {
+      padding: var(--spacing-md);
     }
 
     .restore-btn {
-      padding: 10px 20px;
-      font-size: 0.9rem;
+      padding: var(--spacing-sm) var(--spacing-lg);
+      font-size: var(--font-size-sm);
     }
   }
 </style>

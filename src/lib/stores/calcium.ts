@@ -29,7 +29,8 @@ export const calciumState = writable<CalciumState>({
   settings: {
     dailyGoal: 1000,
     sortBy: 'time',
-    sortOrder: 'desc'
+    sortOrder: 'desc',
+    theme: 'auto'
   },
   isLoading: true
 });

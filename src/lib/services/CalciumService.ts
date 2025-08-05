@@ -340,6 +340,11 @@ export class CalciumService {
     await this.applySortToFoods(); // Apply sort to newly loaded foods
   }
 
+  async getSettings(): Promise<CalciumSettings> {
+    const state = get(calciumState);
+    return state.settings;
+  }
+
   async updateSettings(newSettings: Partial<CalciumSettings>): Promise<void> {
     calciumState.update(state => ({
       ...state,
@@ -438,11 +443,13 @@ export class CalciumService {
   private async loadSettings(): Promise<void> {
     const dailyGoal = localStorage.getItem('calcium_goal');
     const sortSettings = localStorage.getItem('calcium_sort_settings');
+    const theme = localStorage.getItem('calcium_theme');
 
     const settings: CalciumSettings = {
       dailyGoal: dailyGoal ? parseInt(dailyGoal) : 1000,
       sortBy: 'time',
       sortOrder: 'desc',
+      theme: theme || 'auto',
       ...(sortSettings ? JSON.parse(sortSettings) : {})
     };
 
@@ -453,6 +460,10 @@ export class CalciumService {
     const state = get(calciumState);
     
     localStorage.setItem('calcium_goal', state.settings.dailyGoal.toString());
+    
+    if (state.settings.theme) {
+      localStorage.setItem('calcium_theme', state.settings.theme);
+    }
     
     const sortSettings = {
       sortBy: state.settings.sortBy,
