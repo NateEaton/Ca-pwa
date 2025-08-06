@@ -1,9 +1,8 @@
 <script>
-  import { getCalciumServiceSync } from "$lib/services/CalciumServiceSingleton";
-  import { calciumState } from "$lib/stores/calcium";
+  import { calciumState, calciumService } from "$lib/stores/calcium";
 
   export let show = false;
-  
+
   let isGenerating = false;
   let backupStats = "";
 
@@ -14,7 +13,7 @@
   function handleBackdropClick(event) {
     // Prevent accidental closing during backup generation
     if (isGenerating) return;
-    
+
     // Only close if clicking the backdrop itself, not child elements
     if (event.target === event.currentTarget) {
       handleClose();
@@ -35,7 +34,6 @@
 
   async function generateBackupStats() {
     try {
-      const calciumService = getCalciumServiceSync();
       if (!calciumService) {
         backupStats = "Service not initialized yet";
         return;
@@ -44,7 +42,7 @@
       const stats = calculateStats(backupData);
       backupStats = stats;
     } catch (error) {
-      console.error('Error generating backup stats:', error);
+      console.error("Error generating backup stats:", error);
       backupStats = "Error loading backup statistics";
     }
   }
@@ -57,19 +55,20 @@
       0
     );
     const customFoodsCount = backupData.customFoods.length;
-    const favoritesCount = backupData.favorites ? backupData.favorites.length : 0;
+    const favoritesCount = backupData.favorites
+      ? backupData.favorites.length
+      : 0;
 
     let dateRange = "No journal entries";
     if (dates.length > 0) {
       dates.sort();
       const firstDate = new Date(dates[0]).toLocaleDateString();
       const lastDate = new Date(dates[dates.length - 1]).toLocaleDateString();
-      dateRange = dates.length === 1 
-        ? `${firstDate}`
-        : `${firstDate} to ${lastDate}`;
+      dateRange =
+        dates.length === 1 ? `${firstDate}` : `${firstDate} to ${lastDate}`;
     }
 
-    return `<strong>What will be backed up:</strong><br>
+    return `
 • ${totalDays} journal days with ${totalFoodEntries} food entries<br>
 • ${customFoodsCount} custom food definitions<br>
 • ${favoritesCount} favorite foods<br>
@@ -78,40 +77,39 @@
 
   async function handleBackupDownload() {
     if (isGenerating) return;
-    
+
     isGenerating = true;
     try {
-      const calciumService = getCalciumServiceSync();
       if (!calciumService) {
-        throw new Error('CalciumService not initialized');
+        throw new Error("CalciumService not initialized");
       }
       const backupData = await calciumService.generateBackup();
-      
+
       // Create filename with current date (local timezone)
       const now = new Date();
       const year = now.getFullYear();
-      const month = String(now.getMonth() + 1).padStart(2, '0');
-      const day = String(now.getDate()).padStart(2, '0');
+      const month = String(now.getMonth() + 1).padStart(2, "0");
+      const day = String(now.getDate()).padStart(2, "0");
       const dateStr = `${year}-${month}-${day}`;
       const filename = `calcium-tracker-backup-${dateStr}.json`;
-      
+
       // Create and download file
       const blob = new Blob([JSON.stringify(backupData, null, 2)], {
-        type: 'application/json'
+        type: "application/json",
       });
-      
+
       const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
+      const a = document.createElement("a");
       a.href = url;
       a.download = filename;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-      
+
       handleClose();
     } catch (error) {
-      console.error('Error creating backup:', error);
+      console.error("Error creating backup:", error);
       // Could add toast notification here
     } finally {
       isGenerating = false;
@@ -121,16 +119,25 @@
 
 {#if show}
   <div class="modal-backdrop full-screen" on:click={handleBackdropClick}>
-    <div class="modal-container full-screen" role="dialog" aria-labelledby="backup-title" aria-modal="true">
+    <div
+      class="modal-container full-screen"
+      role="dialog"
+      aria-labelledby="backup-title"
+      aria-modal="true"
+    >
       <!-- Modal Header -->
       <div class="modal-header">
-        <button class="back-btn" on:click={handleClose} aria-label="Close backup dialog">
+        <button
+          class="back-btn"
+          on:click={handleClose}
+          aria-label="Close backup dialog"
+        >
           <span class="material-icons">arrow_back</span>
         </button>
         <h2 id="backup-title" class="modal-title">Backup</h2>
         <div class="header-spacer"></div>
       </div>
-      
+
       <!-- Modal Content -->
       <div class="modal-content">
         <div class="backup-content">
@@ -141,22 +148,25 @@
             </div>
             <div class="info-text">
               <h3>Download Your Data</h3>
-              <p>Creates a backup file with all journal entries, custom foods, and preferences.</p>
+              <p>
+                Creates a backup file with all journal entries, custom foods,
+                and preferences.
+              </p>
             </div>
           </div>
-          
+
           <!-- Current Data Summary -->
           <div class="data-summary">
-            <h4>What Will Be Backed Up</h4>
+            <h4>What Will Be Backed Up:</h4>
             <div class="backup-stats">
               {@html backupStats}
             </div>
           </div>
-          
+
           <!-- Action Button -->
           <div class="backup-actions">
-            <button 
-              class="backup-btn primary" 
+            <button
+              class="backup-btn primary"
               on:click={handleBackupDownload}
               disabled={isGenerating}
             >
@@ -345,8 +355,12 @@
   }
 
   @keyframes spin {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
   }
 
   /* Mobile responsive */
@@ -355,7 +369,7 @@
       /* Prevent touch scrolling on backdrop */
       touch-action: none;
     }
-    
+
     .modal-container.full-screen {
       width: 100vw;
       height: 100vh;

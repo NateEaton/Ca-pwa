@@ -24,7 +24,7 @@ export class CalciumService {
 
   private async initializeIndexedDB(): Promise<void> {
     return new Promise((resolve, reject) => {
-      const request = indexedDB.open('CalciumTracker', 5);
+      const request = indexedDB.open('CalciumTracker', 6);
       
       request.onerror = () => {
         console.error('IndexedDB error:', request.error);
@@ -38,6 +38,7 @@ export class CalciumService {
       
       request.onupgradeneeded = (event) => {
         const db = (event.target as IDBOpenDBRequest).result;
+        const oldVersion = event.oldVersion;
         
         if (!db.objectStoreNames.contains('customFoods')) {
           const store = db.createObjectStore('customFoods', {
@@ -58,6 +59,13 @@ export class CalciumService {
 
         if (!db.objectStoreNames.contains('servingPreferences')) {
           db.createObjectStore('servingPreferences', { keyPath: 'foodId' });
+        }
+
+        // Add journalEntries object store in version 6
+        if (oldVersion < 6 && !db.objectStoreNames.contains('journalEntries')) {
+          const journalStore = db.createObjectStore('journalEntries', { keyPath: 'date' });
+          journalStore.createIndex('lastModified', 'lastModified', { unique: false });
+          journalStore.createIndex('syncStatus', 'syncStatus', { unique: false });
         }
       };
     });
@@ -460,25 +468,25 @@ export class CalciumService {
 
   private async loadDailyFoods(): Promise<void> {
     const state = get(calciumState);
-    const savedFoods = localStorage.getItem(`calcium_foods_${state.currentDate}`);
     
-    if (savedFoods) {
-      try {
-        const foods = JSON.parse(savedFoods);
-        calciumState.update(state => ({ ...state, foods }));
-      } catch (error) {
-        console.error('Error parsing saved foods:', error);
-        showToast('Error loading foods for this date', 'error');
-      }
+    try {
+      const foods = await this.loadFoodsForDate(state.currentDate);
+      calciumState.update(state => ({ ...state, foods }));
+    } catch (error) {
+      console.error('Error loading daily foods:', error);
+      showToast('Error loading foods for this date', 'error');
     }
   }
 
   private async saveDailyFoods(): Promise<void> {
     const state = get(calciumState);
-    localStorage.setItem(
-      `calcium_foods_${state.currentDate}`,
-      JSON.stringify(state.foods)
-    );
+    
+    try {
+      await this.saveFoodsForDate(state.currentDate, state.foods);
+    } catch (error) {
+      console.error('Error saving daily foods:', error);
+      showToast('Error saving foods', 'error');
+    }
   }
 
   private async loadCustomFoods(): Promise<void> {
@@ -509,19 +517,14 @@ export class CalciumService {
   async generateBackup(): Promise<any> {
     const state = get(calciumState);
     
-    // Get journal entries from localStorage
+    // Get journal entries from IndexedDB
     const journalEntries: Record<string, FoodEntry[]> = {};
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      if (key && key.startsWith('calcium_foods_')) {
-        const date = key.replace('calcium_foods_', '');
-        try {
-          journalEntries[date] = JSON.parse(localStorage.getItem(key) || '[]');
-        } catch (error) {
-          console.error(`Error parsing foods for date ${date}:`, error);
-        }
-      }
-    }
+    const allJournalEntries = await this.getAllJournalEntries();
+    
+    // Convert IndexedDB format to backup format (maintain compatibility)
+    allJournalEntries.forEach(entry => {
+      journalEntries[entry.date] = entry.foods;
+    });
 
     // Get custom foods directly from IndexedDB to ensure we have the latest
     const customFoods = await this.getAllCustomFoods();
@@ -534,7 +537,7 @@ export class CalciumService {
 
     return {
       metadata: {
-        version: '2.0.0',
+        version: '2.1.0', // Increment to indicate IndexedDB backend
         createdAt: new Date().toISOString(),
         appVersion: 'Svelte Calcium Tracker'
       },
@@ -542,7 +545,7 @@ export class CalciumService {
       customFoods: customFoods,
       favorites: favorites,
       servingPreferences: servingPreferences,
-      journalEntries
+      journalEntries // Maintains existing backup format compatibility
     };
   }
 
@@ -592,14 +595,14 @@ export class CalciumService {
         }
       }
       
-      // Restore journal entries to localStorage
+      // Restore journal entries to IndexedDB
       if (backupData.journalEntries) {
-        for (const [date, foods] of Object.entries(backupData.journalEntries)) {
+        for (const [dateString, foods] of Object.entries(backupData.journalEntries)) {
           if (Array.isArray(foods)) {
             try {
-              localStorage.setItem(`calcium_foods_${date}`, JSON.stringify(foods));
+              await this.saveFoodsForDate(dateString, foods);
             } catch (error) {
-              console.warn('Failed to restore journal entry for date:', date, error);
+              console.warn('Failed to restore journal entry for date:', dateString, error);
             }
           }
         }
@@ -658,6 +661,9 @@ export class CalciumService {
 
     try {
       // Clear each store with a small delay between operations
+      await clearStore('journalEntries');
+      await new Promise(resolve => setTimeout(resolve, 50));
+      
       await clearStore('customFoods');
       await new Promise(resolve => setTimeout(resolve, 50));
       
@@ -761,7 +767,7 @@ export class CalciumService {
   }
 
   /**
-   * Get all journal entries from localStorage for reporting
+   * Get all journal entries from localStorage for reporting (DEPRECATED - use getAllJournalData)
    */
   async getAllEntries(): Promise<Record<string, FoodEntry[]>> {
     const journalData: Record<string, FoodEntry[]> = {};
@@ -782,6 +788,149 @@ export class CalciumService {
     }
 
     return journalData;
+  }
+
+  /**
+   * Get all journal data from IndexedDB in the format expected by stats page
+   */
+  async getAllJournalData(): Promise<Record<string, FoodEntry[]>> {
+    const journalData: Record<string, FoodEntry[]> = {};
+    
+    try {
+      const allEntries = await this.getAllJournalEntries();
+      allEntries.forEach(entry => {
+        if (entry.foods && entry.foods.length > 0) {
+          journalData[entry.date] = entry.foods;
+        }
+      });
+    } catch (error) {
+      console.error('Error loading journal data for stats:', error);
+    }
+
+    return journalData;
+  }
+
+  /**
+   * Load foods for a specific date from IndexedDB
+   */
+  async loadFoodsForDate(dateString: string): Promise<FoodEntry[]> {
+    if (!this.db) {
+      console.error('Database not initialized');
+      return [];
+    }
+
+    try {
+      const journalEntry = await this.getJournalEntry(dateString);
+      return journalEntry ? journalEntry.foods : [];
+    } catch (error) {
+      console.error(`Error loading foods for date ${dateString}:`, error);
+      return [];
+    }
+  }
+
+  /**
+   * Save foods for a specific date to IndexedDB
+   */
+  async saveFoodsForDate(dateString: string, foods: FoodEntry[]): Promise<void> {
+    if (!this.db) {
+      console.error('Database not initialized');
+      return;
+    }
+
+    try {
+      const totalCalcium = foods.reduce((sum, food) => sum + food.calcium, 0);
+      
+      const journalEntry = {
+        date: dateString,
+        foods: foods,
+        lastModified: Date.now(),
+        syncStatus: 'pending',
+        totalCalcium: totalCalcium
+      };
+      
+      await new Promise<void>((resolve, reject) => {
+        const transaction = this.db!.transaction(['journalEntries'], 'readwrite');
+        const store = transaction.objectStore('journalEntries');
+        const request = store.put(journalEntry);
+
+        request.onsuccess = () => {
+          console.log(`Saved ${foods.length} foods for ${dateString} (${totalCalcium}mg total)`);
+          resolve();
+        };
+
+        request.onerror = () => {
+          console.error(`Error saving foods for date ${dateString}:`, request.error);
+          reject(request.error);
+        };
+      });
+    } catch (error) {
+      console.error(`Error saving foods for date ${dateString}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get all journal entries from IndexedDB
+   */
+  async getAllJournalEntries(): Promise<any[]> {
+    if (!this.db) {
+      console.error('Database not initialized');
+      return [];
+    }
+
+    try {
+      return await new Promise<any[]>((resolve, reject) => {
+        const transaction = this.db!.transaction(['journalEntries'], 'readonly');
+        const store = transaction.objectStore('journalEntries');
+        const request = store.getAll();
+
+        request.onsuccess = () => resolve(request.result || []);
+        request.onerror = () => {
+          console.error('Error loading all journal entries:', request.error);
+          reject(request.error);
+        };
+      });
+    } catch (error) {
+      console.error('Error loading all journal entries:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Get date range for journal entries
+   */
+  async getJournalDateRange(): Promise<{firstDate: string | null, lastDate: string | null}> {
+    try {
+      const entries = await this.getAllJournalEntries();
+      if (entries.length === 0) {
+        return { firstDate: null, lastDate: null };
+      }
+      
+      const dates = entries.map(entry => entry.date).sort();
+      return {
+        firstDate: dates[0],
+        lastDate: dates[dates.length - 1]
+      };
+    } catch (error) {
+      console.error('Error getting date range:', error);
+      return { firstDate: null, lastDate: null };
+    }
+  }
+
+  /**
+   * Private helper to get a single journal entry
+   */
+  private async getJournalEntry(dateString: string): Promise<any | null> {
+    if (!this.db) return null;
+
+    return new Promise((resolve, reject) => {
+      const transaction = this.db!.transaction(['journalEntries'], 'readonly');
+      const store = transaction.objectStore('journalEntries');
+      const request = store.get(dateString);
+
+      request.onsuccess = () => resolve(request.result || null);
+      request.onerror = () => reject(request.error);
+    });
   }
 
   async toggleFavorite(foodId: number): Promise<void> {

@@ -1,5 +1,6 @@
 import { writable, derived, get } from 'svelte/store';
 import type { CalciumState, FoodEntry, CustomFood, CalciumSettings, UserServingPreference } from '$lib/types/calcium';
+import { CalciumService } from '$lib/services/CalciumService';
 
 // Toast store for notifications
 export const toastStore = writable<{ message: string; type: 'info' | 'success' | 'error' | 'warning' }>({
@@ -48,6 +49,9 @@ export const goalProgress = derived(
 
 // REMOVED: sortedFoods derived store - foods array is now sorted in-place
 // The foods array in calciumState is maintained in sorted order by CalciumService
+
+// Shared CalciumService instance 
+export const calciumService = new CalciumService();
 
 // Current daily goal (derived for easy access)
 export const dailyGoal = derived(

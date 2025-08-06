@@ -1,12 +1,9 @@
 <script>
-  import { calciumState, showToast } from "$lib/stores/calcium";
-  import { getCalciumService } from "$lib/services/CalciumServiceSingleton";
+  import { calciumState, showToast, calciumService } from "$lib/stores/calcium";
   import { onMount } from "svelte";
   import AboutDialog from "$lib/components/AboutDialog.svelte";
   import BackupModal from "$lib/components/BackupModal.svelte";
   import RestoreModal from "$lib/components/RestoreModal.svelte";
-
-  let calciumService;
   let dailyGoal = 1000;
   let selectedTheme = "auto";
   let isLoading = true;
@@ -16,7 +13,7 @@
 
   onMount(async () => {
     try {
-      calciumService = await getCalciumService();
+      
       const settings = await calciumService.getSettings();
       dailyGoal = settings?.dailyGoal || $calciumState.settings?.dailyGoal || 1000;
       selectedTheme = settings?.theme || "auto";

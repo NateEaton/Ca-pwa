@@ -1,7 +1,6 @@
 <script>
   import { createEventDispatcher } from "svelte";
-  import { getCalciumServiceSync } from "$lib/services/CalciumServiceSingleton";
-  import { calciumState } from "$lib/stores/calcium";
+  import { calciumState, calciumService } from "$lib/stores/calcium";
   import { searchFoods, DEFAULT_FOOD_DATABASE } from "$lib/data/foodDatabase";
   import UnitConverter from "$lib/services/UnitConverter.js";
   import ConfirmDialog from "./ConfirmDialog.svelte";
@@ -166,7 +165,7 @@
     parsedFoodMeasure = unitConverter.parseUSDAMeasure(food.measure);
     
     // Check for saved serving preferences for database foods
-    const calciumService = getCalciumServiceSync();
+    
     usingPreference = false;
     
     if (!food.isCustom && food.id && calciumService) {
@@ -250,7 +249,7 @@
 
   async function handleDeleteConfirm() {
     try {
-      const calciumService = getCalciumServiceSync();
+      
       if (!calciumService) {
         throw new Error('CalciumService not initialized');
       }
@@ -277,7 +276,7 @@
       return;
     }
     
-    const calciumService = getCalciumServiceSync();
+    
     if (calciumService) {
       await calciumService.toggleFavorite(currentFoodData.id);
     }
@@ -335,7 +334,7 @@
     errorMessage = "";
 
     try {
-      const calciumService = getCalciumServiceSync();
+      
       if (!calciumService) {
         throw new Error('CalciumService not initialized');
       }

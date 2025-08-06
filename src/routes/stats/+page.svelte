@@ -1,6 +1,6 @@
 <script>
   import { onMount, onDestroy } from "svelte";
-  import { calciumState } from "$lib/stores/calcium";
+  import { calciumState, calciumService } from "$lib/stores/calcium";
   import { goto } from "$app/navigation";
   import { formatDate, isToday, getTodayString } from "$lib/utils/dateUtils";
 
@@ -190,7 +190,7 @@
   }
 
   async function loadDataForView() {
-    const allData = await getAllJournalData();
+    const allData = await calciumService.getAllJournalData();
 
     switch (currentView) {
       case "daily":
@@ -692,25 +692,6 @@
 
   function updateViewButtons() {
     // This will be handled by reactive classes in template
-  }
-
-  async function getAllJournalData() {
-    const journalData = {};
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      if (key && key.startsWith("calcium_foods_")) {
-        const date = key.replace("calcium_foods_", "");
-        try {
-          const foods = JSON.parse(localStorage.getItem(key));
-          if (foods && foods.length > 0) {
-            journalData[date] = foods;
-          }
-        } catch (error) {
-          console.error(`Error parsing journal data for ${date}:`, error);
-        }
-      }
-    }
-    return journalData;
   }
 
   // Reactive statement for goal achievement

@@ -1,13 +1,11 @@
 <script>
   import { createEventDispatcher } from "svelte";
-  import { CalciumService } from "$lib/services/CalciumService";
-  import { calciumState } from "$lib/stores/calcium";
+  import { calciumState, calciumService } from "$lib/stores/calcium";
 
   export let show = false;
   export let currentGoal = 1000;
 
   const dispatch = createEventDispatcher();
-  const calciumService = new CalciumService();
 
   let goalInput = currentGoal;
   let isSubmitting = false;

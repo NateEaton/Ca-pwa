@@ -1,9 +1,8 @@
 <script>
   import { onMount, onDestroy } from "svelte";
-  import { calciumState, showToast } from "$lib/stores/calcium";
+  import { calciumState, showToast, calciumService } from "$lib/stores/calcium";
   import { DEFAULT_FOOD_DATABASE } from "$lib/data/foodDatabase";
   import { goto } from "$app/navigation";
-  import { getCalciumServiceSync } from "$lib/services/CalciumServiceSingleton";
 
   let searchQuery = "";
   let selectedFilter = "all";
@@ -85,7 +84,7 @@
   async function toggleFavorite(food) {
     if (food.isCustom) return; // Only allow favorites for database foods
     
-    const calciumService = getCalciumServiceSync();
+    
     if (calciumService) {
       await calciumService.toggleFavorite(food.id);
     }
@@ -104,7 +103,7 @@
   async function handleDeleteFood() {
     if (!foodToDelete) return;
     
-    const calciumService = getCalciumServiceSync();
+    
     if (calciumService) {
       try {
         await calciumService.deleteCustomFood(foodToDelete.id);

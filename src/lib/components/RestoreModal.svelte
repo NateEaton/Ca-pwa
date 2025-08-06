@@ -1,174 +1,97 @@
 <script>
-  import { getCalciumServiceSync } from "$lib/services/CalciumServiceSingleton";
-  import { showToast } from "$lib/stores/calcium";
-  import { tick } from 'svelte';
+  import { showToast, calciumService } from "$lib/stores/calcium";
+  import { onDestroy } from "svelte";
 
   export let show = false;
-  
+
   let isRestoring = false;
-  let restoreComplete = false;
   let restoreError = "";
   let fileInput;
   let showPreview = false;
   let backupData = null;
   let previewStats = "";
-  let restoreStats = "";
-  let disableHandlers = false; // Disable handlers temporarily during transitions
-  
-  // Button references for autofocus
-  let confirmButton;
-  let completeButton;
-  
-  // Autofocus buttons when states change
-  $: if (showPreview && confirmButton && !isRestoring) {
-    console.log('🎯 RESTORE MODAL - Autofocusing confirm button');
-    setTimeout(() => confirmButton?.focus(), 100);
-  }
-  
-  $: if (restoreComplete && completeButton) {
-    console.log('🎯 RESTORE MODAL - Autofocusing complete button');
-    setTimeout(() => completeButton?.focus(), 100);
-  }
-  
-  // Log show state changes
-  $: {
-    console.log('📺 RESTORE MODAL - Show state changed:', {
-      show,
-      isRestoring,
-      restoreComplete,
-      showPreview,
-      disableHandlers,
-      timestamp: new Date().toISOString()
-    });
+
+  // Prevent body scroll when modal is open (mobile fix)
+  $: if (typeof window !== "undefined") {
+    if (show) {
+      // Store current scroll position
+      const scrollY = window.scrollY;
+      document.body.style.overflow = "hidden";
+      document.body.style.position = "fixed";
+      document.body.style.top = `-${scrollY}px`;
+      document.body.style.width = "100%";
+    } else {
+      // Restore scroll position
+      const scrollY = document.body.style.top;
+      document.body.style.overflow = "";
+      document.body.style.position = "";
+      document.body.style.top = "";
+      document.body.style.width = "";
+      if (scrollY) {
+        window.scrollTo(0, parseInt(scrollY || "0") * -1);
+      }
+    }
   }
 
-  function handleClose(reason = 'unknown') {
-    // Enhanced logging for debugging
-    console.log('🔍 RESTORE MODAL - Close attempt:', {
-      reason,
-      show,
-      isRestoring,
-      restoreComplete, 
-      showPreview,
-      disableHandlers,
-      timestamp: new Date().toISOString(),
-      callStack: new Error().stack
-    });
+  // Cleanup on unmount
+  onDestroy(() => {
+    if (typeof window !== "undefined") {
+      document.body.style.overflow = "";
+      document.body.style.position = "";
+      document.body.style.top = "";
+      document.body.style.width = "";
+    }
+  });
 
-    // Only allow closing if not in critical states
-    if (isRestoring) {
-      console.log('🚫 RESTORE MODAL - Prevented close during restore');
-      return;
-    }
-    
-    if (restoreComplete) {
-      console.log('🚫 RESTORE MODAL - Prevented close during completion display');
-      return;
-    }
-
-    // Additional protection: don't close if handlers are disabled
-    if (disableHandlers) {
-      console.log('🚫 RESTORE MODAL - Prevented close during handler cooldown');
-      return;
-    }
-    
-    console.log('✅ RESTORE MODAL - Closing modal, calling resetModalState');
+  function handleClose() {
+    if (isRestoring) return;
     resetModalState();
   }
 
-  // Separate function for clean state reset
   function resetModalState() {
-    console.log('🔄 RESTORE MODAL - resetModalState called, current state:', {
-      show,
-      isRestoring,
-      restoreComplete,
-      showPreview,
-      disableHandlers
-    });
-    
     show = false;
-    restoreComplete = false;
     restoreError = "";
     showPreview = false;
     backupData = null;
     previewStats = "";
-    restoreStats = "";
     isRestoring = false;
-    disableHandlers = false;
-    
-    console.log('🔄 RESTORE MODAL - resetModalState complete, new state:', {
-      show,
-      isRestoring,
-      restoreComplete,
-      showPreview,
-      disableHandlers
-    });
+    if (fileInput) {
+      fileInput.value = "";
+    }
   }
 
   function handleBackdropClick(event) {
-    console.log('🖱️ RESTORE MODAL - Backdrop click detected:', {
-      target: event.target?.tagName,
-      currentTarget: event.currentTarget?.tagName,
-      isTargetCurrentTarget: event.target === event.currentTarget,
-      targetClasses: event.target?.className,
-      currentTargetClasses: event.currentTarget?.className,
-      isRestoring,
-      restoreComplete,
-      disableHandlers,
-      timestamp: new Date().toISOString()
-    });
-    
-    // Prevent accidental closing during restore process or when showing completion
-    if (isRestoring || restoreComplete) {
-      console.log('🚫 RESTORE MODAL - Backdrop click blocked:', isRestoring ? 'restoring' : 'completed');
-      return;
-    }
-    
-    // Only close if clicking the backdrop itself, not child elements
-    if (event.target === event.currentTarget) {
-      console.log('✅ RESTORE MODAL - Valid backdrop click, calling handleClose');
-      handleClose('backdrop-click');
-    } else {
-      console.log('⚠️ RESTORE MODAL - Backdrop click ignored: hit child element');
+    // Only close if clicking the backdrop itself
+    if (event.target === event.currentTarget && !isRestoring) {
+      handleClose();
     }
   }
 
   function handleKeydown(event) {
-    console.log('⌨️ RESTORE MODAL - Keydown event:', {
-      key: event.key,
-      code: event.code,
-      isRestoring,
-      restoreComplete,
-      disableHandlers,
-      timestamp: new Date().toISOString()
-    });
-    
-    if (event.key === "Escape") {
-      // Prevent closing during restore process or when showing completion
-      if (isRestoring || restoreComplete) {
-        console.log('🚫 RESTORE MODAL - Escape key blocked:', isRestoring ? 'restoring' : 'completed');
-        return;
-      }
-      console.log('✅ RESTORE MODAL - Valid escape key, calling handleClose');
-      handleClose('escape-key');
+    if (event.key === "Escape" && show && !isRestoring) {
+      event.preventDefault();
+      handleClose();
     }
   }
 
   function triggerFileSelect() {
     if (isRestoring) return;
-    fileInput.click();
+    
+    // Add small delay for mobile to ensure modal state is stable
+    setTimeout(() => {
+      fileInput?.click();
+    }, 100);
   }
 
   function calculateStats(backupData) {
     const dates = Object.keys(backupData.journalEntries || {});
     const totalDays = dates.length;
-    const totalFoodEntries = Object.values(backupData.journalEntries || {}).reduce(
-      (sum, dayFoods) => sum + dayFoods.length,
-      0
-    );
+    const totalFoodEntries = Object.values(
+      backupData.journalEntries || {}
+    ).reduce((sum, dayFoods) => sum + dayFoods.length, 0);
     const customFoodsCount = (backupData.customFoods || []).length;
     const favoritesCount = (backupData.favorites || []).length;
-    const createdAt = backupData.metadata?.createdAt 
+    const createdAt = backupData.metadata?.createdAt
       ? new Date(backupData.metadata.createdAt).toLocaleDateString()
       : "Unknown";
 
@@ -177,12 +100,11 @@
       dates.sort();
       const firstDate = new Date(dates[0]).toLocaleDateString();
       const lastDate = new Date(dates[dates.length - 1]).toLocaleDateString();
-      dateRange = dates.length === 1 
-        ? `${firstDate}`
-        : `${firstDate} to ${lastDate}`;
+      dateRange =
+        dates.length === 1 ? `${firstDate}` : `${firstDate} to ${lastDate}`;
     }
 
-    return `<strong>Backup contents:</strong><br>
+    return `
 • Created: ${createdAt}<br>
 • ${totalDays} journal days with ${totalFoodEntries} food entries<br>
 • ${customFoodsCount} custom food definitions<br>
@@ -191,10 +113,13 @@
   }
 
   async function handleFileSelect(event) {
-    const file = event.target.files[0];
+    // Small delay to handle mobile file picker return properly
+    await new Promise(resolve => setTimeout(resolve, 50));
+    
+    const file = event.target?.files?.[0];
     if (!file) return;
 
-    if (file.type !== 'application/json') {
+    if (file.type !== "application/json") {
       restoreError = "Please select a valid JSON backup file";
       return;
     }
@@ -204,23 +129,21 @@
     try {
       const fileContent = await file.text();
       const parsedBackupData = JSON.parse(fileContent);
-      
-      // Validate backup structure
+
       if (!parsedBackupData.metadata || !parsedBackupData.journalEntries) {
         throw new Error("Invalid backup file format");
       }
 
-      // Store backup data and show preview
       backupData = parsedBackupData;
       previewStats = calculateStats(backupData);
       showPreview = true;
-      
     } catch (error) {
-      console.error('Error reading backup file:', error);
-      restoreError = error.message || "Failed to read backup file";
+      console.error("Error reading backup file:", error);
+      restoreError = error instanceof Error ? error.message : "Failed to read backup file";
     } finally {
-      // Reset file input
-      event.target.value = "";
+      if (event.target) {
+        event.target.value = "";
+      }
     }
   }
 
@@ -232,105 +155,68 @@
   }
 
   async function handleConfirmRestore() {
-    console.log('🔄 RESTORE MODAL - handleConfirmRestore called:', {
-      hasBackupData: !!backupData,
-      isRestoring,
-      timestamp: new Date().toISOString()
-    });
-    
-    if (!backupData || isRestoring) {
-      console.log('🚫 RESTORE MODAL - Restore blocked:', { hasBackupData: !!backupData, isRestoring });
-      return;
-    }
+    if (!backupData || isRestoring) return;
 
-    console.log('▶️ RESTORE MODAL - Starting restore process');
     isRestoring = true;
     restoreError = "";
 
     try {
-      const calciumService = getCalciumServiceSync();
-      if (!calciumService) {
-        throw new Error('CalciumService not initialized');
-      }
-
-      console.log('🔄 RESTORE MODAL - Calling calciumService.restoreFromBackup');
       await calciumService.restoreFromBackup(backupData);
       
-      // Set completion state
-      console.log('📊 RESTORE MODAL - Calculating restore stats');
-      restoreStats = calculateStats(backupData);
+      // Close dialog immediately
+      handleClose();
       
-      // Wait for DOM updates to complete before proceeding
-      console.log('⏳ RESTORE MODAL - Waiting for DOM tick');
-      await tick();
+      // Reload all data from the service instead of reloading the page
+      await calciumService.loadSettings();
+      await calciumService.loadDailyFoods();
+      await calciumService.loadCustomFoods();
+      await calciumService.loadFavorites();
+      await calciumService.loadServingPreferences();
+      await calciumService.applySortToFoods();
       
-      console.log('✅ RESTORE MODAL - Setting restoreComplete to true');
-      restoreComplete = true;
-      
+      showToast("Data restored successfully!", "success");
     } catch (error) {
-      console.error('❌ RESTORE MODAL - Error restoring backup:', error);
-      restoreError = error.message || "Failed to restore backup";
+      console.error("Restore failed:", error);
+      handleClose();
+      showToast(`Restore failed: ${error instanceof Error ? error.message : 'Unknown error'}`, "error");
     } finally {
-      console.log('🏁 RESTORE MODAL - Restore process complete, cleaning up');
       isRestoring = false;
-      
-      // Disable handlers temporarily to prevent premature closing
-      console.log('🔒 RESTORE MODAL - Disabling handlers for 500ms');
-      disableHandlers = true;
-      
-      // Re-enable handlers after brief delay
-      setTimeout(() => {
-        console.log('🔓 RESTORE MODAL - Re-enabling handlers');
-        disableHandlers = false;
-      }, 500);
     }
-  }
-
-  function handleCompleteRestore() {
-    console.log('🎯 RESTORE MODAL - User initiated completion (Close & Refresh button)');
-    
-    // Force close and reload - override all protection
-    console.log('🔄 RESTORE MODAL - Calling resetModalState before reload');
-    resetModalState();
-    
-    console.log('🔄 RESTORE MODAL - Scheduling page reload in 100ms');
-    setTimeout(() => {
-      console.log('🔄 RESTORE MODAL - Executing window.location.reload()');
-      window.location.reload();
-    }, 100);
   }
 </script>
 
 {#if show}
-  <div class="modal-backdrop full-screen" on:click={disableHandlers ? null : handleBackdropClick}>
-    <div class="modal-container full-screen" role="dialog" aria-labelledby="restore-title" aria-modal="true">
+  <!-- svelte-ignore a11y-no-static-element-interactions -->
+  <!-- svelte-ignore a11y-click-events-have-key-events -->
+  <div class="modal-backdrop" on:click={handleBackdropClick}>
+    <div
+      class="modal-container"
+      role="dialog"
+      aria-labelledby="restore-title"
+      aria-modal="true"
+      on:click|stopPropagation
+    >
       <!-- Modal Header -->
       <div class="modal-header">
-        <button 
-          class="back-btn" 
-          class:disabled={isRestoring}
-          on:click={() => handleClose('back-button')} 
+        <button
+          class="back-btn"
+          on:click={handleClose}
           aria-label="Close restore dialog"
           disabled={isRestoring}
+          type="button"
         >
           <span class="material-icons">arrow_back</span>
         </button>
         <h2 id="restore-title" class="modal-title">
-          {#if showPreview}
-            Restore
-          {:else if restoreComplete}
-            Complete
-          {:else}
-            Restore
-          {/if}
+          {showPreview ? "Confirm Restore" : "Restore Backup"}
         </h2>
         <div class="header-spacer"></div>
       </div>
-      
+
       <!-- Modal Content -->
       <div class="modal-content">
         <div class="restore-content">
-          {#if !showPreview && !restoreComplete}
+          {#if !showPreview}
             <!-- Step 1: File Selection -->
             <div class="restore-info">
               <div class="info-icon">
@@ -338,25 +224,29 @@
               </div>
               <div class="info-text">
                 <h3>Select Backup File</h3>
-                <p>Choose a backup file to restore. This will replace all current data.</p>
+                <p>
+                  Choose a backup file to restore. This will replace all current
+                  data.
+                </p>
               </div>
             </div>
-            
+
             <div class="warning-box">
               <span class="material-icons">warning</span>
               <div class="warning-content">
-                <strong>Warning:</strong> This action will permanently replace all your current tracking data, 
-                custom foods, and preferences with the backup data. This cannot be undone.
+                <strong>Warning:</strong> This action will permanently replace all
+                your current tracking data, custom foods, and preferences with the
+                backup data. This cannot be undone.
               </div>
             </div>
-            
+
             {#if restoreError}
               <div class="error-message">
                 <span class="material-icons">error</span>
                 <span>{restoreError}</span>
               </div>
             {/if}
-            
+
             <div class="restore-actions">
               <input
                 bind:this={fileInput}
@@ -364,18 +254,19 @@
                 accept=".json"
                 on:change={handleFileSelect}
                 style="display: none;"
+                aria-hidden="true"
               />
-              
-              <button 
-                class="restore-btn primary" 
+
+              <button
+                class="restore-btn primary"
                 on:click={triggerFileSelect}
+                type="button"
               >
                 <span class="material-icons">upload_file</span>
                 Select Backup File
               </button>
             </div>
-            
-          {:else if showPreview && !restoreComplete}
+          {:else}
             <!-- Step 2: Preview and Confirmation -->
             <div class="restore-info">
               <div class="info-icon">
@@ -386,42 +277,43 @@
                 <p>Check the backup contents below before proceeding.</p>
               </div>
             </div>
-            
+
             <div class="backup-preview">
-              <h4>Backup Contents</h4>
+              <h4>What Will Be Restored:</h4>
               <div class="preview-stats">{@html previewStats}</div>
             </div>
-            
+
             <div class="warning-box">
               <span class="material-icons">warning</span>
               <div class="warning-content">
-                <strong>Final Warning:</strong> This will permanently replace all your current data. 
-                Make sure you have a recent backup if needed.
+                <strong>Final Warning:</strong> This will permanently replace all
+                your current data. Make sure you have a recent backup if needed.
               </div>
             </div>
-            
+
             {#if restoreError}
               <div class="error-message">
                 <span class="material-icons">error</span>
                 <span>{restoreError}</span>
               </div>
             {/if}
-            
-            <div class="restore-actions">
-              <button 
-                class="restore-btn secondary" 
+
+            <div class="restore-actions two-button">
+              <button
+                class="restore-btn secondary"
                 on:click={handleBackToFileSelect}
                 disabled={isRestoring}
+                type="button"
               >
                 <span class="material-icons">arrow_back</span>
-                Choose Different File
+                Back to File Select
               </button>
-              
-              <button 
-                class="restore-btn primary" 
+
+              <button
+                class="restore-btn primary"
                 on:click={handleConfirmRestore}
                 disabled={isRestoring}
-                bind:this={confirmButton}
+                type="button"
               >
                 {#if isRestoring}
                   <span class="material-icons spinning">sync</span>
@@ -432,34 +324,6 @@
                 {/if}
               </button>
             </div>
-            
-          {:else if restoreComplete}
-            <!-- Step 3: Completion (NO AUTO-CLOSE) -->
-            <div class="restore-info">
-              <div class="info-icon success">
-                <span class="material-icons">check_circle</span>
-              </div>
-              <div class="info-text">
-                <h3>Success!</h3>
-                <p>Your data has been successfully restored from the backup file.</p>
-              </div>
-            </div>
-            
-            <div class="completion-message">
-              <div class="completion-stats">{@html restoreStats}</div>
-              <p>The page will refresh when you close this dialog to show your restored data.</p>
-            </div>
-            
-            <div class="restore-actions">
-              <button 
-                class="restore-btn primary" 
-                on:click={handleCompleteRestore}
-                bind:this={completeButton}
-              >
-                <span class="material-icons">refresh</span>
-                Close & Refresh
-              </button>
-            </div>
           {/if}
         </div>
       </div>
@@ -467,11 +331,11 @@
   </div>
 {/if}
 
-<svelte:window on:keydown={disableHandlers ? null : handleKeydown} />
+<svelte:window on:keydown={handleKeydown} />
 
 <style>
-  /* Full-screen modal backdrop */
-  .modal-backdrop.full-screen {
+  /* Modal backdrop - full screen */
+  .modal-backdrop {
     position: fixed;
     top: 0;
     left: 0;
@@ -482,30 +346,45 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    /* Prevent scrolling on iOS */
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
   }
 
-  /* Full-screen modal container */
-  .modal-container.full-screen {
+  /* Modal container - full app width */
+  .modal-container {
     width: 100%;
     height: 100%;
-    max-width: 480px; /* Match app container width */
+    max-width: 480px; /* Match app container */
     background-color: var(--surface);
-    border-radius: 0;
-    margin: 0;
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    /* Prevent touch callouts on iOS */
+    -webkit-touch-callout: none;
+  }
+
+  /* Desktop: take full app container space like mobile */
+  @media (min-width: 481px) {
+    .modal-container {
+      width: 100%;
+      height: 100%;
+      max-width: 480px; /* Match app container */
+      border-radius: 0; /* No rounded corners to match app */
+      box-shadow: none; /* Remove shadow to match app */
+    }
   }
 
   /* Modal header */
   .modal-header {
     display: grid;
-    grid-template-columns: var(--touch-target-min) 1fr var(--touch-target-min);
+    grid-template-columns: 48px 1fr 48px;
     align-items: center;
     padding: var(--spacing-lg);
     background-color: var(--primary-color);
     color: white;
-    min-height: var(--header-height);
+    min-height: 64px;
+    flex-shrink: 0;
   }
 
   .back-btn {
@@ -519,23 +398,27 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    min-width: var(--touch-target-min);
-    min-height: var(--touch-target-min);
+    width: 40px;
+    height: 40px;
+    /* Remove tap highlight */
+    -webkit-tap-highlight-color: transparent;
   }
 
-  .back-btn:hover {
+  /* Use active state instead of hover for mobile */
+  .back-btn:active:not(:disabled) {
     background-color: var(--hover-overlay);
   }
 
-  .back-btn.disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
+  /* Desktop hover */
+  @media (hover: hover) {
+    .back-btn:hover:not(:disabled) {
+      background-color: var(--hover-overlay);
+    }
   }
 
   .back-btn:disabled {
     opacity: 0.5;
     cursor: not-allowed;
-    pointer-events: none;
   }
 
   .modal-title {
@@ -546,7 +429,7 @@
   }
 
   .header-spacer {
-    /* Balances the back button */
+    width: 48px;
   }
 
   /* Modal content */
@@ -554,12 +437,15 @@
     flex: 1;
     padding: var(--spacing-xl);
     overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    /* Add bottom padding for iOS safe area */
+    padding-bottom: calc(var(--spacing-xl) + env(safe-area-inset-bottom, 0));
   }
 
   .restore-content {
     display: flex;
     flex-direction: column;
-    gap: var(--spacing-2xl);
+    gap: var(--spacing-xl);
     color: var(--text-primary);
   }
 
@@ -579,10 +465,6 @@
   .info-icon .material-icons {
     font-size: 24px;
     color: var(--primary-color);
-  }
-
-  .info-icon.success .material-icons {
-    color: #4caf50;
   }
 
   .info-text h3 {
@@ -653,35 +535,15 @@
     line-height: 1.6;
   }
 
-  .completion-message {
-    background-color: var(--surface-variant);
-    border-radius: 8px;
-    padding: var(--spacing-lg);
-    border: 1px solid var(--divider);
-  }
-
-  .completion-stats {
-    color: var(--text-secondary);
-    line-height: 1.6;
-    margin-bottom: var(--spacing-md);
-    text-align: left;
-  }
-
-  .completion-message p {
-    color: var(--text-secondary);
-    margin: 0;
-    font-style: italic;
+  .restore-actions {
     text-align: center;
   }
 
-  .restore-actions {
+  .restore-actions.two-button {
     display: flex;
-    gap: var(--spacing-md);
-    justify-content: center;
-  }
-
-  .restore-actions:has(.secondary) {
     flex-direction: column;
+    gap: var(--spacing-md);
+    text-align: center;
   }
 
   .restore-btn {
@@ -696,8 +558,12 @@
     justify-content: center;
     gap: var(--spacing-sm);
     transition: background-color 0.2s;
-    flex: 1;
     min-height: var(--touch-target-min);
+    /* Remove iOS button styling */
+    -webkit-appearance: none;
+    appearance: none;
+    /* Remove tap highlight */
+    -webkit-tap-highlight-color: transparent;
   }
 
   .restore-btn.primary {
@@ -705,7 +571,7 @@
     color: white;
   }
 
-  .restore-btn.primary:hover:not(:disabled) {
+  .restore-btn.primary:active:not(:disabled) {
     background-color: #b71c1c;
   }
 
@@ -715,22 +581,24 @@
     border: 1px solid var(--divider);
   }
 
-  .restore-btn.secondary:hover:not(:disabled) {
+  .restore-btn.secondary:active:not(:disabled) {
     background-color: var(--divider);
+  }
+
+  /* Desktop hover states */
+  @media (hover: hover) {
+    .restore-btn.primary:hover:not(:disabled) {
+      background-color: #b71c1c;
+    }
+
+    .restore-btn.secondary:hover:not(:disabled) {
+      background-color: var(--divider);
+    }
   }
 
   .restore-btn:disabled {
     opacity: 0.6;
     cursor: not-allowed;
-  }
-
-  .restore-btn:focus {
-    outline: none;
-    box-shadow: 0 0 0 3px var(--primary-alpha-10);
-  }
-
-  .restore-btn.primary:focus {
-    box-shadow: 0 0 0 3px rgba(211, 47, 47, 0.3);
   }
 
   .restore-btn .material-icons {
@@ -742,33 +610,24 @@
   }
 
   @keyframes spin {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
   }
 
-  /* Mobile responsive */
+  /* Mobile-specific adjustments */
   @media (max-width: 480px) {
-    .modal-backdrop.full-screen {
-      /* Prevent any background interaction */
-      position: fixed;
-      width: 100vw;
+    .modal-container {
       height: 100vh;
-      touch-action: none;
-      overscroll-behavior: none;
-      /* Prevent webkit touch callouts */
-      -webkit-touch-callout: none;
-      -webkit-user-select: none;
-      user-select: none;
+      height: 100dvh; /* Dynamic viewport height for mobile browsers */
+      border-radius: 0;
     }
-    
-    .modal-container.full-screen {
-      width: 100vw;
-      height: 100vh;
-      max-width: none;
-      /* Re-enable controlled interaction inside modal */
-      touch-action: auto;
-      -webkit-user-select: text;
-      user-select: text;
+
+    .modal-content {
+      padding: var(--spacing-lg);
     }
 
     .restore-info {
@@ -783,23 +642,6 @@
 
     .backup-preview {
       padding: var(--spacing-md);
-    }
-
-    .completion-message {
-      padding: var(--spacing-md);
-    }
-
-    /* Larger touch targets for mobile */
-    .restore-btn {
-      min-height: 48px; /* Ensure minimum 48px touch target */
-      padding: var(--spacing-lg) var(--spacing-xl);
-      font-size: var(--font-size-sm);
-    }
-
-    /* Better mobile button spacing */
-    .restore-actions {
-      gap: var(--spacing-lg);
-      padding: var(--spacing-lg) 0;
     }
   }
 </style>

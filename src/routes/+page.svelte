@@ -4,19 +4,16 @@
     foods,
     dailyTotal,
     dailyGoal,
+    calciumService,
   } from "$lib/stores/calcium";
-  import { CalciumService } from "$lib/services/CalciumService";
   import FoodEntry from "$lib/components/FoodEntry.svelte";
   import SummaryCard from "$lib/components/SummaryCard.svelte";
   import SortControls from "$lib/components/SortControls.svelte";
   import AddFoodModal from "$lib/components/AddFoodModal.svelte";
-  import GoalEditModal from "$lib/components/GoalEditModal.svelte";
 
   let showAddModal = false;
-  let showGoalModal = false;
   let editingFood = null;
   let editingIndex = -1;
-  let calciumService = new CalciumService();
 
   function handleAddFood() {
     editingFood = null;
@@ -24,13 +21,6 @@
     showAddModal = true;
   }
 
-  function handleGoalEdit() {
-    showGoalModal = true;
-  }
-
-  function handleGoalUpdated() {
-    showGoalModal = false;
-  }
 
   async function handleSortChange(event) {
     const { sortBy } = event.detail;
@@ -80,13 +70,12 @@
 </svelte:head>
 
 <div class="page-container">
-  <!-- Summary Card with goal editing -->
+  <!-- Summary Card -->
   <SummaryCard
     currentDate={$calciumState.currentDate}
     dailyTotal={$dailyTotal}
     dailyGoal={$dailyGoal}
     on:dateChange={handleDateChange}
-    on:goalEdit={handleGoalEdit}
   />
 
   <!-- Sort Controls -->
@@ -136,13 +125,6 @@
   />
 {/if}
 
-{#if showGoalModal}
-  <GoalEditModal
-    bind:show={showGoalModal}
-    currentGoal={$dailyGoal}
-    on:goalUpdated={handleGoalUpdated}
-  />
-{/if}
 
 <style>
   .page-container {

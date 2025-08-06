@@ -24,9 +24,6 @@
     dispatch("dateChange", event.detail);
   }
 
-  function handleGoalClick() {
-    dispatch("goalEdit");
-  }
 
   function handleTouchStart(event) {
     const touch = event.touches[0];
@@ -122,13 +119,10 @@
       </div>
 
       <div class="goal-section">
-        <button class="goal-button" on:click={handleGoalClick}>
+        <div class="goal-display">
           <div class="goal-amount">{dailyGoal}</div>
-          <div class="goal-label">
-            Goal
-            <span class="material-icons goal-edit-icon">edit</span>
-          </div>
-        </button>
+          <div class="goal-label">Goal</div>
+        </div>
       </div>
     </div>
   </div>
@@ -179,36 +173,11 @@
     gap: var(--spacing-xs);
   }
 
-  .goal-button {
-    background: none;
-    border: none;
-    color: var(--text-primary);
-    cursor: pointer;
-    padding: var(--spacing-sm);
-    border-radius: var(--spacing-sm);
-    transition: all 0.2s;
-    position: relative;
-    width: 100%;
+  .goal-display {
     display: flex;
     flex-direction: column;
     align-items: center;
-    min-height: var(--touch-target-min);
-  }
-
-  .goal-button:hover {
-    background: var(--surface-variant);
-  }
-
-  .goal-edit-icon {
-    font-size: calc(var(--icon-size-sm) * 0.9); /* 10% smaller */
-    opacity: 0.6;
-    color: var(--text-secondary);
-    transition: all 0.2s;
-  }
-
-  .goal-button:hover .goal-edit-icon {
-    opacity: 1;
-    color: var(--primary-color);
+    padding: var(--spacing-sm);
   }
 
   .progress-section {
@@ -262,10 +231,6 @@
     .current-label,
     .goal-label {
       font-size: var(--font-size-xs);
-    }
-
-    .goal-edit-icon {
-      font-size: var(--icon-size-sm);
     }
   }
 </style>

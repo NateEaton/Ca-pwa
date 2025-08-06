@@ -1,12 +1,10 @@
 <script>
   import { onMount, onDestroy } from "svelte";
   import { goto } from "$app/navigation";
-  import { getCalciumService } from "$lib/services/CalciumServiceSingleton";
-  import { calciumState } from "$lib/stores/calcium";
+  import { calciumState, calciumService } from "$lib/stores/calcium";
 
   let reportData = null;
   let isLoading = true;
-  let calciumService = null;
 
   // Report generation functions
   async function generateReportData() {
@@ -32,18 +30,8 @@
   }
 
   async function getAllJournalData() {
-    const journalData = {};
-    
-    // Get all dates that have entries
-    const allEntries = await calciumService.getAllEntries();
-    
-    for (const [dateStr, foods] of Object.entries(allEntries)) {
-      if (foods && foods.length > 0) {
-        journalData[dateStr] = foods;
-      }
-    }
-    
-    return journalData;
+    // Use the IndexedDB method that reads from the new journalEntries store
+    return await calciumService.getAllJournalData();
   }
 
   async function generateSummary(allData, dates) {
@@ -268,7 +256,7 @@
 
   onMount(async () => {
     try {
-      calciumService = await getCalciumService();
+      
       // console.log('Calcium state on report page:', $calciumState);
       reportData = await generateReportData();
       // console.log('Report data generated:', reportData);
