@@ -10,22 +10,24 @@
 |-----------|------|--------|-----------|-------------|------------------|-----------|---------|
 | **AboutDialog.svelte** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 🟢 Complete |
 | **AddFoodModal.svelte** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 🟢 Complete |
+| **BackupModal.svelte** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 🟢 Complete |
 | **ConfirmDialog.svelte** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 🟢 Complete |
 | **DatePicker.svelte** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 🟢 Complete |
 | **FoodEntry.svelte** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 🟢 Complete |
 | **FoodSearch.svelte** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 🟢 Complete |
 | **GoalEditModal.svelte** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 🟢 Complete |
 | **Header.svelte** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 🟢 Complete |
+| **RestoreModal.svelte** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 🟢 Complete |
 | **SortControls.svelte** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 🟢 Complete |
 | **SummaryCard.svelte** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 🟢 Complete |
 | **Toast.svelte** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 🟢 Complete |
-| **BackupModal.svelte** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 🟢 Complete |
 
 ## 📄 PAGE COMPLETION MATRIX - FULL APPLICATION
 
 | Page | Core | Mobile | Dark Mode | Charts | Advanced Features | Keyboard Nav | Status |
 |------|------|--------|-----------|---------|------------------|--------------|---------|
 | **Main (+page.svelte)** | ✅ | ✅ | ✅ | N/A | ✅ | ✅ | 🟢 Complete |
+| **Settings (settings/+page.svelte)** | ✅ | ✅ | ✅ | N/A | ✅ | ✅ | 🟢 Complete |
 | **Data (data/+page.svelte)** | ✅ | ✅ | ✅ | N/A | ✅ | ✅ | 🟢 Complete |
 | **Stats (stats/+page.svelte)** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 🟢 Complete |
 | **Reports (report/+page.svelte)** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 🟢 Complete |
@@ -141,12 +143,23 @@
 - **Recent Updates**: No changes needed
 
 #### **BackupModal.svelte**
-- **Purpose**: Data backup and restore functionality
-- **Features**: ✅ JSON export/import, ✅ Data validation, ✅ Error handling
-- **Integration**: Called from Header menu
+- **Purpose**: Data backup functionality
+- **Features**: ✅ JSON export, ✅ Backup statistics, ✅ Mobile optimized
+- **Integration**: Called from Settings page
 - **Dependencies**: CalciumService
 - **Status**: Fully complete
 - **Recent Updates**: No changes needed
+
+#### **RestoreModal.svelte**
+- **Purpose**: Data restore functionality with two-step confirmation process
+- **Features**: ✅ JSON import, ✅ File validation, ✅ Data preview, ✅ Mobile scroll prevention, ✅ Error handling
+- **Integration**: Called from Settings page
+- **Dependencies**: CalciumService, Toast notifications
+- **Status**: Fully complete
+- **Recent Updates**: 
+  - ✅ Fixed modal closing after restore completion
+  - ✅ Added comprehensive error handling
+  - ✅ Cleaned up debug console logging for production
 
 ---
 
@@ -160,6 +173,16 @@
 - **Components Used**: SummaryCard, FoodEntry, AddFoodModal, SortControls, GoalEditModal
 - **Status**: Fully complete
 - **Recent Updates**: ✅ Enhanced food card interactions, ✅ Touch navigation improvements
+
+#### **Settings Page (settings/+page.svelte)**
+- **Purpose**: Application settings and data management
+- **Features**: ✅ Daily goal editing, ✅ Theme selection (auto/light/dark), ✅ Backup/restore data, ✅ About dialog, ✅ Reactive goal updates
+- **Components Used**: BackupModal, RestoreModal, AboutDialog
+- **Status**: Fully complete
+- **Recent Updates**: 
+  - ✅ Added reactive goal updates to reflect restored data changes
+  - ✅ Complete settings sections: Goal, Appearance, Data, App
+  - ✅ Form validation for goal range (100-5000mg)
 
 #### **Data Page (data/+page.svelte)**
 - **Purpose**: Food database browser with search and filtering
@@ -217,8 +240,8 @@
 
 | Category | Components | Status |
 |----------|------------|---------|
-| **Core Components** | 12/12 | ✅ Complete |
-| **Application Pages** | 4/4 | ✅ Complete |
+| **Core Components** | 13/13 | ✅ Complete |
+| **Application Pages** | 5/5 | ✅ Complete |
 | **Mobile Responsiveness** | All | ✅ Complete |
 | **Dark Mode Support** | All | ✅ Complete |
 | **Keyboard Navigation** | All | ✅ Complete |

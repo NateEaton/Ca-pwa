@@ -13,6 +13,7 @@ node_modules/
 
 # --- Build & Distribution --- Ignore the client-side build output directory
 /dist/
+/build/
 
 # Ignore optional build report files
 /.vite/

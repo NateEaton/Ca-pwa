@@ -11,6 +11,11 @@
   let showBackupModal = false;
   let showRestoreModal = false;
 
+  // Reactive statement to update goal when calcium state changes
+  $: if ($calciumState.settings?.dailyGoal !== undefined) {
+    dailyGoal = $calciumState.settings.dailyGoal;
+  }
+
   onMount(async () => {
     try {
       

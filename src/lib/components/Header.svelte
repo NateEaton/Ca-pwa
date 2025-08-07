@@ -1,6 +1,7 @@
 <script>
   import { goto } from '$app/navigation';
   import { page } from '$app/stores';
+  import { base } from '$app/paths';
   import { showToast } from '$lib/stores/calcium';
   
   export let pageTitle = "Tracking";
@@ -27,7 +28,7 @@
       return;
     }
     
-    goto(path);
+    goto(base + path);
   }
 
   function handleKeydown(event) {
