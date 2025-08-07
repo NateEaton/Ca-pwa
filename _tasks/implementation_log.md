@@ -6,6 +6,43 @@
 
 ## 📅 SESSION LOG
 
+### **Session: 2025-08-07** (Production Deployment & Settings Bug Fixes - COMPLETED)
+**Focus**: Production deployment configuration, nginx routing fixes, Settings page bug resolution
+
+#### **Production Deployment Setup - COMPLETED**
+1. **Nginx Configuration Analysis**: 
+   - Identified path mismatches between deploy script and nginx config
+   - Fixed BASE_PATH configuration for development vs production environments
+   - Production serves at root path (empty base), development at `/Ca-pwa-dev/`
+
+2. **SvelteKit Navigation Fix**:
+   - Fixed internal navigation not respecting base path
+   - Added `base` import from `$app/paths` to Header.svelte
+   - Changed `goto(path)` to `goto(base + path)` for proper routing
+
+3. **Nginx Asset Handling**:
+   - Resolved CORS errors from asset loading between ports 80 and 8080
+   - Fixed asset handling configuration to match working MIND app pattern
+
+#### **Settings Page Critical Bug Fix - COMPLETED**
+1. **Daily Goal Input Not Saving**:
+   - **Root Cause**: Reactive statement overriding user input while typing
+   - **Solution**: Removed conflicting reactive statement that reset `dailyGoal` on every state change
+   - **Implementation**: Changed from `on:change` to `on:blur` for better UX
+
+2. **Post-Restore UI Update Issue**:
+   - **Problem**: Settings page not reflecting restored data until page refresh
+   - **Solution**: Smart reactive system with `isUserEditing` flag
+   - **Implementation**: 
+     - Only update from state when user is not actively editing
+     - Track editing state with `on:focus`, `on:input`, and `on:blur` events
+     - Allows both user editing and automatic updates from data restoration
+
+#### **Deployment Environment Configuration - COMPLETED**
+- **Production**: `calcium.eatonfamily.net` (root path, empty BASE_PATH)
+- **Development**: `eatonmediasvr.local:8080/Ca-pwa-dev/` (subpath, `/Ca-pwa-dev` BASE_PATH)
+- **Asset Routing**: Fixed for both environments with proper nginx configuration
+
 ### **Session: 2025-08-03** (UI/UX Polish & Final Completion - COMPLETED)
 **Focus**: Comprehensive UI/UX Polish + Bug Fixes + Date Picker Improvements + Keyboard Navigation
 

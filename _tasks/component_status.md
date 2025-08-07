@@ -180,7 +180,9 @@
 - **Components Used**: BackupModal, RestoreModal, AboutDialog
 - **Status**: Fully complete
 - **Recent Updates**: 
-  - ✅ Added reactive goal updates to reflect restored data changes
+  - ✅ Fixed daily goal input not saving changes (removed conflicting reactive statement)
+  - ✅ Added smart reactive updates that don't interfere with user input
+  - ✅ Fixed UI not updating after data restore (isUserEditing flag system)
   - ✅ Complete settings sections: Goal, Appearance, Data, App
   - ✅ Form validation for goal range (100-5000mg)
 
