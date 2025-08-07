@@ -118,7 +118,7 @@
 </script>
 
 {#if show}
-  <div class="modal-backdrop full-screen" on:click={handleBackdropClick}>
+  <div class="modal-backdrop full-screen" on:click={handleBackdropClick} on:keydown={handleKeydown} role="button" tabindex="0">
     <div
       class="modal-container full-screen"
       role="dialog"

@@ -391,14 +391,31 @@
       isSubmitting = false;
     }
   }
+
+  function handleBackdropKeydown(event) {
+    if (event.key === "Escape") {
+      closeModal();
+    }
+  }
+
+  function handleSelectFoodKeydown(event, food) {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      selectFood(food);
+    }
+  }
 </script>
 
 {#if show}
-  <div class="modal-backdrop" on:click={closeModal}>
+  <div class="modal-backdrop" on:click={closeModal} on:keydown={handleBackdropKeydown} role="button" tabindex="0">
+    <!-- svelte-ignore a11y-no-noninteractive-element-interactions -->
     <div
       class="modal-content"
       on:click|stopPropagation
+      on:keydown|stopPropagation
       class:custom-food-mode={isCustomMode}
+      role="dialog"
+      tabindex="-1"
     >
       <div class="modal-header">
         <div class="modal-header-left">
@@ -446,7 +463,7 @@
       <form class="modal-body" on:submit|preventDefault={handleSubmit}>
         <div class="form-group">
           <div class="form-label-row">
-            <label class="form-label">Food Name</label>
+            <label class="form-label" for="foodName">Food Name</label>
             {#if !isCustomMode && currentFoodData && !currentFoodData.isCustom}
               <button 
                 class="favorite-modal-btn"
@@ -477,7 +494,7 @@
           {#if showSearchResults && !isCustomMode}
             <div class="search-results">
               {#each searchResults as food}
-                <div class="search-item" class:custom-food={food.isCustom} on:click={() => selectFood(food)}>
+                <div class="search-item" class:custom-food={food.isCustom} on:click={() => selectFood(food)} on:keydown={(e) => handleSelectFoodKeydown(e, food)} role="button" tabindex="0">
                   <div class="search-item-content">
                     <div class="search-item-name">{food.name}</div>
                     <div class="search-item-details">
@@ -496,8 +513,9 @@
         </div>
 
         <div class="form-group">
-          <label class="form-label">Calcium (mg)</label>
+          <label class="form-label" for="calcium">Calcium (mg)</label>
           <input
+            id="calcium"
             type="number"
             class="form-input"
             bind:value={calcium}
@@ -510,7 +528,7 @@
 
         <div class="form-group">
           <div class="form-label-row">
-            <label class="form-label">Serving Size</label>
+            <label class="form-label" for="servingQuantity">Serving Size</label>
             {#if usingPreference && !isCustomMode && !editingFood}
               <button 
                 class="reset-serving-btn"
@@ -525,6 +543,7 @@
           <div class="serving-row">
             <div class="serving-quantity">
               <input
+                id="servingQuantity"
                 type="number"
                 class="form-input"
                 bind:value={servingQuantity}

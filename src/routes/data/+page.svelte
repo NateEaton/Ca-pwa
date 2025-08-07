@@ -118,6 +118,27 @@
     showDeleteModal = false;
     foodToDelete = null;
   }
+
+  function handleFilterKeydown(event, filter) {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      handleFilterClick(filter);
+    }
+  }
+
+  function handleBackdropKeydown(event) {
+    if (event.key === "Escape") {
+      showDeleteModal = false;
+      foodToDelete = null;
+    }
+  }
+
+  function handleSortKeydown(event, sortType) {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      handleSortClick(sortType);
+    }
+  }
 </script>
 
 <svelte:head>
@@ -146,6 +167,9 @@
           class="sort-option" 
           class:active={selectedFilter === "all"}
           on:click={() => handleFilterClick("all")}
+          on:keydown={(e) => handleFilterKeydown(e, "all")}
+          role="button"
+          tabindex="0"
         >
           <span class="material-icons">all_inclusive</span>
           <span>All</span>
@@ -154,6 +178,9 @@
           class="sort-option" 
           class:active={selectedFilter === "database"}
           on:click={() => handleFilterClick("database")}
+          on:keydown={(e) => handleFilterKeydown(e, "database")}
+          role="button"
+          tabindex="0"
         >
           <span class="material-icons">shield</span>
           <span>Database</span>
@@ -162,6 +189,9 @@
           class="sort-option" 
           class:active={selectedFilter === "user"}
           on:click={() => handleFilterClick("user")}
+          on:keydown={(e) => handleFilterKeydown(e, "user")}
+          role="button"
+          tabindex="0"
         >
           <span class="material-icons">person</span>
           <span>User</span>
@@ -177,6 +207,9 @@
           class="sort-option" 
           class:active={sortBy === "name"}
           on:click={() => handleSortClick("name")}
+          on:keydown={(e) => handleSortKeydown(e, "name")}
+          role="button"
+          tabindex="0"
         >
           <span class="material-icons">sort_by_alpha</span>
           <span>Name</span>
@@ -186,6 +219,9 @@
           class="sort-option" 
           class:active={sortBy === "calcium"}
           on:click={() => handleSortClick("calcium")}
+          on:keydown={(e) => handleSortKeydown(e, "calcium")}
+          role="button"
+          tabindex="0"
         >
           <span class="material-icons">science</span>
           <span>Ca</span>
@@ -195,6 +231,9 @@
           class="sort-option" 
           class:active={sortBy === "type"}
           on:click={() => handleSortClick("type")}
+          on:keydown={(e) => handleSortKeydown(e, "type")}
+          role="button"
+          tabindex="0"
         >
           <span class="material-icons">category</span>
           <span>Type</span>
@@ -254,7 +293,7 @@
 
 <!-- Delete Confirmation Modal -->
 {#if showDeleteModal && foodToDelete}
-  <div class="modal-backdrop" on:click={cancelDelete}>
+  <div class="modal-backdrop" on:click={cancelDelete} on:keydown={handleBackdropKeydown} role="button" tabindex="0">
     <div class="delete-modal" role="dialog" aria-labelledby="delete-title" aria-modal="true">
       <div class="modal-header">
         <h3 id="delete-title">Delete Custom Food</h3>

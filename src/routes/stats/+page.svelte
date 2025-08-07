@@ -926,6 +926,13 @@
       chartLabels.parentElement.scrollLeft = chartScrollWrapper.scrollLeft;
     }
   }
+
+  function handleDatePickerKeydown(event) {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      showDatePicker = !showDatePicker;
+    }
+  }
 </script>
 
 <svelte:head>
@@ -992,6 +999,9 @@
               class="stats-period"
               class:is-current-period={isAtCurrentPeriod}
               on:click={() => (showDatePicker = !showDatePicker)}
+              on:keydown={handleDatePickerKeydown}
+              role="button"
+              tabindex="0"
             >
               {currentData.subtitle}
               <span class="material-icons">calendar_today</span>

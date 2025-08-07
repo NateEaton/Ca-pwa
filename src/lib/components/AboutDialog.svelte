@@ -16,12 +16,18 @@
       handleClose();
     }
   }
+
+  function handleBackdropKeydown(event) {
+    if (event.key === "Escape") {
+      handleClose();
+    }
+  }
 </script>
 
 <svelte:window on:keydown={handleKeydown} />
 
 {#if show}
-  <div class="modal-backdrop full-screen" on:click={handleBackdropClick}>
+  <div class="modal-backdrop full-screen" on:click={handleBackdropClick} on:keydown={handleBackdropKeydown} role="button" tabindex="0">
     <div class="modal-container full-screen" role="dialog" aria-labelledby="about-title" aria-modal="true">
       <!-- Modal Header -->
       <div class="modal-header">

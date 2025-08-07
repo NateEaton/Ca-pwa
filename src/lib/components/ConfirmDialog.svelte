@@ -31,12 +31,18 @@
       handleCancel();
     }
   }
+
+  function handleBackdropKeydown(event) {
+    if (event.key === "Escape") {
+      handleCancel();
+    }
+  }
 </script>
 
 <svelte:window on:keydown={handleKeydown} />
 
 {#if show}
-  <div class="modal-overlay" on:click={handleBackdropClick}>
+  <div class="modal-overlay" on:click={handleBackdropClick} on:keydown={handleBackdropKeydown} role="button" tabindex="0">
     <div class="confirm-dialog" class:danger={type === 'danger'} class:warning={type === 'warning'}>
       <div class="dialog-icon">
         {#if type === 'danger'}

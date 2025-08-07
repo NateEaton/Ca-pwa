@@ -9,9 +9,16 @@
   function handleCardClick() {
     dispatch("edit", { food, index });
   }
+
+  function handleKeydown(event) {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      handleCardClick();
+    }
+  }
 </script>
 
-<div class="food-entry" class:custom-food={food.isCustom} on:click={handleCardClick} role="button" tabindex="0">
+<div class="food-entry" class:custom-food={food.isCustom} on:click={handleCardClick} on:keydown={handleKeydown} role="button" tabindex="0">
   <div class="food-main">
     <div class="food-info">
       <div class="food-name">
@@ -75,16 +82,6 @@
     font-size: var(--font-size-base);
   }
 
-  .custom-badge {
-    background: var(--secondary-color);
-    color: var(--text-primary);
-    font-size: var(--font-size-xs);
-    font-weight: 500;
-    padding: 0.125rem var(--spacing-sm);
-    border-radius: 0.625rem; /* 10px equivalent */
-    text-transform: uppercase;
-    letter-spacing: 0.03125rem;
-  }
 
   .food-details {
     font-size: var(--font-size-base);

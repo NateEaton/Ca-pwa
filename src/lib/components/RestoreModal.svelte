@@ -344,13 +344,15 @@
 {#if show}
   <!-- svelte-ignore a11y-no-static-element-interactions -->
   <!-- svelte-ignore a11y-click-events-have-key-events -->
-  <div class="modal-backdrop" on:click={handleBackdropClick}>
+  <div class="modal-backdrop" on:click={handleBackdropClick} on:keydown={handleKeydown} role="button" tabindex="0">
+    <!-- svelte-ignore a11y-no-noninteractive-element-interactions -->
     <div
       class="modal-container"
       role="dialog"
       aria-labelledby="restore-title"
       aria-modal="true"
       on:click|stopPropagation
+      on:keydown|stopPropagation
     >
       <!-- Modal Header -->
       <div class="modal-header">

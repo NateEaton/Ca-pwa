@@ -273,9 +273,6 @@
       padding: var(--spacing-md) var(--spacing-lg);
     }
 
-    .app-title {
-      font-size: var(--font-size-lg); /* Slightly smaller on mobile */
-    }
 
     .menu-backdrop {
       left: 0;
