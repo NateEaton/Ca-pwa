@@ -11,17 +11,19 @@
   let showBackupModal = false;
   let showRestoreModal = false;
 
-  // Reactive statement to update goal when calcium state changes
-  $: if ($calciumState.settings?.dailyGoal !== undefined) {
+  // Update UI when state changes (like after restore) but not during user input
+  let isUserEditing = false;
+  
+  // Only update from state when user is not actively editing
+  $: if (!isUserEditing && $calciumState.settings?.dailyGoal !== undefined) {
     dailyGoal = $calciumState.settings.dailyGoal;
   }
 
   onMount(async () => {
     try {
-      
       const settings = await calciumService.getSettings();
-      dailyGoal = settings?.dailyGoal || $calciumState.settings?.dailyGoal || 1000;
-      selectedTheme = settings?.theme || "auto";
+      dailyGoal = settings.dailyGoal;
+      selectedTheme = settings.theme || "auto";
     } catch (error) {
       console.error("Error loading settings:", error);
       showToast("Error loading settings", "error");
@@ -30,7 +32,13 @@
     }
   });
 
+  function startEditing() {
+    isUserEditing = true;
+  }
+
   async function saveDailyGoal() {
+    isUserEditing = false; // Allow state updates again
+    
     if (!calciumService) return;
     
     // Validate goal range
@@ -113,7 +121,9 @@
             max="5000" 
             step="50"
             class="goal-input"
-            on:change={saveDailyGoal}
+            on:focus={startEditing}
+            on:input={startEditing}
+            on:blur={saveDailyGoal}
           />
           <span class="input-suffix">mg</span>
         </div>
