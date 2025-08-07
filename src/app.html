@@ -1,31 +1,38 @@
 <!doctype html>
 <html lang="en">
+
 <head>
-<meta charset="utf-8" />
-<link rel="icon" href="%sveltekit.assets%/favicon.ico" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<!-- Apply theme immediately to prevent flash -->
-<script>
-(function() {
-  try {
-    const savedTheme = localStorage.getItem('calcium_theme') || 'auto';
-    const systemPrefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-    const actualTheme = savedTheme === 'auto' ? (systemPrefersDark ? 'dark' : 'light') : savedTheme;
-    document.documentElement.setAttribute('data-theme', actualTheme);
-  } catch (e) {
-    // Fallback to light theme if localStorage fails
-    document.documentElement.setAttribute('data-theme', 'light');
-  }
-})();
-</script>
-<!-- Preload Material Icons font for faster loading -->
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="preload" href="https://fonts.googleapis.com/icon?family=Material+Icons" as="style" onload="this.onload=null;this.rel='stylesheet'">
-<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons"></noscript>
-%sveltekit.head%
+  <meta charset="utf-8" />
+  <link rel="icon" href="%sveltekit.assets%/favicon.ico" sizes="32x32">
+  <link rel="apple-touch-icon" href="%sveltekit.assets%/apple-touch-icon.png">
+
+  <link rel="manifest" href="%sveltekit.assets%/manifest.webmanifest" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <script>
+    (function () {
+      try {
+        const savedTheme = localStorage.getItem('calcium_theme') || 'auto';
+        const systemPrefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        const actualTheme = savedTheme === 'auto' ? (systemPrefersDark ? 'dark' : 'light') : savedTheme;
+        document.documentElement.setAttribute('data-theme', actualTheme);
+      } catch (e) {
+        document.documentElement.setAttribute('data-theme', 'light');
+      }
+    })();
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preload" href="https://fonts.googleapis.com/icon?family=Material+Icons" as="style"
+    onload="this.onload=null;this.rel='stylesheet'">
+  <noscript>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+  </noscript>
+  %sveltekit.head%
 </head>
+
 <body data-sveltekit-preload-data="hover">
-<div style="display: contents">%sveltekit.body%</div>
+  <div style="display: contents">%sveltekit.body%</div>
 </body>
+
 </html>
