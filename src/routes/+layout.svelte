@@ -54,6 +54,16 @@
   onMount(async () => {
     initializeTheme();
     await calciumService.initialize(); // Initialize the shared service
+    
+    // Register service worker for PWA functionality
+    if ('serviceWorker' in navigator) {
+      try {
+        await navigator.serviceWorker.register('/sw.js', { scope: '/' });
+        console.log('Service worker registered successfully');
+      } catch (error) {
+        console.error('Service worker registration failed:', error);
+      }
+    }
   });
 </script>
 
