@@ -142,7 +142,7 @@
 </script>
 
 <svelte:head>
-  <title>Food Data - My Calcium</title>
+  <title>Database - My Calcium</title>
 </svelte:head>
 
 <div class="data-page">

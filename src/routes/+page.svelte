@@ -66,7 +66,7 @@
 </script>
 
 <svelte:head>
-  <title>Daily Calcium Tracker</title>
+  <title>My Calcium</title>
 </svelte:head>
 
 <div class="page-container">

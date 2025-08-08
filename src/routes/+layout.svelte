@@ -55,14 +55,17 @@
     initializeTheme();
     await calciumService.initialize(); // Initialize the shared service
     
-    // Register service worker for PWA functionality
-    if ('serviceWorker' in navigator) {
-      try {
-        await navigator.serviceWorker.register('/sw.js', { scope: '/' });
-        console.log('Service worker registered successfully');
-      } catch (error) {
-        console.error('Service worker registration failed:', error);
-      }
+    // Register service worker using virtual PWA register (like vanilla JS version)
+    if (typeof window !== 'undefined') {
+      const { registerSW } = await import('virtual:pwa-register');
+      registerSW({
+        onNeedRefresh() {
+          // Could add update prompt here
+        },
+        onOfflineReady() {
+          // Could show offline ready message
+        },
+      });
     }
   });
 </script>
