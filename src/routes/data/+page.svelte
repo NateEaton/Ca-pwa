@@ -14,6 +14,7 @@
   let showDeleteModal = false;
   let foodToDelete = null;
 
+
   // Filter and sort foods
   $: {
     let foods = [];
@@ -139,6 +140,7 @@
       handleSortClick(sortType);
     }
   }
+
 </script>
 
 <svelte:head>

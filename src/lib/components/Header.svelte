@@ -5,6 +5,8 @@
   import { showToast } from '$lib/stores/calcium';
   
   export let pageTitle = "Tracking";
+  export let showInfoIcon = false;
+  export let onInfoClick = null;
   
   let showSlideoutMenu = false;
   
@@ -43,6 +45,12 @@
       closeMenu();
     }
   }
+
+  function handleInfoClick() {
+    if (onInfoClick) {
+      onInfoClick();
+    }
+  }
 </script>
 
 <svelte:window on:keydown={handleKeydown} />
@@ -55,7 +63,13 @@
 
     <h1 class="page-title">{pageTitle}</h1>
 
-    <div class="header-spacer"></div>
+    <div class="header-right">
+      {#if showInfoIcon}
+        <button class="info-btn" on:click={handleInfoClick} aria-label="Show database information">
+          <span class="material-icons">info</span>
+        </button>
+      {/if}
+    </div>
   </div>
 
   <!-- Slide-out Menu -->
@@ -153,8 +167,34 @@
     grid-column: 2;
   }
 
-  .header-spacer {
+  .header-right {
     grid-column: 3;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+  }
+
+  .info-btn {
+    background: none;
+    border: none;
+    color: white;
+    padding: var(--spacing-sm);
+    border-radius: 50%;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: var(--touch-target-min);
+    min-height: var(--touch-target-min);
+  }
+
+  .info-btn:hover {
+    background-color: var(--hover-overlay);
+  }
+
+  .info-btn .material-icons {
+    font-size: var(--icon-size-lg);
   }
 
   .menu-backdrop {

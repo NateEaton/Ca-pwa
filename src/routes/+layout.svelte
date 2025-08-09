@@ -4,6 +4,7 @@
   import { calciumState, calciumService } from "$lib/stores/calcium";
   import Header from "$lib/components/Header.svelte";
   import Toast from "$lib/components/Toast.svelte";
+  import DatabaseInfoDialog from "$lib/components/DatabaseInfoDialog.svelte";
   import "../app.css";
 
   // Don't show loading spinner or header on pages that have their own layout
@@ -20,6 +21,16 @@
       default: return 'Tracking';
     }
   })();
+
+  // Determine whether to show info icon (only on Database page)
+  $: showInfoIcon = $page.route?.id === '/data';
+
+  // Database info dialog state - needs to be here for Header to access
+  let showDatabaseInfoDialog = false;
+  
+  function openDatabaseInfoDialog() {
+    showDatabaseInfoDialog = true;
+  }
 
   // Theme detection and management
   function initializeTheme() {
@@ -74,7 +85,7 @@
   <slot />
 {:else}
   <div class="app-container">
-    <Header {pageTitle} />
+    <Header {pageTitle} {showInfoIcon} onInfoClick={openDatabaseInfoDialog} />
 
     <main class="main-content">
       {#if $calciumState.isLoading}
@@ -93,6 +104,9 @@
 
     <!-- Toast notifications -->
     <Toast />
+
+    <!-- Database Info Dialog -->
+    <DatabaseInfoDialog bind:show={showDatabaseInfoDialog} />
   </div>
 {/if}
 
