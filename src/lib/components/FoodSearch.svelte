@@ -79,7 +79,7 @@
               {/if}
             </div>
             <div class="food-details">
-              {food.measure} • {food.calcium}mg calcium
+              {food.measure} • {Math.round(food.calcium)}mg calcium
             </div>
           </div>
           <div class="food-icon">

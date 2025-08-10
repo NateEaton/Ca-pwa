@@ -54,7 +54,7 @@
       // Store original calcium per unit for recalculation in edit mode
       currentFoodData = {
         name: editingFood.name,
-        calcium: Math.round(editingFood.calcium / editingFood.servingQuantity), // calcium per unit
+        calcium: parseFloat((editingFood.calcium / editingFood.servingQuantity).toFixed(2)), // calcium per unit
         measure: `1 ${editingFood.servingUnit}`,
         isCustom: editingFood.isCustom || false
       };
@@ -183,7 +183,8 @@
     if (!usingPreference) {
       // Use default serving size from parsed measure
       servingQuantity = parsedFoodMeasure.originalQuantity;
-      servingUnit = parsedFoodMeasure.detectedUnit;
+      // Use cleaned unit for better display (handles descriptive and compound units)
+      servingUnit = parsedFoodMeasure.cleanedUnit || parsedFoodMeasure.detectedUnit;
     }
     
     // Generate unit suggestions if the unit type is known
@@ -204,22 +205,38 @@
 
   function updateCalcium() {
     if (currentFoodData && servingQuantity && parsedFoodMeasure) {
-      try {
-        // Use UnitConverter for more sophisticated calcium calculation
-        const newCalcium = unitConverter.calculateCalciumForConvertedUnits(
-          currentFoodData.calcium,
-          parsedFoodMeasure.originalQuantity,
-          parsedFoodMeasure.detectedUnit,
-          servingQuantity,
-          servingUnit
+      // For descriptive measures or unknown unit types, use simple proportional calculation
+      if (parsedFoodMeasure.isDescriptive || parsedFoodMeasure.unitType === 'unknown') {
+        const newCalcium = parseFloat(
+          ((currentFoodData.calcium * servingQuantity) / parsedFoodMeasure.originalQuantity).toFixed(2)
         );
         calcium = newCalcium.toString();
+        return;
+      }
+
+      try {
+        // For compound units like "container (6 oz)", handle conversion specially
+        if (parsedFoodMeasure.isCompound) {
+          // For compound units, user quantity changes are simple proportional
+          const newCalcium = parseFloat(
+            ((currentFoodData.calcium * servingQuantity) / parsedFoodMeasure.originalQuantity).toFixed(2)
+          );
+          calcium = newCalcium.toString();
+        } else {
+          // Use UnitConverter for regular convertible units
+          const newCalcium = unitConverter.calculateCalciumForConvertedUnits(
+            currentFoodData.calcium,
+            parsedFoodMeasure.originalQuantity,
+            parsedFoodMeasure.detectedUnit,
+            servingQuantity,
+            servingUnit
+          );
+          calcium = newCalcium.toString();
+        }
       } catch (error) {
         // Fallback to simple calculation if unit conversion fails
-        const originalMatch = currentFoodData.measure.match(/^(\d+(?:\.\d+)?)/);
-        const originalQuantity = originalMatch ? parseFloat(originalMatch[1]) : 1;
-        const newCalcium = Math.round(
-          (currentFoodData.calcium * servingQuantity) / originalQuantity
+        const newCalcium = parseFloat(
+          ((currentFoodData.calcium * servingQuantity) / parsedFoodMeasure.originalQuantity).toFixed(2)
         );
         calcium = newCalcium.toString();
       }
@@ -287,7 +304,8 @@
     
     // Reset to original database values
     servingQuantity = parsedFoodMeasure.originalQuantity;
-    servingUnit = parsedFoodMeasure.detectedUnit;
+    // Use cleaned unit for better display (handles descriptive and compound units)
+    servingUnit = parsedFoodMeasure.cleanedUnit || parsedFoodMeasure.detectedUnit;
     usingPreference = false;
     hasResetToOriginal = true;
     
@@ -314,9 +332,9 @@
     }
 
 
-    const calciumValue = parseInt(calcium);
-    if (!calciumValue || calciumValue <= 0) {
-      errorMessage = "Valid calcium amount is required";
+    const calciumValue = parseFloat(calcium);
+    if (!calciumValue || calciumValue <= 0 || calciumValue > 10000) {
+      errorMessage = "Please enter a calcium amount between 0.01 and 10,000 mg";
       return;
     }
 
@@ -498,7 +516,7 @@
                   <div class="search-item-content">
                     <div class="search-item-name">{food.name}</div>
                     <div class="search-item-details">
-                      {food.calcium}mg per {food.measure}
+                      {Math.round(food.calcium)}mg per {food.measure}
                     </div>
                   </div>
                   {#if !food.isCustom && food.id && $calciumState.favorites.has(food.id)}
@@ -520,8 +538,8 @@
             class="form-input"
             bind:value={calcium}
             placeholder="0"
-            min="1"
-            step="1"
+            min="0.01"
+            step="0.01"
             disabled={isSubmitting || (!isCustomMode && !editingFood && !isSelectedFromSearch)}
           />
         </div>

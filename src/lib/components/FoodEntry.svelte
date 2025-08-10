@@ -34,7 +34,7 @@
     </div>
 
     <div class="food-calcium">
-      <span class="calcium-amount">{food.calcium}</span>
+      <span class="calcium-amount">{Math.round(food.calcium)}</span>
       <span class="calcium-unit">mg</span>
     </div>
   </div>

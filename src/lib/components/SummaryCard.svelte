@@ -101,7 +101,7 @@
   <div class="calcium-summary">
     <div class="summary-numbers">
       <div class="current-section">
-        <div class="current-amount">{dailyTotal}</div>
+        <div class="current-amount">{Math.round(dailyTotal)}</div>
         <div class="current-label">Total</div>
       </div>
 

@@ -5,6 +5,20 @@
  */
 export class UnitConverter {
     constructor() {
+        // Patterns that indicate non-convertible descriptive measures
+        this.nonConvertiblePatterns = [
+            /extra\s+(small|large|big)/i,
+            /less\s+than/i,
+            /more\s+than/i,
+            /about\s+\d/i,
+            /approximately/i,
+            /\d+\s*inch/i,           // size descriptions
+            /\d+\s*dia/i,            // diameter descriptions
+            /\d+-\d+/i,              // ranges like "2-1/2"
+            /\(.*\d.*\)/i,           // parenthetical with numbers
+            /medium|large|small|big/i, // size descriptors without measurements
+        ];
+
         // Base conversion tables - all conversions to base units
         this.conversions = {
             // Volume conversions (to cups as base)
@@ -45,16 +59,16 @@ export class UnitConverter {
                 'gram': 1,
                 'grams': 1,
                 'g': 1,
-                'kilogram': 0.001,     // 0.001 kg = 1 g
-                'kilograms': 0.001,
-                'kg': 0.001,
+                'kilogram': 1000,      // 1000 g = 1 kg
+                'kilograms': 1000,
+                'kg': 1000,
                 'ounce': 28.3495,      // 28.3495 g = 1 oz
                 'ounces': 28.3495,
                 'oz': 28.3495,
-                'pound': 0.00220462,   // 0.00220462 lb = 1 g
-                'pounds': 0.00220462,
-                'lb': 0.00220462,
-                'lbs': 0.00220462
+                'pound': 453.592,      // 453.592 g = 1 lb
+                'pounds': 453.592,
+                'lb': 453.592,
+                'lbs': 453.592
             },
 
             // Count-based units (to pieces as base)
@@ -125,6 +139,66 @@ export class UnitConverter {
     }
 
     /**
+     * Extract quantity from a measure string
+     * @param {string} measureString - The measure string
+     * @returns {number} The extracted quantity
+     */
+    extractQuantity(measureString) {
+        const numericMatch = measureString.match(/^(\d+\.?\d*)\s*/);
+        return numericMatch ? parseFloat(numericMatch[1]) : 1;
+    }
+
+    /**
+     * Check if parenthetical content contains useful measurement information
+     * @param {string} parentheticalContent - The content inside parentheses
+     * @returns {boolean} True if the content is useful to keep
+     */
+    isUsefulParentheticalContent(parentheticalContent) {
+        const content = parentheticalContent.toLowerCase();
+        
+        // Useful patterns: contains convertible units or specific measurements
+        const usefulPatterns = [
+            /\d+\s*(oz|fl\s*oz|g|kg|lb|ml|l|cup|tbsp|tsp)/i, // measurements with units
+            /\d+\s*inch/i,                                    // size measurements
+            /\d+\s*dia/i,                                     // diameter measurements  
+            /\d+-\d+/i,                                       // ranges like "2-1/4"
+            /\d+\/\d+/i,                                      // fractions like "1/8"
+        ];
+        
+        // Non-useful patterns: vague descriptions
+        const nonUsefulPatterns = [
+            /less\s+than/i,
+            /more\s+than/i,
+            /about/i,
+            /approximately/i,
+            /cooked|raw|fresh|frozen|canned|dried/i,
+            /with|without/i,
+            /boneless|with\s+skin/i,
+        ];
+        
+        // If it contains non-useful patterns, it's not useful
+        if (nonUsefulPatterns.some(pattern => pattern.test(content))) {
+            return false;
+        }
+        
+        // If it contains useful patterns, keep it
+        return usefulPatterns.some(pattern => pattern.test(content));
+    }
+
+    /**
+     * Smart clean unit string for display - keeps useful parenthetical info
+     * @param {string} unitString - The unit string to clean
+     * @returns {string} Cleaned unit string
+     */
+    cleanUnitForDisplay(unitString) {
+        // Find all parenthetical content
+        return unitString.replace(/\s*\(([^)]+)\)/g, (match, content) => {
+            // Keep useful parenthetical content, remove non-useful
+            return this.isUsefulParentheticalContent(content) ? match : '';
+        }).replace(/\s+/g, ' ').trim();
+    }
+
+    /**
      * Parse food database measure string to extract quantity and unit
      * @param {string} measureString - The food database measure string to parse
      * @returns {Object} Parsed measure information
@@ -132,6 +206,21 @@ export class UnitConverter {
     parseUSDAMeasure(measureString) {
         // Clean the string
         let cleaned = measureString.toLowerCase().trim();
+
+        // First check if this is a non-convertible descriptive measure
+        if (this.isNonConvertible(measureString)) {
+            const quantity = this.extractQuantity(measureString);
+            const unitPortion = measureString.replace(/^\d+\.?\d*\s*/, '').trim();
+            
+            return {
+                originalQuantity: quantity,
+                originalUnit: unitPortion,
+                detectedUnit: unitPortion,
+                unitType: 'unknown', // Forces no conversion attempts
+                isDescriptive: true,
+                cleanedUnit: this.cleanUnitForDisplay(unitPortion)
+            };
+        }
 
         // Extract the numeric part (handles "1.0", "0.5", etc.)
         const numericMatch = cleaned.match(/^(\d+\.?\d*)\s*/);
@@ -156,7 +245,8 @@ export class UnitConverter {
                     unitType: innerParsed.unitType,
                     isCompound: true,
                     containerType: containerType,
-                    innerMeasure: innerMeasure
+                    innerMeasure: innerMeasure,
+                    cleanedUnit: this.cleanUnitForDisplay(unitPortion) // Keep useful parenthetical info
                 };
             }
 
@@ -166,7 +256,8 @@ export class UnitConverter {
                 originalUnit: unitPortion,
                 detectedUnit: unitPortion,
                 unitType: 'unknown',
-                isCompound: true
+                isCompound: true,
+                cleanedUnit: this.cleanUnitForDisplay(unitPortion) // Keep useful parenthetical info
             };
         }
 
@@ -176,7 +267,8 @@ export class UnitConverter {
             originalQuantity: quantity,
             originalUnit: unitPortion,
             detectedUnit: simpleParsed.detectedUnit,
-            unitType: simpleParsed.unitType
+            unitType: simpleParsed.unitType,
+            cleanedUnit: this.cleanUnitForDisplay(unitPortion)
         };
     }
 
@@ -211,16 +303,50 @@ export class UnitConverter {
     }
 
     /**
-     * Detect the actual unit from a string
+     * Check if a measure string contains non-convertible descriptive patterns
+     * @param {string} measureString - The measure string to check
+     * @returns {boolean} True if the measure is non-convertible
+     */
+    isNonConvertible(measureString) {
+        return this.nonConvertiblePatterns.some(pattern => 
+            pattern.test(measureString)
+        );
+    }
+
+    /**
+     * Check if a word is an exact match for a known unit
+     * @param {string} word - The word to check
+     * @param {string} unit - The unit to match against
+     * @returns {boolean} True if it's an exact match
+     */
+    isExactUnitMatch(word, unit) {
+        // Clean word of punctuation and normalize
+        const cleanWord = word.replace(/[.,;:()]/g, '').toLowerCase();
+        const cleanUnit = unit.toLowerCase();
+        
+        // Exact match or plural form
+        return cleanWord === cleanUnit || 
+               cleanWord === cleanUnit + 's' ||
+               (cleanUnit.endsWith('s') && cleanWord === cleanUnit.slice(0, -1));
+    }
+
+    /**
+     * Detect the actual unit from a string using word boundary matching
      * @param {string} unitString - The unit string to analyze
      * @returns {string} The detected unit
      */
     detectUnitType(unitString) {
-        // Check all conversion tables for matches
+        // Split into words and check each one
+        const words = unitString.toLowerCase().split(/\s+/);
+        
+        // Check all conversion tables for exact word matches
         for (const [category, units] of Object.entries(this.conversions)) {
             for (const unit of Object.keys(units)) {
-                if (unitString.includes(unit)) {
-                    return unit;
+                // Check if any word is an exact match for this unit
+                for (const word of words) {
+                    if (this.isExactUnitMatch(word, unit)) {
+                        return unit;
+                    }
                 }
             }
         }
@@ -261,12 +387,12 @@ export class UnitConverter {
         const conversions = this.conversions[fromType];
 
         // Convert from source unit to base unit
-        const baseQuantity = fromQuantity / conversions[fromUnit];
+        const baseQuantity = fromQuantity * conversions[fromUnit];
 
         // Convert from base unit to target unit
-        const targetQuantity = baseQuantity * conversions[toUnit];
+        const targetQuantity = baseQuantity / conversions[toUnit];
 
-        return parseFloat(targetQuantity.toFixed(4));
+        return parseFloat(targetQuantity.toFixed(2));
     }
 
     /**
@@ -286,11 +412,30 @@ export class UnitConverter {
             // Calculate the ratio and apply it to calcium
             const ratio = equivalentOriginalQuantity / originalQuantity;
 
-            return Math.round(originalCalcium * ratio);
+            return parseFloat((originalCalcium * ratio).toFixed(2));
         } catch (error) {
             console.error('Calcium calculation error:', error);
             return originalCalcium; // Fallback to original
         }
+    }
+
+    /**
+     * Check if two units are equivalent (handle aliases)
+     * @param {string} unit1 - First unit
+     * @param {string} unit2 - Second unit 
+     * @returns {boolean} Whether the units are equivalent
+     */
+    areUnitsEquivalent(unit1, unit2) {
+        if (unit1 === unit2) return true;
+        
+        // Check if both units exist in the same conversion table with same ratio
+        for (const [category, conversions] of Object.entries(this.conversions)) {
+            if (conversions[unit1] !== undefined && conversions[unit2] !== undefined) {
+                return conversions[unit1] === conversions[unit2];
+            }
+        }
+        
+        return false;
     }
 
     /**
@@ -319,7 +464,7 @@ export class UnitConverter {
         const suggestions = this.getUnitSuggestions(unitType);
 
         return suggestions
-            .filter(unit => unit !== originalUnit)
+            .filter(unit => unit !== originalUnit && !this.areUnitsEquivalent(unit, originalUnit))
             .map(unit => {
                 try {
                     const convertedQuantity = this.convertUnits(originalQuantity, originalUnit, unit);
