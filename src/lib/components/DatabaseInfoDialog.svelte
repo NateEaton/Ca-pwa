@@ -157,7 +157,7 @@
   }
 
   .modal-title {
-    font-size: var(--font-size-xl);
+    font-size: var(--font-size-lg);
     font-weight: 600;
     margin: 0;
     text-align: left;
@@ -183,7 +183,7 @@
 
   .database-name {
     color: var(--primary-color);
-    font-size: var(--font-size-2xl);
+    font-size: var(--font-size-xl);
     margin: 0 0 var(--spacing-md) 0;
   }
 

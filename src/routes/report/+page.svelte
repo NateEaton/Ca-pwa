@@ -71,12 +71,16 @@
 
   async function generateRecentActivity(allData) {
     const today = new Date();
+    // Use local date instead of UTC to avoid timezone issues
+    const todayLocal = new Date(today.getFullYear(), today.getMonth(), today.getDate());
     const weekData = [];
 
-    for (let i = 6; i >= 0; i--) {
-      const date = new Date(today);
-      date.setDate(date.getDate() - i);
-      const dateStr = date.toISOString().split("T")[0];
+    for (let i = 0; i < 7; i++) {
+      const date = new Date(todayLocal);
+      date.setDate(date.getDate() - (6 - i));
+      const dateStr = date.getFullYear() + "-" + 
+                     String(date.getMonth() + 1).padStart(2, "0") + "-" + 
+                     String(date.getDate()).padStart(2, "0");
 
       const foods = allData[dateStr] || [];
       const totalCalcium = foods.reduce((sum, food) => sum + food.calcium, 0);
@@ -85,7 +89,7 @@
 
       weekData.push({
         date: formatDateForReport(dateStr),
-        dayName: date.toLocaleDateString("en-US", { weekday: "short" }),
+        dayName: new Date(dateStr + "T00:00:00").toLocaleDateString("en-US", { weekday: "short" }),
         totalCalcium,
         goalMet,
       });
