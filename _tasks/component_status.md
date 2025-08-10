@@ -36,6 +36,20 @@
 
 ## 🔍 DETAILED COMPONENT ANALYSIS
 
+### **🔧 UNITCONVERTER SERVICE**
+- **Purpose**: Comprehensive unit conversion system for food measurements
+- **Features**: ✅ Volume/weight/count conversions, ✅ Smart measure parsing, ✅ Unit suggestions, ✅ Calcium recalculation
+- **Integration**: Used by AddFoodModal for conversion suggestions and calculations
+- **Dependencies**: None (standalone service)
+- **Status**: Enhanced and fully debugged with mathematical accuracy
+- **Recent Fixes (2025-08-10)**:
+  - ✅ **Unit Detection**: Fixed false positives like "small" → "l" with word-boundary matching
+  - ✅ **Conversion Algorithm**: Corrected fundamental math from inverted ratios to proper multiplication/division
+  - ✅ **Conversion Tables**: Fixed all weight/volume ratios (e.g., 'kilogram': 1000, 'tablespoon': 1/16)
+  - ✅ **Precision Handling**: Limited display precision to 2 decimals while maintaining calculation accuracy
+  - ✅ **Descriptive Measures**: Enhanced parsing of compound units like "container (6 oz)"
+  - ✅ **Smart Parsing**: Added isNonConvertible() patterns for measures like "extra small (less than 6 long)"
+
 ### **✅ COMPLETE COMPONENTS**
 
 #### **AboutDialog.svelte**
@@ -51,12 +65,15 @@
 - **Features**: ✅ Database search, ✅ Custom food creation, ✅ Edit mode, ✅ Mobile UX, ✅ Unit conversion, ✅ Visual indicators
 - **Integration**: Main page CRUD operations
 - **Dependencies**: FoodSearch.svelte, CalciumService, UnitConverter
-- **Status**: Fully complete with comprehensive UX polish
+- **Status**: Fully complete with comprehensive UX polish and enhanced unit conversion
 - **Recent Updates**: 
   - ✅ Search mode validation (prevents custom entry without search selection)
   - ✅ Delete button in modal header with confirmation
   - ✅ Form fields disabled until search result selected
   - ✅ Enhanced user experience with proper validation flow
+  - ✅ **Unit Conversion Fixes (2025-08-10)**: Fixed decimal precision validation (parseFloat vs parseInt)
+  - ✅ **Input Validation**: Updated calcium input to accept decimal values (min="0.01" step="0.01")
+  - ✅ **Smart Unit Parsing**: Enhanced integration with UnitConverter for descriptive measures
 
 #### **ConfirmDialog.svelte**
 - **Purpose**: Reusable confirmation dialog for delete operations
