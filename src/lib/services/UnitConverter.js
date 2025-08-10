@@ -26,32 +26,32 @@ export class UnitConverter {
                 'cup': 1,
                 'cups': 1,
                 'c': 1,
-                'tablespoon': 16,      // 16 tbsp = 1 cup
-                'tablespoons': 16,
-                'tbsp': 16,
-                'tbs': 16,
-                'teaspoon': 48,        // 48 tsp = 1 cup
-                'teaspoons': 48,
-                'tsp': 48,
-                'fluid ounce': 8,      // 8 fl oz = 1 cup
-                'fluid ounces': 8,
-                'fl oz': 8,
-                'floz': 8,
-                'milliliter': 236.588, // 236.588 ml = 1 cup
-                'milliliters': 236.588,
-                'ml': 236.588,
-                'liter': 0.236588,     // 0.236588 L = 1 cup
-                'liters': 0.236588,
-                'l': 0.236588,
+                'tablespoon': 1/16,    // 1 tbsp = 1/16 cup
+                'tablespoons': 1/16,
+                'tbsp': 1/16,
+                'tbs': 1/16,
+                'teaspoon': 1/48,      // 1 tsp = 1/48 cup
+                'teaspoons': 1/48,
+                'tsp': 1/48,
+                'fluid ounce': 1/8,    // 1 fl oz = 1/8 cup
+                'fluid ounces': 1/8,
+                'fl oz': 1/8,
+                'floz': 1/8,
+                'milliliter': 1/236.588, // 1 ml = 1/236.588 cup
+                'milliliters': 1/236.588,
+                'ml': 1/236.588,
+                'liter': 4.227,        // 1 L = 4.227 cups
+                'liters': 4.227,
+                'l': 4.227,
                 'pint': 2,             // 2 pints = 1 cup
                 'pints': 2,
                 'pt': 2,
-                'quart': 0.25,         // 0.25 qt = 1 cup
-                'quarts': 0.25,
-                'qt': 0.25,
-                'gallon': 0.0625,      // 0.0625 gal = 1 cup
-                'gallons': 0.0625,
-                'gal': 0.0625
+                'quart': 4,            // 1 qt = 4 cups  
+                'quarts': 4,
+                'qt': 4,
+                'gallon': 16,          // 1 gal = 16 cups
+                'gallons': 16,
+                'gal': 16
             },
 
             // Weight conversions (to grams as base)
