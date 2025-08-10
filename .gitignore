@@ -28,6 +28,7 @@ client_secret*.json
 .env 
 .env.*
 !.env.example
+source_data/.env
 
 # --- IDE / Editor --- Ignore common IDE and editor-specific directories
 .idea/ 
