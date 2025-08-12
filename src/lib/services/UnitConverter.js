@@ -1,57 +1,51 @@
 /**
  * UnitConverter - A comprehensive unit conversion system for calcium tracking app
- * Handles volume, weight, and count-based measurements with food database measure parsing
- * Ported from vanilla JS version for Svelte integration
+ * Handles volume, weight, and count-based measurements with USDA measure parsing
  */
 export class UnitConverter {
     constructor() {
-        // Patterns that indicate non-convertible descriptive measures
+        // Patterns for non-convertible measurements
         this.nonConvertiblePatterns = [
-            /extra\s+(small|large|big)/i,
-            /less\s+than/i,
-            /more\s+than/i,
-            /about\s+\d/i,
-            /approximately/i,
-            /\d+\s*inch/i,           // size descriptions
-            /\d+\s*dia/i,            // diameter descriptions
-            /\d+-\d+/i,              // ranges like "2-1/2"
-            /\(.*\d.*\)/i,           // parenthetical with numbers
+            /\b(extra\s+)?(small|medium|large|big)\b/i,  // size descriptors
+            /\b(less|more|about|approximately)\b/i,      // vague quantities  
+            /\([^)]*\d+[^)]*\)/i,           // parenthetical with numbers
             /medium|large|small|big/i, // size descriptors without measurements
         ];
 
         // Base conversion tables - all conversions to base units
+        // FIXED: Using original working ratios from attached UnitConverter.js
         this.conversions = {
             // Volume conversions (to cups as base)
             volume: {
                 'cup': 1,
                 'cups': 1,
                 'c': 1,
-                'tablespoon': 1/16,    // 1 tbsp = 1/16 cup
-                'tablespoons': 1/16,
-                'tbsp': 1/16,
-                'tbs': 1/16,
-                'teaspoon': 1/48,      // 1 tsp = 1/48 cup
-                'teaspoons': 1/48,
-                'tsp': 1/48,
-                'fluid ounce': 1/8,    // 1 fl oz = 1/8 cup
-                'fluid ounces': 1/8,
-                'fl oz': 1/8,
-                'floz': 1/8,
-                'milliliter': 1/236.588, // 1 ml = 1/236.588 cup
-                'milliliters': 1/236.588,
-                'ml': 1/236.588,
-                'liter': 4.227,        // 1 L = 4.227 cups
-                'liters': 4.227,
-                'l': 4.227,
+                'tablespoon': 16,      // 16 tbsp = 1 cup
+                'tablespoons': 16,
+                'tbsp': 16,
+                'tbs': 16,
+                'teaspoon': 48,        // 48 tsp = 1 cup
+                'teaspoons': 48,
+                'tsp': 48,
+                'fluid ounce': 8,      // 8 fl oz = 1 cup
+                'fluid ounces': 8,
+                'fl oz': 8,
+                'floz': 8,
+                'milliliter': 236.588, // 236.588 ml = 1 cup
+                'milliliters': 236.588,
+                'ml': 236.588,
+                'liter': 0.236588,     // 0.236588 L = 1 cup
+                'liters': 0.236588,
+                'l': 0.236588,
                 'pint': 2,             // 2 pints = 1 cup
                 'pints': 2,
                 'pt': 2,
-                'quart': 4,            // 1 qt = 4 cups  
-                'quarts': 4,
-                'qt': 4,
-                'gallon': 16,          // 1 gal = 16 cups
-                'gallons': 16,
-                'gal': 16
+                'quart': 0.25,         // 0.25 qt = 1 cup
+                'quarts': 0.25,
+                'qt': 0.25,
+                'gallon': 0.0625,      // 0.0625 gal = 1 cup
+                'gallons': 0.0625,
+                'gal': 0.0625
             },
 
             // Weight conversions (to grams as base)
@@ -59,16 +53,16 @@ export class UnitConverter {
                 'gram': 1,
                 'grams': 1,
                 'g': 1,
-                'kilogram': 1000,      // 1000 g = 1 kg
-                'kilograms': 1000,
-                'kg': 1000,
-                'ounce': 28.3495,      // 28.3495 g = 1 oz
-                'ounces': 28.3495,
-                'oz': 28.3495,
-                'pound': 453.592,      // 453.592 g = 1 lb
-                'pounds': 453.592,
-                'lb': 453.592,
-                'lbs': 453.592
+                'kilogram': 0.001,     // 0.001 kg = 1 g
+                'kilograms': 0.001,
+                'kg': 0.001,
+                'ounce': 1/28.3495,    // 1/28.3495 oz = 1 g
+                'ounces': 1/28.3495,
+                'oz': 1/28.3495,
+                'pound': 1/453.592,    // 1/453.592 lb = 1 g
+                'pounds': 1/453.592,
+                'lb': 1/453.592,
+                'lbs': 1/453.592
             },
 
             // Count-based units (to pieces as base)
@@ -139,86 +133,29 @@ export class UnitConverter {
     }
 
     /**
-     * Extract quantity from a measure string
-     * @param {string} measureString - The measure string
-     * @returns {number} The extracted quantity
+     * Check if a measure is non-convertible (descriptive)
      */
-    extractQuantity(measureString) {
-        const numericMatch = measureString.match(/^(\d+\.?\d*)\s*/);
-        return numericMatch ? parseFloat(numericMatch[1]) : 1;
+    isNonConvertible(measureString) {
+        return this.nonConvertiblePatterns.some(pattern => pattern.test(measureString));
     }
 
     /**
-     * Check if parenthetical content contains useful measurement information
-     * @param {string} parentheticalContent - The content inside parentheses
-     * @returns {boolean} True if the content is useful to keep
-     */
-    isUsefulParentheticalContent(parentheticalContent) {
-        const content = parentheticalContent.toLowerCase();
-        
-        // Useful patterns: contains convertible units or specific measurements
-        const usefulPatterns = [
-            /\d+\s*(oz|fl\s*oz|g|kg|lb|ml|l|cup|tbsp|tsp)/i, // measurements with units
-            /\d+\s*inch/i,                                    // size measurements
-            /\d+\s*dia/i,                                     // diameter measurements  
-            /\d+-\d+/i,                                       // ranges like "2-1/4"
-            /\d+\/\d+/i,                                      // fractions like "1/8"
-        ];
-        
-        // Non-useful patterns: vague descriptions
-        const nonUsefulPatterns = [
-            /less\s+than/i,
-            /more\s+than/i,
-            /about/i,
-            /approximately/i,
-            /cooked|raw|fresh|frozen|canned|dried/i,
-            /with|without/i,
-            /boneless|with\s+skin/i,
-        ];
-        
-        // If it contains non-useful patterns, it's not useful
-        if (nonUsefulPatterns.some(pattern => pattern.test(content))) {
-            return false;
-        }
-        
-        // If it contains useful patterns, keep it
-        return usefulPatterns.some(pattern => pattern.test(content));
-    }
-
-    /**
-     * Smart clean unit string for display - keeps useful parenthetical info
-     * @param {string} unitString - The unit string to clean
-     * @returns {string} Cleaned unit string
-     */
-    cleanUnitForDisplay(unitString) {
-        // Find all parenthetical content
-        return unitString.replace(/\s*\(([^)]+)\)/g, (match, content) => {
-            // Keep useful parenthetical content, remove non-useful
-            return this.isUsefulParentheticalContent(content) ? match : '';
-        }).replace(/\s+/g, ' ').trim();
-    }
-
-    /**
-     * Parse food database measure string to extract quantity and unit
-     * @param {string} measureString - The food database measure string to parse
+     * Parse USDA measure string to extract quantity and unit
+     * @param {string} measureString - The USDA measure string to parse
      * @returns {Object} Parsed measure information
      */
     parseUSDAMeasure(measureString) {
         // Clean the string
         let cleaned = measureString.toLowerCase().trim();
 
-        // First check if this is a non-convertible descriptive measure
-        if (this.isNonConvertible(measureString)) {
-            const quantity = this.extractQuantity(measureString);
-            const unitPortion = measureString.replace(/^\d+\.?\d*\s*/, '').trim();
-            
+        // Check if this is a non-convertible measure first
+        if (this.isNonConvertible(cleaned)) {
             return {
-                originalQuantity: quantity,
-                originalUnit: unitPortion,
-                detectedUnit: unitPortion,
-                unitType: 'unknown', // Forces no conversion attempts
-                isDescriptive: true,
-                cleanedUnit: this.cleanUnitForDisplay(unitPortion)
+                originalQuantity: 1,
+                originalUnit: measureString,
+                detectedUnit: measureString,
+                unitType: 'unknown',
+                isDescriptive: true
             };
         }
 
@@ -246,7 +183,7 @@ export class UnitConverter {
                     isCompound: true,
                     containerType: containerType,
                     innerMeasure: innerMeasure,
-                    cleanedUnit: this.cleanUnitForDisplay(unitPortion) // Keep useful parenthetical info
+                    cleanedUnit: innerParsed.detectedUnit
                 };
             }
 
@@ -256,8 +193,7 @@ export class UnitConverter {
                 originalUnit: unitPortion,
                 detectedUnit: unitPortion,
                 unitType: 'unknown',
-                isCompound: true,
-                cleanedUnit: this.cleanUnitForDisplay(unitPortion) // Keep useful parenthetical info
+                isCompound: true
             };
         }
 
@@ -268,7 +204,7 @@ export class UnitConverter {
             originalUnit: unitPortion,
             detectedUnit: simpleParsed.detectedUnit,
             unitType: simpleParsed.unitType,
-            cleanedUnit: this.cleanUnitForDisplay(unitPortion)
+            cleanedUnit: simpleParsed.detectedUnit
         };
     }
 
@@ -303,35 +239,21 @@ export class UnitConverter {
     }
 
     /**
-     * Check if a measure string contains non-convertible descriptive patterns
-     * @param {string} measureString - The measure string to check
-     * @returns {boolean} True if the measure is non-convertible
-     */
-    isNonConvertible(measureString) {
-        return this.nonConvertiblePatterns.some(pattern => 
-            pattern.test(measureString)
-        );
-    }
-
-    /**
-     * Check if a word is an exact match for a known unit
-     * @param {string} word - The word to check
-     * @param {string} unit - The unit to match against
-     * @returns {boolean} True if it's an exact match
+     * Check if a word exactly matches a unit (avoiding substring false positives)
      */
     isExactUnitMatch(word, unit) {
-        // Clean word of punctuation and normalize
-        const cleanWord = word.replace(/[.,;:()]/g, '').toLowerCase();
-        const cleanUnit = unit.toLowerCase();
+        // For single character units like 'l' or 'g', require exact match
+        if (unit.length === 1) {
+            return word === unit;
+        }
         
-        // Exact match or plural form
-        return cleanWord === cleanUnit || 
-               cleanWord === cleanUnit + 's' ||
-               (cleanUnit.endsWith('s') && cleanWord === cleanUnit.slice(0, -1));
+        // For longer units, allow the word to contain the unit if it's at word boundaries
+        const regex = new RegExp(`\\b${unit}\\b`, 'i');
+        return regex.test(word);
     }
 
     /**
-     * Detect the actual unit from a string using word boundary matching
+     * Detect the actual unit from a string
      * @param {string} unitString - The unit string to analyze
      * @returns {string} The detected unit
      */
@@ -371,6 +293,7 @@ export class UnitConverter {
 
     /**
      * Convert between units of the same type
+     * FIXED: Using original algorithm that matches the conversion ratios
      * @param {number} fromQuantity - The quantity to convert
      * @param {string} fromUnit - The source unit
      * @param {string} toUnit - The target unit
@@ -387,12 +310,12 @@ export class UnitConverter {
         const conversions = this.conversions[fromType];
 
         // Convert from source unit to base unit
-        const baseQuantity = fromQuantity * conversions[fromUnit];
+        const baseQuantity = fromQuantity / conversions[fromUnit];
 
         // Convert from base unit to target unit
-        const targetQuantity = baseQuantity / conversions[toUnit];
+        const targetQuantity = baseQuantity * conversions[toUnit];
 
-        return parseFloat(targetQuantity.toFixed(2));
+        return parseFloat(targetQuantity.toFixed(4));
     }
 
     /**
@@ -412,7 +335,7 @@ export class UnitConverter {
             // Calculate the ratio and apply it to calcium
             const ratio = equivalentOriginalQuantity / originalQuantity;
 
-            return parseFloat((originalCalcium * ratio).toFixed(2));
+            return Math.round(originalCalcium * ratio);
         } catch (error) {
             console.error('Calcium calculation error:', error);
             return originalCalcium; // Fallback to original
@@ -454,12 +377,44 @@ export class UnitConverter {
     }
 
     /**
-     * Smart unit detection for better UX
+     * Get unit size order for logical sorting (smallest to largest)
+     * @param {string} unit - The unit to get size order for
+     * @returns {number} Size order (lower = smaller unit)
+     */
+    getUnitSizeOrder(unit) {
+        const sizeOrders = {
+            // Volume (smallest to largest)
+            'tsp': 1, 'teaspoon': 1, 'teaspoons': 1,
+            'tbsp': 2, 'tablespoon': 2, 'tablespoons': 2, 'tbs': 2,
+            'fl oz': 3, 'fluid ounce': 3, 'fluid ounces': 3, 'floz': 3,
+            'ml': 4, 'milliliter': 4, 'milliliters': 4,
+            'cup': 5, 'cups': 5, 'c': 5,
+            'pt': 6, 'pint': 6, 'pints': 6,
+            'qt': 7, 'quart': 7, 'quarts': 7,
+            'l': 8, 'liter': 8, 'liters': 8,
+            'gal': 9, 'gallon': 9, 'gallons': 9,
+            
+            // Weight (smallest to largest)
+            'g': 1, 'gram': 1, 'grams': 1,
+            'oz': 2, 'ounce': 2, 'ounces': 2,
+            'lb': 3, 'pound': 3, 'pounds': 3, 'lbs': 3,
+            'kg': 4, 'kilogram': 4, 'kilograms': 4,
+            
+            // Count (no particular order)
+            'piece': 1, 'pieces': 1, 'slice': 1, 'slices': 1,
+            'serving': 2, 'servings': 2, 'each': 3, 'whole': 4
+        };
+        
+        return sizeOrders[unit] || 999;
+    }
+
+    /**
+     * Smart unit detection for better UX - FIXED: Now uses current serving quantity
      * @param {string} originalUnit - The original unit
-     * @param {number} originalQuantity - The original quantity
+     * @param {number} currentQuantity - The CURRENT quantity (not original)
      * @returns {Array} Array of alternative units with conversion info
      */
-    detectBestAlternativeUnits(originalUnit, originalQuantity) {
+    detectBestAlternativeUnits(originalUnit, currentQuantity) {
         const unitType = this.getUnitType(originalUnit);
         const suggestions = this.getUnitSuggestions(unitType);
 
@@ -467,12 +422,13 @@ export class UnitConverter {
             .filter(unit => unit !== originalUnit && !this.areUnitsEquivalent(unit, originalUnit))
             .map(unit => {
                 try {
-                    const convertedQuantity = this.convertUnits(originalQuantity, originalUnit, unit);
+                    const convertedQuantity = this.convertUnits(currentQuantity, originalUnit, unit);
                     return {
                         unit,
                         quantity: convertedQuantity,
                         display: this.unitDisplayNames[unit] || unit,
-                        practical: this.isPracticalQuantity(convertedQuantity)
+                        practical: this.isPracticalQuantity(convertedQuantity),
+                        sizeOrder: this.getUnitSizeOrder(unit)
                     };
                 } catch (error) {
                     return null;
@@ -480,10 +436,12 @@ export class UnitConverter {
             })
             .filter(item => item !== null)
             .sort((a, b) => {
-                // Prioritize practical quantities
+                // First, prioritize practical quantities
                 if (a.practical && !b.practical) return -1;
                 if (!a.practical && b.practical) return 1;
-                return 0;
+                
+                // Within the same practicality, sort by unit size (largest to smallest)
+                return b.sizeOrder - a.sizeOrder;
             });
     }
 
