@@ -3,6 +3,8 @@
 import { sveltekit } from '@sveltejs/kit/vite';
 import { defineConfig, loadEnv } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
+import wasm from 'vite-plugin-wasm';
+import topLevelAwait from 'vite-plugin-top-level-await';
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
@@ -14,10 +16,12 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [
       sveltekit(),
+      wasm(),
+      topLevelAwait(),
       VitePWA({
         registerType: 'autoUpdate',
         workbox: {
-          globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
+          globPatterns: ['**/*.{js,css,html,ico,png,svg,wasm}'], // Add wasm to patterns
           additionalManifestEntries: [
             { url: 'index.html', revision: null }
           ]
@@ -39,6 +43,20 @@ export default defineConfig(({ mode }) => {
           ]
         }
       })
-    ]
+    ],
+    // Add optimizeDeps configuration for Automerge
+    optimizeDeps: {
+      exclude: ['@automerge/automerge']
+    },
+    // Add server configuration for WASM
+    server: {
+      fs: {
+        allow: ['..']
+      }
+    },
+    // Add worker configuration
+    worker: {
+      format: 'es'
+    }
   };
 });

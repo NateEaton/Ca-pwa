@@ -1,0 +1,8 @@
+name = "calcium-sync-worker"
+main = "src/index.ts"
+compatibility_date = "2024-08-11"
+
+# KV namespace for storing encrypted sync docs
+[[kv_namespaces]]
+binding = "SYNC_KV"
+id = "2d96d1b05d6a45fdaaef8cb0a6bef65a"  
