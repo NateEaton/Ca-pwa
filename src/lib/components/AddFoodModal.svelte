@@ -165,7 +165,6 @@
     parsedFoodMeasure = unitConverter.parseUSDAMeasure(food.measure);
     
     // Check for saved serving preferences for database foods
-    
     usingPreference = false;
     
     if (!food.isCustom && food.id && calciumService) {
@@ -187,17 +186,8 @@
       servingUnit = parsedFoodMeasure.cleanedUnit || parsedFoodMeasure.detectedUnit;
     }
     
-    // Generate unit suggestions if the unit type is known
-    if (parsedFoodMeasure.unitType !== 'unknown') {
-      unitSuggestions = unitConverter.detectBestAlternativeUnits(
-        parsedFoodMeasure.detectedUnit,
-        parsedFoodMeasure.originalQuantity
-      );
-      showUnitSuggestions = unitSuggestions.length > 0;
-    } else {
-      unitSuggestions = [];
-      showUnitSuggestions = false;
-    }
+    // FIXED: Generate unit suggestions with current serving details
+    updateUnitSuggestions();
 
     searchResults = [];
     showSearchResults = false;
@@ -241,13 +231,30 @@
         calcium = newCalcium.toString();
       }
     }
+
+    // FIXED: Update unit suggestions dynamically when serving quantity changes
+    updateUnitSuggestions();
+  }
+
+  // NEW FUNCTION: Update unit suggestions based on current serving quantity
+  function updateUnitSuggestions() {
+    if (parsedFoodMeasure && parsedFoodMeasure.unitType !== 'unknown' && servingQuantity) {
+      unitSuggestions = unitConverter.detectBestAlternativeUnits(
+        servingUnit, // Use current serving unit, not original detected unit
+        servingQuantity // Use current quantity, not original quantity
+      );
+      showUnitSuggestions = unitSuggestions.length > 0;
+    } else {
+      unitSuggestions = [];
+      showUnitSuggestions = false;
+    }
   }
 
   function selectUnitSuggestion(suggestion) {
     servingQuantity = suggestion.quantity;
     servingUnit = suggestion.unit;
     hasResetToOriginal = false; // User changed from reset values
-    updateCalcium();
+    updateCalcium(); // This will also update suggestions via updateUnitSuggestions()
     showUnitSuggestions = false;
   }
 
@@ -310,16 +317,7 @@
     hasResetToOriginal = true;
     
     // Recalculate calcium with original serving
-    updateCalcium();
-    
-    // Regenerate unit suggestions for original unit
-    if (parsedFoodMeasure.unitType !== 'unknown') {
-      unitSuggestions = unitConverter.detectBestAlternativeUnits(
-        parsedFoodMeasure.detectedUnit,
-        parsedFoodMeasure.originalQuantity
-      );
-      showUnitSuggestions = unitSuggestions.length > 0;
-    }
+    updateCalcium(); // This will also update suggestions via updateUnitSuggestions()
   }
 
   async function handleSubmit() {
