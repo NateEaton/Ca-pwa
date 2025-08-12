@@ -5,13 +5,14 @@
   import { showToast } from "$lib/stores/calcium";
   import { syncIcon, syncState } from "$lib/stores/sync";
   import { SyncService } from "$lib/services/SyncService";
+  import SyncSettingsModal from "$lib/components/SyncSettingsModal.svelte";
 
   export let pageTitle = "Tracking";
   export let showInfoIcon = false;
   export let onInfoClick = null;
 
   let showSlideoutMenu = false;
-  const syncService = new SyncService();
+  const syncService = SyncService.getInstance();
   let showSyncModal = false;
 
   // Determine current page for highlighting
@@ -57,9 +58,7 @@
   }
 
   function handleSyncIconClick() {
-    // Phase 1: Just show current status
-    console.log("Sync status:", $syncState.status);
-    // TODO: Phase 3 - Open sync settings modal
+    // Open sync settings modal
     showSyncModal = true;
   }
 
@@ -204,6 +203,12 @@
       </div>
     </div>
   {/if}
+
+  <!-- Sync Settings Modal -->
+  <SyncSettingsModal
+    bind:show={showSyncModal}
+    on:close={() => (showSyncModal = false)}
+  />
 </header>
 
 <style>

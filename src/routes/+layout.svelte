@@ -7,43 +7,59 @@
   import DatabaseInfoDialog from "$lib/components/DatabaseInfoDialog.svelte";
   import "../app.css";
 
+  import { SyncUrlHandler } from "$lib/utils/syncUrlHandler";
+
+  onMount(async () => {
+    // Check for sync URL on app load
+    await SyncUrlHandler.checkForSyncUrl();
+  });
+
   // Don't show loading spinner or header on pages that have their own layout
   $: isSubPage = false; // All pages now use the main layout with Header
-  
+
   // Determine page title based on current route
   $: pageTitle = (() => {
     switch ($page.route?.id) {
-      case '/stats': return 'Statistics';
-      case '/data': return 'Database';
-      case '/report': return 'Report';
-      case '/settings': return 'Settings';
-      case '/profile': return 'Profile';
-      default: return 'Tracking';
+      case "/stats":
+        return "Statistics";
+      case "/data":
+        return "Database";
+      case "/report":
+        return "Report";
+      case "/settings":
+        return "Settings";
+      case "/profile":
+        return "Profile";
+      default:
+        return "Tracking";
     }
   })();
 
   // Determine whether to show info icon (only on Database page)
-  $: showInfoIcon = $page.route?.id === '/data';
+  $: showInfoIcon = $page.route?.id === "/data";
 
   // Database info dialog state - needs to be here for Header to access
   let showDatabaseInfoDialog = false;
-  
+
   function openDatabaseInfoDialog() {
     showDatabaseInfoDialog = true;
   }
 
   // Theme detection and management
   function initializeTheme() {
-    const savedTheme = localStorage.getItem('calcium_theme');
-    const theme = savedTheme || 'auto';
-    
+    const savedTheme = localStorage.getItem("calcium_theme");
+    const theme = savedTheme || "auto";
+
     applyTheme(theme);
-    
+
     // Only listen for system changes if theme is set to auto
-    if (theme === 'auto') {
+    if (theme === "auto") {
       const prefersDark = window.matchMedia("(prefers-color-scheme: dark)");
       prefersDark.addEventListener("change", (e) => {
-        if (localStorage.getItem('calcium_theme') === 'auto' || !localStorage.getItem('calcium_theme')) {
+        if (
+          localStorage.getItem("calcium_theme") === "auto" ||
+          !localStorage.getItem("calcium_theme")
+        ) {
           document.documentElement.setAttribute(
             "data-theme",
             e.matches ? "dark" : "light"
@@ -54,9 +70,14 @@
   }
 
   function applyTheme(theme) {
-    if (theme === 'auto') {
-      const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-      document.documentElement.setAttribute("data-theme", prefersDark ? "dark" : "light");
+    if (theme === "auto") {
+      const prefersDark = window.matchMedia(
+        "(prefers-color-scheme: dark)"
+      ).matches;
+      document.documentElement.setAttribute(
+        "data-theme",
+        prefersDark ? "dark" : "light"
+      );
     } else {
       document.documentElement.setAttribute("data-theme", theme);
     }
@@ -65,10 +86,10 @@
   onMount(async () => {
     initializeTheme();
     await calciumService.initialize(); // Initialize the shared service
-    
+
     // Register service worker using virtual PWA register (like vanilla JS version)
-    if (typeof window !== 'undefined') {
-      const { registerSW } = await import('virtual:pwa-register');
+    if (typeof window !== "undefined") {
+      const { registerSW } = await import("virtual:pwa-register");
       registerSW({
         onNeedRefresh() {
           // Could add update prompt here
@@ -157,7 +178,7 @@
 
   /* Fallback CSS spinner that shows before/during font load */
   .spinner-container::before {
-    content: '';
+    content: "";
     position: absolute;
     top: 0;
     left: 0;

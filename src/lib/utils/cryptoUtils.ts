@@ -116,29 +116,40 @@ export class CryptoUtils {
    * Decrypt data with AES-GCM or fallback method
    */
   static async decrypt(encryptedData: string, key: CryptoKey | string): Promise<string> {
+    console.log('Decrypt called with:', { 
+      encryptedDataLength: encryptedData.length, 
+      keyType: typeof key,
+      encryptedDataSample: encryptedData.substring(0, 50) + '...'
+    });
+    
     if (typeof key === 'string') {
       // Fallback decryption
       return this.simpleDecrypt(encryptedData, key);
     }
     
     if (this.isWebCryptoAvailable()) {
-      const combined = Uint8Array.from(atob(encryptedData), c => c.charCodeAt(0));
-      
-      // Extract IV and encrypted data
-      const iv = combined.slice(0, 12);
-      const encrypted = combined.slice(12);
+      try {
+        const combined = Uint8Array.from(atob(encryptedData), c => c.charCodeAt(0));
+        
+        // Extract IV and encrypted data
+        const iv = combined.slice(0, 12);
+        const encrypted = combined.slice(12);
 
-      const decrypted = await crypto.subtle.decrypt(
-        {
-          name: 'AES-GCM',
-          iv: iv
-        },
-        key,
-        encrypted
-      );
+        const decrypted = await crypto.subtle.decrypt(
+          {
+            name: 'AES-GCM',
+            iv: iv
+          },
+          key,
+          encrypted
+        );
 
-      const decoder = new TextDecoder();
-      return decoder.decode(decrypted);
+        const decoder = new TextDecoder();
+        return decoder.decode(decrypted);
+      } catch (error) {
+        console.error('WebCrypto decrypt failed:', error);
+        throw error;
+      }
     } else {
       throw new Error('WebCrypto not available');
     }
@@ -148,29 +159,77 @@ export class CryptoUtils {
    * Simple fallback encryption (NOT SECURE - for development only)
    */
   private static simpleEncrypt(data: string, key: string): string {
-    const keyBytes = atob(key);
-    let result = '';
-    for (let i = 0; i < data.length; i++) {
-      const char = data.charCodeAt(i);
-      const keyChar = keyBytes.charCodeAt(i % keyBytes.length);
-      result += String.fromCharCode(char ^ keyChar);
+    try {
+      const keyBytes = atob(key);
+      let result = '';
+      for (let i = 0; i < data.length; i++) {
+        const char = data.charCodeAt(i);
+        const keyChar = keyBytes.charCodeAt(i % keyBytes.length);
+        result += String.fromCharCode(char ^ keyChar);
+      }
+      return btoa(result);
+    } catch (error) {
+      console.error('Simple encrypt failed:', error);
+      // If base64 decode fails, use the key directly as bytes
+      let result = '';
+      for (let i = 0; i < data.length; i++) {
+        const char = data.charCodeAt(i);
+        const keyChar = key.charCodeAt(i % key.length);
+        result += String.fromCharCode(char ^ keyChar);
+      }
+      return btoa(result);
     }
-    return btoa(result);
   }
 
   /**
    * Simple fallback decryption (NOT SECURE - for development only)
    */
   private static simpleDecrypt(encryptedData: string, key: string): string {
-    const data = atob(encryptedData);
-    const keyBytes = atob(key);
-    let result = '';
-    for (let i = 0; i < data.length; i++) {
-      const char = data.charCodeAt(i);
-      const keyChar = keyBytes.charCodeAt(i % keyBytes.length);
-      result += String.fromCharCode(char ^ keyChar);
+    console.log('SimpleDecrypt called with:', {
+      encryptedDataLength: encryptedData.length,
+      keyLength: key.length,
+      encryptedSample: encryptedData.substring(0, 20) + '...',
+      keySample: key.substring(0, 10) + '...'
+    });
+    
+    try {
+      // First try to decode the encrypted data
+      const data = atob(encryptedData);
+      console.log('Successfully decoded encrypted data, length:', data.length);
+      
+      // Then try to decode the key  
+      const keyBytes = atob(key);
+      console.log('Successfully decoded key, length:', keyBytes.length);
+      
+      let result = '';
+      for (let i = 0; i < data.length; i++) {
+        const char = data.charCodeAt(i);
+        const keyChar = keyBytes.charCodeAt(i % keyBytes.length);
+        result += String.fromCharCode(char ^ keyChar);
+      }
+      return result;
+    } catch (error) {
+      console.error('Simple decrypt failed at atob():', error);
+      console.log('Trying fallback approach...');
+      
+      // If base64 decode fails, try different approach
+      try {
+        const data = atob(encryptedData);
+        console.log('Encrypted data decoded successfully');
+        
+        // Use the key directly as bytes if it's not valid base64
+        let result = '';
+        for (let i = 0; i < data.length; i++) {
+          const char = data.charCodeAt(i);
+          const keyChar = key.charCodeAt(i % key.length);
+          result += String.fromCharCode(char ^ keyChar);
+        }
+        return result;
+      } catch (error2) {
+        console.error('Fallback decrypt also failed:', error2);
+        throw new Error(`Decryption failed: ${error.message}`);
+      }
     }
-    return result;
   }
 
   /**

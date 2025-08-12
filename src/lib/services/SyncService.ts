@@ -9,12 +9,24 @@ import type { SyncSettings, SyncDoc, CloudSyncResponse } from '$lib/types/sync';
 import type { CalciumState } from '$lib/types/calcium';
 
 export class SyncService {
+  private static instance: SyncService | null = null;
   private settings: SyncSettings | null = null;
   private automergeDoc: Automerge.Doc<SyncDoc> | null = null;
   private workerUrl = 'https://calcium-sync-worker.calcium-sync.workers.dev';
+  private encryptionKeyString: string | null = null; // Track key string for modal
 
   constructor() {
     setSyncStatus('offline');
+  }
+
+  /**
+   * Get singleton instance
+   */
+  static getInstance(): SyncService {
+    if (!SyncService.instance) {
+      SyncService.instance = new SyncService();
+    }
+    return SyncService.instance;
   }
 
   async initialize(): Promise<void> {
@@ -23,6 +35,9 @@ export class SyncService {
       const storedSettings = localStorage.getItem('calcium_sync_settings');
       if (storedSettings) {
         const settings = JSON.parse(storedSettings);
+        
+        // Store the key string for modal access
+        this.encryptionKeyString = settings.encryptionKeyString;
         
         // Restore encryption key
         const encryptionKey = await CryptoUtils.importKey(settings.encryptionKeyString);
@@ -240,7 +255,17 @@ export class SyncService {
   private async saveSettings(): Promise<void> {
     if (!this.settings) return;
     
-    const keyString = await CryptoUtils.exportKey(this.settings.encryptionKey);
+    let keyString: string;
+    if (typeof this.settings.encryptionKey === 'string') {
+      // Fallback mode - key is already a string
+      keyString = this.settings.encryptionKey;
+    } else {
+      // WebCrypto mode - export the key
+      keyString = await CryptoUtils.exportKey(this.settings.encryptionKey);
+    }
+    
+    // Store key string for modal access
+    this.encryptionKeyString = keyString;
     
     const storageData = {
       docId: this.settings.docId,
@@ -252,17 +277,79 @@ export class SyncService {
     localStorage.setItem('calcium_sync_settings', JSON.stringify(storageData));
   }
 
-  // Existing utility methods
-  isEnabled(): boolean {
-    return get(syncState).isEnabled;
+  /**
+   * Join existing sync document from URL
+   */
+  async joinExistingSyncDoc(syncUrl: string): Promise<void> {
+    try {
+      setSyncStatus('syncing');
+      
+      // Parse sync URL
+      const url = new URL(syncUrl);
+      const hash = url.hash.substring(1); // Remove #
+      const params = new URLSearchParams(hash);
+      
+      const docId = params.get('sync');
+      const encodedKeyString = params.get('key');
+      
+      if (!docId || !encodedKeyString) {
+        throw new Error('Invalid sync URL format');
+      }
+      
+      // URL decode the key
+      const keyString = decodeURIComponent(encodedKeyString);
+      console.log('Decoded key string length:', keyString.length);
+      
+      // Store key string for modal access
+      this.encryptionKeyString = keyString;
+      
+      // Import encryption key
+      const encryptionKey = await CryptoUtils.importKey(keyString);
+      
+      this.settings = {
+        docId,
+        encryptionKey,
+        workerUrl: this.workerUrl,
+        autoSync: false,
+        syncInterval: 60
+      };
+      
+      // Save settings
+      await this.saveSettings();
+      
+      // Pull data from cloud
+      await this.pullFromCloud();
+      
+      syncState.update(state => ({
+        ...state,
+        docId,
+        isEnabled: true
+      }));
+      
+    } catch (error) {
+      console.error('Failed to join sync doc:', error);
+      setSyncError(`Failed to join sync: ${error.message}`);
+      throw error;
+    }
   }
 
-  getStatus(): string {
-    return get(syncState).status;
-  }
-
-  getLastSync(): string | null {
-    return get(syncState).lastSync;
+  /**
+   * Get current sync settings (for modal display)
+   */
+  getSettings(): { docId: string; encryptionKeyString: string } | null {
+    if (!this.settings || !this.encryptionKeyString) {
+      console.log('Settings check:', { 
+        hasSettings: !!this.settings, 
+        hasKeyString: !!this.encryptionKeyString,
+        docId: this.settings?.docId 
+      });
+      return null;
+    }
+    
+    return {
+      docId: this.settings.docId,
+      encryptionKeyString: this.encryptionKeyString
+    };
   }
 
   async testConnection(): Promise<boolean> {
