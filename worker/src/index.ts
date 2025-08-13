@@ -24,6 +24,7 @@ export default {
     const allowedOrigins = [
       'https://calcium.eatonfamily.net',
       'http://localhost:5173',
+      'https://calcium-dev.eatonfamily.net', 
       'http://eatonmediasvr.local:8080',
       'http://eatonmediasvr.local'
     ];

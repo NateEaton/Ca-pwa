@@ -28,7 +28,8 @@
       const settings = syncService.getSettings();
       if (settings) {
         const baseUrl = window.location.origin + window.location.pathname;
-        syncUrl = `${baseUrl}#sync=${settings.docId}&key=${settings.encryptionKeyString}`;
+        const safeKey = encodeURIComponent(settings.encryptionKeyString);
+        syncUrl = `${baseUrl}#sync=${settings.docId}&key=${safeKey}`;
 
         // Generate QR code
         qrCodeDataUrl = await QRCode.toDataURL(syncUrl, {
