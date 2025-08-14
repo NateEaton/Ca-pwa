@@ -215,26 +215,6 @@ export class SyncService {
     }
   }
 
-  // Add a convenience method for full bidirectional sync
-  async performBidirectionalSync(): Promise<void> {
-    if (!this.settings || !get(syncState).isEnabled) {
-      throw new Error('Sync not configured');
-    }
-
-    try {
-      // First pull latest changes
-      const hadRemoteChanges = await this.pullFromCloud();
-
-      // Then push our current state
-      await this.pushToCloud();
-
-      return hadRemoteChanges;
-    } catch (error) {
-      console.error('Bidirectional sync failed:', error);
-      throw error;
-    }
-  }
-
   private async saveSettings(): Promise<void> {
     if (!this.settings) {
       console.log('No settings to save');
