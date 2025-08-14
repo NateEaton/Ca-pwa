@@ -3,7 +3,7 @@
   import { page } from "$app/stores";
   import { base } from "$app/paths";
   import { showToast } from "$lib/stores/calcium";
-  import { syncIcon, syncState } from "$lib/stores/sync";
+  import { syncIcon, syncState, setSyncStatus } from "$lib/stores/sync";
   import { SyncService } from "$lib/services/SyncService";
   import SyncSettingsModal from "$lib/components/SyncSettingsModal.svelte";
 
@@ -67,23 +67,22 @@
     await syncService.testConnection();
   }
 
-  // Add this function after the existing functions
   async function handleManualSync() {
-    if (!$syncState.isEnabled) {
-      // Create new sync doc
+    // This function now correctly handles both creating and performing a sync.
+    if ($syncState.isEnabled) {
+      // If sync is already set up, perform a bidirectional sync.
       try {
-        const docId = await syncService.createNewSyncDoc();
-        showToast(`Sync created: ${docId.substring(0, 8)}...`, "success");
+        await syncService.performBidirectionalSync();
       } catch (error) {
-        showToast("Failed to create sync", "error");
+        console.log("A manual sync operation failed.");
       }
     } else {
-      // Push current data
+      // If sync is not set up, create a new sync document.
       try {
-        await syncService.pushToCloud();
-        showToast("Data synced", "success");
+        const docId = await syncService.createNewSyncDoc();
+        showToast(`New sync created: ${docId.substring(0, 8)}...`, "success");
       } catch (error) {
-        showToast("Sync failed", "error");
+        showToast("Failed to create sync", "error");
       }
     }
   }
@@ -128,10 +127,10 @@
       <button
         class="manual-sync-btn"
         on:click={handleManualSync}
-        title={$syncState.isEnabled ? "Push to cloud" : "Create sync"}
+        title={$syncState.isEnabled ? "Sync data" : "Create sync"}
         disabled={$syncState.status === "syncing"}
       >
-        {$syncState.isEnabled ? "Push" : "Sync"}
+        Sync
       </button>
     </div>
   </div>

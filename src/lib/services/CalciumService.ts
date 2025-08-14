@@ -1134,4 +1134,85 @@ export class CalciumService {
     });
   }
 
+  /**
+   * Applies data from a sync operation without clearing existing data.
+   * This is the non-destructive counterpart to restoreFromBackup.
+   */
+  async applySyncData(syncData: any): Promise<void> {
+    console.log("Applying non-destructive sync data...");
+    try {
+      // NOTE: We DO NOT clear existing data here.
+
+      // Restore preferences/settings
+      if (syncData.preferences) {
+        calciumState.update(state => ({
+          ...state,
+          settings: syncData.preferences
+        }));
+        await this.saveSettings();
+      }
+
+      // Restore custom foods to IndexedDB by putting (upserting) them
+      if (syncData.customFoods && Array.isArray(syncData.customFoods)) {
+        for (const customFood of syncData.customFoods) {
+          try {
+            // This will add new foods or update existing ones
+            await this.saveCustomFoodToIndexedDB(customFood);
+          } catch (error) {
+            console.warn('Failed to apply synced custom food:', customFood.name, error);
+          }
+        }
+      }
+
+      // Restore favorites
+      if (syncData.favorites && Array.isArray(syncData.favorites)) {
+        try {
+          await this.restoreFavorites(syncData.favorites);
+        } catch (error) {
+          console.warn('Failed to apply synced favorites:', error);
+        }
+      }
+
+      // Restore serving preferences
+      if (syncData.servingPreferences && Array.isArray(syncData.servingPreferences)) {
+        try {
+          await this.restoreServingPreferences(syncData.servingPreferences);
+        } catch (error) {
+          console.warn('Failed to apply synced serving preferences:', error);
+        }
+      }
+
+      // Restore journal entries to IndexedDB by putting (upserting) them
+      if (syncData.journalEntries) {
+        for (const [dateString, foods] of Object.entries(syncData.journalEntries)) {
+          if (Array.isArray(foods)) {
+            try {
+              // This will add new entries or update existing ones
+              await this.saveFoodsForDate(dateString, foods as FoodEntry[]);
+            } catch (error) {
+              console.warn('Failed to apply synced journal entry for date:', dateString, error);
+            }
+          }
+        }
+      }
+
+      // Small delay before reloading to ensure all DB transactions complete
+      await new Promise(resolve => setTimeout(resolve, 200));
+
+      console.log("Reloading all stores with new synced data...");
+      // Reload all data into the stores to reflect the changes
+      await this.loadSettings();
+      await this.loadCustomFoods();
+      await this.loadFavorites();
+      await this.loadServingPreferences();
+      await this.loadDailyFoods(); // This reloads the food for the current date
+      await this.applySortToFoods();
+      console.log("Sync data application complete.");
+
+    } catch (error) {
+      console.error('Error applying sync data:', error);
+      throw error; // Propagate the error to be handled by the sync service
+    }
+  }
+
 }

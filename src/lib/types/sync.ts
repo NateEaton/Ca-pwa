@@ -1,6 +1,6 @@
 // src/lib/types/sync.ts
 
-export type SyncStatus = 'offline' | 'syncing' | 'synced' | 'error' | 'conflict';
+export type SyncStatus = 'offline' | 'initializing' | 'syncing' | 'synced' | 'error' | 'conflict';
 
 export interface SyncState {
   status: SyncStatus;

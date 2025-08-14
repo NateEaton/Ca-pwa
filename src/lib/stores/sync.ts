@@ -5,7 +5,7 @@ import type { SyncState, SyncStatus } from '$lib/types/sync';
 
 // Main sync state
 export const syncState = writable<SyncState>({
-  status: 'offline',
+  status: 'initializing', // <-- Change this from 'offline'
   lastSync: null,
   error: null,
   docId: null,
@@ -34,6 +34,8 @@ export function setSyncError(error: string) {
 // Derived store for sync icon display
 export const syncIcon = derived(syncState, ($syncState) => {
   switch ($syncState.status) {
+    case 'initializing': // <-- Add this case
+      return { icon: 'sync', color: 'var(--text-secondary)', spinning: true };
     case 'offline':
       return { icon: 'cloud_off', color: 'var(--text-secondary)', spinning: false };
     case 'syncing':
