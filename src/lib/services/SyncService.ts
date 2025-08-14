@@ -26,47 +26,48 @@ export class SyncService {
   }
 
   async initialize(): Promise<void> {
-      // The store already defaults to 'initializing', so no need to set it here.
-      console.log('Initializing sync service...');
+    // The store already defaults to 'initializing', so no need to set it here.
+    console.log('Initializing sync service...');
 
-      try {
-          const storedSettings = localStorage.getItem('calcium_sync_settings');
-          if (storedSettings) {
-              console.log('Found stored sync settings. Restoring connection...');
-              const settings = JSON.parse(storedSettings);
-              
-              this.encryptionKeyString = settings.encryptionKeyString;
-              const encryptionKey = await CryptoUtils.importKey(settings.encryptionKeyString);
-              
-              this.settings = {
-                  docId: settings.docId,
-                  encryptionKey,
-                  workerUrl: this.workerUrl,
-                  autoSync: settings.autoSync || false,
-                  syncInterval: settings.syncInterval || 60
-              };
+    try {
+      const storedSettings = localStorage.getItem('calcium_sync_settings');
+      if (storedSettings) {
+        console.log('Found stored sync settings. Restoring connection...');
+        const settings = JSON.parse(storedSettings);
 
-              // Successfully restored. Update state to synced.
-              syncState.update(state => ({ 
-                  ...state, 
-                  docId: settings.docId,
-                  isEnabled: true,
-                  status: 'synced' // Set to 'synced' on successful restore
-              }));
-              
-              this.startAutoSync();
-              console.log('Sync service restored and connection is active.');
-          } else {
-              // No settings found, so we are offline.
-              console.log('No stored sync settings found. Status is offline.');
-              setSyncStatus('offline');
-          }
-      } catch (error) {
-          console.error('Failed to initialize sync service:', error);
-          setSyncError('Failed to initialize sync. Please check settings.');
-          // Also remove potentially corrupt settings
-          localStorage.removeItem('calcium_sync_settings');
+        this.encryptionKeyString = settings.encryptionKeyString;
+        const encryptionKey = await CryptoUtils.importKey(settings.encryptionKeyString);
+
+        this.settings = {
+          docId: settings.docId,
+          encryptionKey,
+          workerUrl: this.workerUrl,
+          autoSync: settings.autoSync || false,
+          syncInterval: settings.syncInterval || 60,
+          syncGenerationId: settings.syncGenerationId || CryptoUtils.generateUUID()
+        };
+
+        // Successfully restored. Update state to synced.
+        syncState.update(state => ({
+          ...state,
+          docId: settings.docId,
+          isEnabled: true,
+          status: 'synced' // Set to 'synced' on successful restore
+        }));
+
+        this.startAutoSync();
+        console.log('Sync service restored and connection is active.');
+      } else {
+        // No settings found, so we are offline.
+        console.log('No stored sync settings found. Status is offline.');
+        setSyncStatus('offline');
       }
+    } catch (error) {
+      console.error('Failed to initialize sync service:', error);
+      setSyncError('Failed to initialize sync. Please check settings.');
+      // Also remove potentially corrupt settings
+      localStorage.removeItem('calcium_sync_settings');
+    }
   }
 
   async createNewSyncDoc(): Promise<string> {
@@ -75,13 +76,15 @@ export class SyncService {
 
       const docId = CryptoUtils.generateDocId();
       const encryptionKey = await CryptoUtils.generateKey();
+      const syncGenerationId = CryptoUtils.generateUUID();
 
       this.settings = {
         docId,
         encryptionKey,
         workerUrl: this.workerUrl,
         autoSync: false,
-        syncInterval: 60
+        syncInterval: 60,
+        syncGenerationId
       };
 
       const currentData = await calciumService.generateBackup();
@@ -148,7 +151,22 @@ export class SyncService {
       // Decrypt and apply data
       const decrypted = await CryptoUtils.decrypt(result.encrypted, this.settings.encryptionKey);
       const remoteData = JSON.parse(decrypted);
-      
+
+      const remoteGenerationId = remoteData.metadata?.syncGenerationId;
+
+      // --- THE CORE LOGIC FIX ---
+      if (remoteGenerationId && remoteGenerationId !== this.settings.syncGenerationId) {
+        console.warn("New sync generation detected! Wiping local data before applying sync.");
+        showToast("Sync source has been reset. Applying new data...", "info");
+
+        // 1. Wipe local application data
+        await calciumService.clearApplicationData(); // The safe, data-only wipe
+
+        // 2. Update local generation ID to match the new master
+        this.settings.syncGenerationId = remoteGenerationId;
+        await this.saveSettings();
+      }
+
       await calciumService.applySyncData(remoteData);
 
       // IMPORTANT: Update the lastSync time in the store
@@ -220,25 +238,28 @@ export class SyncService {
       console.log('No settings to save');
       return;
     }
-    
+
     const keyString = await CryptoUtils.exportKey(this.settings.encryptionKey);
     this.encryptionKeyString = keyString;
-    
+
     const storageData = {
       docId: this.settings.docId,
       encryptionKeyString: keyString,
       autoSync: this.settings.autoSync,
-      syncInterval: this.settings.syncInterval
+      syncInterval: this.settings.syncInterval,
+      syncGenerationId: this.settings.syncGenerationId
     };
-    
+
     console.log('Saving sync settings:', { docId: storageData.docId.substring(0, 8) + '...' });
     localStorage.setItem('calcium_sync_settings', JSON.stringify(storageData));
-    
+
     // Immediately verify it was saved
     const verification = localStorage.getItem('calcium_sync_settings');
     console.log('Verification - settings in localStorage:', verification ? 'FOUND' : 'NOT FOUND');
     console.log('Current domain/path:', window.location.origin + window.location.pathname);
   }
+
+  // In src/lib/services/SyncService.ts
 
   async joinExistingSyncDoc(syncUrl: string): Promise<void> {
     try {
@@ -254,23 +275,29 @@ export class SyncService {
       const keyString = decodeURIComponent(encodedKeyString);
       const encryptionKey = await CryptoUtils.importKey(keyString);
 
+      // We don't know the generation ID yet, so we leave it undefined for now
       this.settings = {
         docId,
         encryptionKey,
         workerUrl: this.workerUrl,
         autoSync: false,
-        syncInterval: 60
+        syncInterval: 60,
+        syncGenerationId: '' // Initialize as empty
       };
 
-      // Save settings to localStorage first.
-      await this.saveSettings();
-
-      // Immediately update the syncState store. This is what makes the UI update.
-      syncState.update(state => ({ ...state, docId, isEnabled: true }));
-
-      // Now pull the data. This will call calciumService.restoreFromBackup,
-      // which handles the data update and subsequent UI reactions.
+      // Pulling the data will teach us the correct generation ID
       await this.pullFromCloud();
+
+      // The pullFromCloud method has now updated this.settings.syncGenerationId
+      // and saved it. We can now finalize the state.
+      syncState.update(state => ({
+        ...state,
+        docId,
+        isEnabled: true,
+        status: 'synced'
+      }));
+
+      showToast("Successfully joined sync!", "success");
 
     } catch (error) {
       console.error('Failed to join sync doc:', error);
@@ -326,7 +353,7 @@ export class SyncService {
       // We throw the error so the caller knows the operation failed.
       throw error;
     }
-  }  
+  }
 
   getSettings(): { docId: string; encryptionKeyString: string } | null {
     if (!this.settings || !this.encryptionKeyString) {
@@ -335,7 +362,8 @@ export class SyncService {
 
     return {
       docId: this.settings.docId,
-      encryptionKeyString: this.encryptionKeyString
+      encryptionKeyString: this.encryptionKeyString,
+      syncGenerationId: this.settings.syncGenerationId
     };
   }
 
@@ -398,8 +426,43 @@ export class SyncService {
     }
   }
 
+  async disconnectSync(): Promise<void> {
+    console.log('Disconnecting from sync...');
+
+    // Stop auto-sync
+    this.stopAutoSync();
+
+    // Clear sync settings
+    this.settings = null;
+    this.encryptionKeyString = null;
+
+    // Remove from localStorage
+    localStorage.removeItem('calcium_sync_settings');
+
+    // Update sync state
+    syncState.update(state => ({
+      ...state,
+      docId: null,
+      isEnabled: false,
+      status: 'offline',
+      error: null,
+      lastSync: null
+    }));
+
+    console.log('Sync disconnected successfully');
+  }
+
   async triggerSync(): Promise<void> {
     if (!this.settings || !get(syncState).isEnabled) return;
     await this.pushToCloud().catch(err => console.warn('Triggered sync failed:', err));
   }
+
+  async regenerateSyncId(): Promise<void> {
+    if (!this.settings) return;
+    const newId = CryptoUtils.generateUUID();
+    console.log(`Regenerating Sync ID. Old ID: ${this.settings.syncGenerationId}, New ID: ${newId}`);
+    this.settings.syncGenerationId = newId;
+    await this.saveSettings();
+  }
+
 }

@@ -2,6 +2,7 @@ import { get } from 'svelte/store';
 import { calciumState, showToast } from '$lib/stores/calcium';
 import type { FoodEntry, CustomFood, CalciumSettings, UserServingPreference } from '$lib/types/calcium';
 import { DEFAULT_FOOD_DATABASE } from '$lib/data/foodDatabase';
+import { SyncService } from '$lib/services/SyncService';
 
 export class CalciumService {
   private db: IDBDatabase | null = null;
@@ -10,7 +11,7 @@ export class CalciumService {
     await this.initializeIndexedDB();
     await this.migrateCustomFoodsIfNeeded();
     await this.migrateFavoritesToIDsIfNeeded();
-    
+
     await this.loadSettings();
     await this.loadDailyFoods();
     await this.loadCustomFoods();
@@ -20,7 +21,7 @@ export class CalciumService {
 
     calciumState.update(state => ({ ...state, isLoading: false }));
   }
-  
+
   private async initializeIndexedDB(): Promise<void> {
     return new Promise((resolve, reject) => {
       const request = indexedDB.open('CalciumTracker', 6);
@@ -350,51 +351,65 @@ export class CalciumService {
     return result;
   }
 
-  private async saveCustomFoodToIndexedDB(foodData: { name: string; calcium: number; measure: string }): Promise<CustomFood | null> {
-    if (!this.db) {
-      console.error('No database connection for saving custom food');
-      return null;
-    }
-
-    // console.log('Creating custom food object:', foodData);
-    const customFood: Omit<CustomFood, 'id'> = {
-      ...foodData,
-      isCustom: true,
-      dateAdded: new Date().toISOString()
-    };
+  private async saveCustomFoodToIndexedDB(foodData: any): Promise<CustomFood | null> {
+    if (!this.db) return null;
 
     return new Promise((resolve, reject) => {
-      try {
-        const transaction = this.db!.transaction(['customFoods'], 'readwrite');
-        const store = transaction.objectStore('customFoods');
-        const request = store.add(customFood);
+      const transaction = this.db!.transaction(['customFoods'], 'readwrite');
+      const store = transaction.objectStore('customFoods');
+      let request: IDBRequest;
 
-        request.onsuccess = () => {
-          const savedFood: CustomFood = { ...customFood, id: request.result as number };
-          // console.log('Successfully saved custom food to IndexedDB:', savedFood);
-
-          calciumState.update(state => ({
-            ...state,
-            customFoods: [...state.customFoods, savedFood]
-          }));
-
-          resolve(savedFood);
+      // This is the core logic that handles both creating and updating.
+      if (foodData.id) {
+        // UPDATE/SYNC PATH: An ID exists. Use put() to overwrite.
+        // This is used by restoreFromBackup and applySyncData.
+        const dbObject = {
+          name: foodData.name,
+          calcium: foodData.calcium,
+          measure: foodData.measure,
+          isCustom: true,
+          dateAdded: foodData.dateAdded || new Date().toISOString(),
+          id: foodData.id
         };
+        request = store.put(dbObject);
 
-        request.onerror = () => {
-          console.error('Error saving custom food to IndexedDB:', request.error);
-          showToast('Failed to save custom food', 'error');
-          reject(request.error);
+      } else {
+        // CREATE NEW PATH: No ID exists. Use add() to generate a new one.
+        // This is used when a user creates a new food in the modal.
+        const newFoodObject = {
+          name: foodData.name,
+          calcium: foodData.calcium,
+          measure: foodData.measure,
+          isCustom: true,
+          dateAdded: new Date().toISOString()
         };
-
-        transaction.onerror = () => {
-          console.error('Transaction error saving custom food:', transaction.error);
-          reject(transaction.error);
-        };
-      } catch (error) {
-        console.error('Exception in saveCustomFoodToIndexedDB:', error);
-        reject(error);
+        request = store.add(newFoodObject);
       }
+
+      request.onsuccess = () => {
+        // The result of .add() is the new key. The result of .put() is the same key.
+        const newId = request.result as number;
+        const savedFood: CustomFood = {
+            name: foodData.name,
+            calcium: foodData.calcium,
+            measure: foodData.measure,
+            isCustom: true,
+            dateAdded: foodData.dateAdded || new Date().toISOString(),
+            id: newId
+        };
+
+        // Update the Svelte store non-destructively
+        calciumState.update(state => {
+          const newCustomFoods = [...state.customFoods.filter(f => f.id !== savedFood.id), savedFood];
+          return { ...state, customFoods: newCustomFoods };
+        });
+        resolve(savedFood);
+      };
+
+      request.onerror = (event) => {
+        console.error('Error in saveCustomFoodToIndexedDB:', (event.target as IDBRequest).error);
+        reject((event.target as IDBRequest).error);
+      };
     });
   }
 
@@ -504,102 +519,68 @@ export class CalciumService {
 
   async generateBackup(): Promise<any> {
     const state = get(calciumState);
+    const syncService = SyncService.getInstance();
+    const syncSettings = syncService.getSettings();
 
-    // Get journal entries from IndexedDB
-    const journalEntries: Record<string, FoodEntry[]> = {};
-    const allJournalEntries = await this.getAllJournalEntries();
-
-    // Convert IndexedDB format to backup format (maintain compatibility)
-    allJournalEntries.forEach(entry => {
-      journalEntries[entry.date] = entry.foods;
-    });
-
-    // Get custom foods directly from IndexedDB to ensure we have the latest
+    // Correctly fetch all data to ensure the backup is current
+    const journalEntries = await this.getAllJournalData();
     const customFoods = await this.getAllCustomFoods();
-
-    // Get favorites as array for backup
-    const favorites = Array.from(state.favorites);
-
-    // Get serving preferences as array for backup
-    const servingPreferences = Array.from(state.servingPreferences.values());
 
     return {
       metadata: {
-        version: '2.1.0', // Increment to indicate IndexedDB backend
+        version: '2.1.0',
         createdAt: new Date().toISOString(),
-        appVersion: 'Svelte Calcium Tracker'
+        appVersion: 'Svelte Calcium Tracker',
+        syncGenerationId: syncSettings ? syncSettings.syncGenerationId : null
       },
       preferences: state.settings,
       customFoods: customFoods,
-      favorites: favorites,
-      servingPreferences: servingPreferences,
-      journalEntries // Maintains existing backup format compatibility
+      favorites: Array.from(state.favorites),
+      servingPreferences: Array.from(state.servingPreferences.values()),
+      journalEntries
     };
   }
 
-  async restoreFromBackup(backupData: any): Promise<void> {
+  async restoreFromBackup(backupData: any, options: { preserveSync: boolean } = { preserveSync: false }): Promise<void> {
     try {
-      // Clear existing data
-      await this.clearAllData();
+      const syncService = SyncService.getInstance();
 
-      // Small delay to ensure transactions are completed
+      if (options.preserveSync) {
+        console.log("Restoring backup while preserving sync settings...");
+        await this.clearApplicationData();
+        await syncService.regenerateSyncId();
+      } else {
+        console.log("Performing a full destructive restore, including sync settings...");
+        await this.clearAllData();
+      }
+      
       await new Promise(resolve => setTimeout(resolve, 100));
 
-      // Restore preferences/settings
       if (backupData.preferences) {
-        calciumState.update(state => ({
-          ...state,
-          settings: backupData.preferences
-        }));
+        calciumState.update(state => ({ ...state, settings: backupData.preferences }));
         await this.saveSettings();
       }
-
-      // Restore custom foods to IndexedDB
       if (backupData.customFoods && Array.isArray(backupData.customFoods)) {
         for (const customFood of backupData.customFoods) {
-          try {
-            await this.saveCustomFoodToIndexedDB(customFood);
-          } catch (error) {
-            console.warn('Failed to restore custom food:', customFood.name, error);
-          }
+          await this.saveCustomFoodToIndexedDB(customFood);
         }
       }
-
-      // Restore favorites
       if (backupData.favorites && Array.isArray(backupData.favorites)) {
-        try {
-          await this.restoreFavorites(backupData.favorites);
-        } catch (error) {
-          console.warn('Failed to restore favorites:', error);
-        }
+        await this.restoreFavorites(backupData.favorites);
       }
-
-      // Restore serving preferences
       if (backupData.servingPreferences && Array.isArray(backupData.servingPreferences)) {
-        try {
-          await this.restoreServingPreferences(backupData.servingPreferences);
-        } catch (error) {
-          console.warn('Failed to restore serving preferences:', error);
-        }
+        await this.restoreServingPreferences(backupData.servingPreferences);
       }
-
-      // Restore journal entries to IndexedDB
       if (backupData.journalEntries) {
         for (const [dateString, foods] of Object.entries(backupData.journalEntries)) {
           if (Array.isArray(foods)) {
-            try {
-              await this.saveFoodsForDate(dateString, foods);
-            } catch (error) {
-              console.warn('Failed to restore journal entry for date:', dateString, error);
-            }
+            await this.saveFoodsForDate(dateString, foods as FoodEntry[]);
           }
         }
       }
-
-      // Small delay before reloading
+      
       await new Promise(resolve => setTimeout(resolve, 200));
 
-      // Reload data into stores
       await this.loadSettings();
       await this.loadCustomFoods();
       await this.loadFavorites();
@@ -613,8 +594,7 @@ export class CalciumService {
     }
   }
 
-  private async clearAllData(): Promise<void> {
-    // Clear localStorage journal entries
+private async clearAllData(): Promise<void> {
     const keysToRemove: string[] = [];
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
@@ -623,46 +603,30 @@ export class CalciumService {
       }
     }
     keysToRemove.forEach(key => localStorage.removeItem(key));
+    console.log("All data cleared from localStorage, including sync settings.");
+    
+    await this.clearApplicationData();
+  }
 
-    // Clear IndexedDB stores one by one to avoid transaction issues
+  async clearApplicationData(): Promise<void> {
     if (!this.db) {
       console.warn('Database connection not available for clearing IndexedDB data');
       return;
     }
-
-    const clearStore = async (storeName: string) => {
-      return new Promise<void>((resolve, reject) => {
-        try {
+    const storesToClear = ['journalEntries', 'customFoods', 'favorites', 'servingPreferences'];
+    for (const storeName of storesToClear) {
+      try {
+        await new Promise<void>((resolve, reject) => {
           const transaction = this.db!.transaction([storeName], 'readwrite');
-          const store = transaction.objectStore(storeName);
-          const request = store.clear();
-
+          const request = transaction.objectStore(storeName).clear();
           request.onsuccess = () => resolve();
           request.onerror = () => reject(request.error);
-          transaction.onerror = () => reject(transaction.error);
-          transaction.onabort = () => reject(new Error(`Transaction aborted for ${storeName}`));
-        } catch (error) {
-          reject(error);
-        }
-      });
-    };
-
-    try {
-      // Clear each store with a small delay between operations
-      await clearStore('journalEntries');
-      await new Promise(resolve => setTimeout(resolve, 50));
-
-      await clearStore('customFoods');
-      await new Promise(resolve => setTimeout(resolve, 50));
-
-      await clearStore('favorites');
-      await new Promise(resolve => setTimeout(resolve, 50));
-
-      await clearStore('servingPreferences');
-    } catch (error) {
-      console.error('Error clearing IndexedDB data:', error);
-      // Don't throw here - we want to continue with the restore process
+        });
+      } catch (error) {
+        console.error(`Error clearing IndexedDB store ${storeName}:`, error);
+      }
     }
+    console.log("Application data cleared from IndexedDB. Sync settings preserved.");
   }
 
   private async getAllCustomFoods(): Promise<CustomFood[]> {
@@ -1213,6 +1177,14 @@ export class CalciumService {
       console.error('Error applying sync data:', error);
       throw error; // Propagate the error to be handled by the sync service
     }
+  }
+
+  async regenerateSyncId(): Promise<void> {
+    if (!this.settings) return;
+    const newId = CryptoUtils.generateUUID();
+    console.log(`Regenerating Sync ID. New ID: ${newId}`);
+    this.settings.syncGenerationId = newId;
+    await this.saveSettings();
   }
 
 }

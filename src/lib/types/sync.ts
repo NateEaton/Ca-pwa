@@ -16,6 +16,7 @@ export interface SyncSettings {
   workerUrl: string;
   autoSync: boolean;
   syncInterval: number; // seconds
+  syncGenerationId: string;
 }
 
 export interface SyncDoc {
@@ -28,6 +29,7 @@ export interface SyncDoc {
     lastModified: string;
     deviceId: string;
     version: string;
+    syncGenerationId: string;
   };
 }
 

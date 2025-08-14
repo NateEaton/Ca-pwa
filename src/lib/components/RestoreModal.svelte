@@ -1,6 +1,8 @@
 <script>
   import { showToast, calciumService } from "$lib/stores/calcium";
   import { onDestroy } from "svelte";
+  import { syncState } from "$lib/stores/sync";
+  import { SyncService } from "$lib/services/SyncService";
 
   export let show = false;
 
@@ -10,6 +12,7 @@
   let showPreview = false;
   let backupData = null;
   let previewStats = "";
+  let restoreSyncOption = "disconnect"; // Default to the safest option
 
   // Prevent body scroll when modal is open (mobile fix)
   $: if (typeof window !== "undefined") {
@@ -71,22 +74,22 @@
     console.log("   - Current show value:", show);
     show = false;
     console.log("   - Set show = false");
-    
+
     restoreError = "";
     console.log("   - Cleared restoreError");
-    
+
     showPreview = false;
     console.log("   - Set showPreview = false");
-    
+
     backupData = null;
     console.log("   - Cleared backupData");
-    
+
     previewStats = "";
     console.log("   - Cleared previewStats");
-    
+
     isRestoring = false;
     console.log("   - Set isRestoring = false");
-    
+
     if (fileInput) {
       fileInput.value = "";
       console.log("   - Cleared file input");
@@ -96,11 +99,20 @@
 
   function handleBackdropClick(event) {
     console.log("🎯 handleBackdropClick triggered");
-    console.log("   - event.target:", event.target.className || event.target.tagName);
-    console.log("   - event.currentTarget:", event.currentTarget.className || event.currentTarget.tagName);
-    console.log("   - target === currentTarget:", event.target === event.currentTarget);
+    console.log(
+      "   - event.target:",
+      event.target.className || event.target.tagName
+    );
+    console.log(
+      "   - event.currentTarget:",
+      event.currentTarget.className || event.currentTarget.tagName
+    );
+    console.log(
+      "   - target === currentTarget:",
+      event.target === event.currentTarget
+    );
     console.log("   - isRestoring:", isRestoring);
-    
+
     // Only close if clicking the backdrop itself
     if (event.target === event.currentTarget && !isRestoring) {
       console.log("✅ Valid backdrop click - closing modal");
@@ -114,7 +126,7 @@
     console.log("⌨️  handleKeydown triggered:", event.key);
     console.log("   - show:", show);
     console.log("   - isRestoring:", isRestoring);
-    
+
     if (event.key === "Escape" && show && !isRestoring) {
       console.log("✅ Valid Escape key press - closing modal");
       event.preventDefault();
@@ -127,7 +139,7 @@
   function triggerFileSelect() {
     console.log("📁 triggerFileSelect() called");
     console.log("   - isRestoring:", isRestoring);
-    
+
     if (isRestoring) {
       console.log("❌ File select blocked - currently restoring");
       return;
@@ -174,14 +186,14 @@
     console.log("📄 handleFileSelect() called");
     console.log("   - event.target:", event.target);
     console.log("   - files length:", event.target?.files?.length || 0);
-    
+
     // Small delay to handle mobile file picker return properly
     console.log("⏳ Adding 50ms delay for mobile file picker stability");
     await new Promise((resolve) => setTimeout(resolve, 50));
 
     const file = event.target?.files?.[0];
     console.log("📂 Selected file:", file?.name || "none");
-    
+
     if (!file) {
       console.log("❌ No file selected");
       return;
@@ -205,10 +217,13 @@
       console.log("📖 Reading file content...");
       const fileContent = await file.text();
       console.log("   - File content length:", fileContent.length);
-      
+
       console.log("🔍 Parsing JSON...");
       const parsedBackupData = JSON.parse(fileContent);
-      console.log("   - Parsed backup data keys:", Object.keys(parsedBackupData));
+      console.log(
+        "   - Parsed backup data keys:",
+        Object.keys(parsedBackupData)
+      );
 
       if (!parsedBackupData.metadata || !parsedBackupData.journalEntries) {
         console.log("❌ Invalid backup structure - missing required fields");
@@ -217,14 +232,13 @@
 
       console.log("✅ Backup file structure valid");
       backupData = parsedBackupData;
-      
+
       console.log("📊 Calculating preview statistics...");
       previewStats = calculateStats(backupData);
       console.log("   - Preview stats generated");
-      
+
       console.log("🎯 Setting showPreview = true");
       showPreview = true;
-      
     } catch (error) {
       console.error("❌ Error processing backup file:", error);
       restoreError =
@@ -240,111 +254,71 @@
   function handleBackToFileSelect() {
     console.log("⬅️  handleBackToFileSelect() called");
     console.log("   - Returning to file selection from preview");
-    
+
     showPreview = false;
     console.log("   - Set showPreview = false");
-    
+
     backupData = null;
     console.log("   - Cleared backupData");
-    
+
     previewStats = "";
     console.log("   - Cleared previewStats");
-    
+
     restoreError = "";
     console.log("   - Cleared restoreError");
-    
+
     console.log("✅ Back to file select completed");
   }
 
   async function handleConfirmRestore() {
-    console.log("🔄 handleConfirmRestore() called");
-    console.log("   - backupData exists:", !!backupData);
-    console.log("   - isRestoring:", isRestoring);
-    
-    if (!backupData || isRestoring) {
-      console.log("❌ Restore blocked - no backup data or already restoring");
-      return;
-    }
+    if (!backupData || isRestoring) return;
 
-    console.log("🚀 Starting restore process");
     isRestoring = true;
     restoreError = "";
-    console.log("   - Set isRestoring = true");
-    console.log("   - Cleared restoreError");
+    const syncService = SyncService.getInstance();
 
     try {
-      console.log("💾 Calling calciumService.restoreFromBackup...");
-      await calciumService.restoreFromBackup(backupData);
-      console.log("✅ Backup restore completed successfully");
+      const preserveSync =
+        $syncState.isEnabled && restoreSyncOption === "replace";
 
-      // Sequentially reload all application data.
-      console.log("🔄 Starting sequential data reload...");
-      
-      console.log("   📂 Loading settings...");
-      await calciumService.loadSettings();
-      console.log("   ✅ Settings loaded");
-      
-      console.log("   🍽️  Loading daily foods...");
-      await calciumService.loadDailyFoods();
-      console.log("   ✅ Daily foods loaded");
-      
-      console.log("   🥗 Loading custom foods...");
-      await calciumService.loadCustomFoods();
-      console.log("   ✅ Custom foods loaded");
-      
-      console.log("   ⭐ Loading favorites...");
-      await calciumService.loadFavorites();
-      console.log("   ✅ Favorites loaded");
-      
-      console.log("   🍴 Loading serving preferences...");
-      await calciumService.loadServingPreferences();
-      console.log("   ✅ Serving preferences loaded");
-      
-      console.log("   🔄 Applying food sorting...");
-      await calciumService.applySortToFoods();
-      console.log("   ✅ Food sorting applied");
+      await calciumService.restoreFromBackup(backupData, { preserveSync });
 
-      console.log("🏁 All data reload completed successfully");
+      if (preserveSync) {
+        showToast("Local data restored. Updating cloud...", "info");
+        await syncService.pushToCloud();
+        showToast("Synced devices updated successfully!", "success");
+      } else {
+        if ($syncState.isEnabled) {
+          await syncService.disconnectSync();
+        }
+        showToast("Data restored successfully!", "success");
+      }
 
-      // Reset restoring state before closing modal
-      console.log("🔄 Setting isRestoring = false before closing modal");
+      // --- FIX: Reset state BEFORE closing ---
       isRestoring = false;
-
-      // Close the modal after successful restoration and data reload.
-      console.log("🚪 Attempting to close modal...");
       handleClose();
-      console.log("✅ Modal close initiated");
-
-      // Show a success message after the modal is closed and data is refreshed.
-      console.log("🎉 Showing success toast notification");
-      showToast("Data restored successfully!", "success");
-      
     } catch (error) {
-      console.error("❌ Restore process failed:", error);
-      console.log("   - Error type:", typeof error);
-      console.log("   - Error message:", error?.message);
-
-      // Reset restoring state before closing modal
-      console.log("🔄 Setting isRestoring = false after error");
-      isRestoring = false;
-
-      // Show error toast and close modal
+      console.error("Restore process failed:", error);
       const errorMessage = `Restore failed: ${error instanceof Error ? error.message : "Unknown error"}`;
-      console.log("💥 Showing error toast:", errorMessage);
       showToast(errorMessage, "error");
-      
-      console.log("🚪 Closing modal after error");
+
+      // --- FIX: Reset state on error too ---
+      isRestoring = false;
       handleClose();
     }
-    
-    console.log("🏁 handleConfirmRestore() completed");
   }
 </script>
 
 {#if show}
   <!-- svelte-ignore a11y-no-static-element-interactions -->
   <!-- svelte-ignore a11y-click-events-have-key-events -->
-  <div class="modal-backdrop" on:click={handleBackdropClick} on:keydown={handleKeydown} role="button" tabindex="0">
+  <div
+    class="modal-backdrop"
+    on:click={handleBackdropClick}
+    on:keydown={handleKeydown}
+    role="button"
+    tabindex="0"
+  >
     <!-- svelte-ignore a11y-no-noninteractive-element-interactions -->
     <div
       class="modal-container"
@@ -440,6 +414,50 @@
               <h4>What Will Be Restored:</h4>
               <div class="preview-stats">{@html previewStats}</div>
             </div>
+
+            {#if $syncState.isEnabled}
+              <div class="sync-options-section">
+                <h4>Sync Connection Detected</h4>
+                <p class="section-subtitle">
+                  This restore will affect your synced devices.
+                </p>
+                <div class="radio-group">
+                  <label class="radio-option warning">
+                    <input
+                      type="radio"
+                      bind:group={restoreSyncOption}
+                      value="disconnect"
+                    />
+                    <div class="radio-content">
+                      <span class="radio-title"
+                        >Disconnect and Restore Here Only</span
+                      >
+                      <span class="radio-desc"
+                        >This is the safest option. This device will be removed
+                        from the sync group. Other devices will be unaffected.</span
+                      >
+                    </div>
+                  </label>
+                  <label class="radio-option">
+                    <input
+                      type="radio"
+                      bind:group={restoreSyncOption}
+                      value="replace"
+                    />
+                    <div class="radio-content">
+                      <span class="radio-title"
+                        >Replace Data on All Devices</span
+                      >
+                      <span class="radio-desc"
+                        >This backup will become the new master data for all
+                        your synced devices. Use this to populate all devices
+                        with this backup's data.</span
+                      >
+                    </div>
+                  </label>
+                </div>
+              </div>
+            {/if}
 
             <div class="warning-box">
               <span class="material-icons">warning</span>
@@ -774,6 +792,69 @@
     to {
       transform: rotate(360deg);
     }
+  }
+
+  /* Sync options styles */
+  .sync-options-section {
+    background-color: var(--surface-variant);
+    border-radius: 8px;
+    padding: var(--spacing-lg);
+    border: 1px solid var(--divider);
+  }
+  .sync-options-section h4 {
+    color: var(--text-primary);
+    margin: 0 0 var(--spacing-xs) 0;
+  }
+  .section-subtitle {
+    color: var(--text-secondary);
+    font-size: var(--font-size-sm);
+    margin: 0 0 var(--spacing-md) 0;
+  }
+  .radio-group {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+  }
+  .radio-option {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--spacing-md);
+    padding: var(--spacing-md);
+    background-color: var(--surface);
+    border: 2px solid var(--divider);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: border-color 0.2s;
+  }
+  .radio-option:hover {
+    border-color: var(--primary-color);
+  }
+  .radio-option.warning:has(input:checked) {
+    border-color: var(--warning-color);
+    background-color: rgba(255, 152, 0, 0.05);
+  }
+  .radio-option:has(input:checked) {
+    border-color: var(--primary-color);
+    background-color: var(--primary-alpha-5);
+  }
+  .radio-option input[type="radio"] {
+    margin-top: 4px;
+    flex-shrink: 0;
+    accent-color: var(--primary-color);
+  }
+  .radio-content {
+    display: flex;
+    flex-direction: column;
+  }
+  .radio-title {
+    font-weight: 500;
+    color: var(--text-primary);
+    margin-bottom: var(--spacing-xs);
+  }
+  .radio-desc {
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+    line-height: 1.4;
   }
 
   /* Mobile-specific adjustments */

@@ -1,9 +1,13 @@
 // src/lib/utils/cryptoUtils.ts
 
 export class CryptoUtils {
-  
+
   static isWebCryptoAvailable(): boolean {
     return typeof crypto !== 'undefined' && crypto.subtle && crypto.getRandomValues;
+  }
+
+  static generateUUID(): string {
+    return crypto.randomUUID();
   }
 
   static async generateKey(): Promise<CryptoKey> {
@@ -46,7 +50,7 @@ export class CryptoUtils {
     const encoder = new TextEncoder();
     const dataBuffer = encoder.encode(data);
     const iv = crypto.getRandomValues(new Uint8Array(12));
-    
+
     const encrypted = await crypto.subtle.encrypt(
       { name: 'AES-GCM', iv: iv },
       key,
