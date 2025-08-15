@@ -5,6 +5,7 @@
   import Header from "$lib/components/Header.svelte";
   import Toast from "$lib/components/Toast.svelte";
   import DatabaseInfoDialog from "$lib/components/DatabaseInfoDialog.svelte";
+  import AboutDialog from "$lib/components/AboutDialog.svelte";
   import "../app.css";
 
   import { SyncUrlHandler } from "$lib/utils/syncUrlHandler";
@@ -39,8 +40,8 @@
         return "Report";
       case "/settings":
         return "Settings";
-      case "/profile":
-        return "Profile";
+      case "/guide":
+        return "User Guide";
       default:
         return "Tracking";
     }
@@ -48,9 +49,14 @@
 
   $: showInfoIcon = $page.route?.id === "/data";
   let showDatabaseInfoDialog = false;
+  let showAboutDialog = false;
 
   function openDatabaseInfoDialog() {
     showDatabaseInfoDialog = true;
+  }
+
+  function openAboutDialog() {
+    showAboutDialog = true;
   }
 
   // --- CORRECTED THEME LOGIC ---
@@ -93,7 +99,12 @@
   <slot />
 {:else}
   <div class="app-container">
-    <Header {pageTitle} {showInfoIcon} onInfoClick={openDatabaseInfoDialog} />
+    <Header
+      {pageTitle}
+      {showInfoIcon}
+      onInfoClick={openDatabaseInfoDialog}
+      onAboutClick={openAboutDialog}
+    />
     <main class="main-content">
       {#if $calciumState.isLoading}
         <div class="loading">
@@ -110,6 +121,7 @@
     </main>
     <Toast />
     <DatabaseInfoDialog bind:show={showDatabaseInfoDialog} />
+    <AboutDialog bind:show={showAboutDialog} />
   </div>
 {/if}
 

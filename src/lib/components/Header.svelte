@@ -9,6 +9,7 @@
   export let pageTitle = "Tracking";
   export let showInfoIcon = false;
   export let onInfoClick = null;
+  export let onAboutClick = () => {};
 
   let showSlideoutMenu = false;
   const syncService = SyncService.getInstance();
@@ -156,6 +157,25 @@
           >
             <span class="material-icons">settings</span>
             <span>Settings</span>
+          </button>
+
+          <button
+            class="menu-item"
+            class:current={currentPath === "/guide"}
+            on:click={() => handleMenuItemClick("/guide")}
+          >
+            <span class="material-icons">help_outline</span>
+            <span>User Guide</span>
+          </button>
+          <button
+            class="menu-item"
+            on:click={() => {
+              closeMenu();
+              onAboutClick();
+            }}
+          >
+            <span class="material-icons">info_outline</span>
+            <span>About</span>
           </button>
         </div>
       </div>

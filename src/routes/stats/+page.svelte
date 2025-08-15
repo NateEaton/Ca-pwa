@@ -144,6 +144,7 @@
     try {
       await loadDataForView();
       //updateViewButtons();
+      requestAnimationFrame(renderChart);
     } catch (error) {
       console.error("Error switching view:", error);
     }
@@ -767,7 +768,7 @@
   }
 
   $: if (currentData) {
-    renderChart();
+    requestAnimationFrame(renderChart);
   }
 
   afterUpdate(() => {

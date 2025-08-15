@@ -1,7 +1,6 @@
 <script>
   import { calciumState, showToast, calciumService } from "$lib/stores/calcium";
   import { onMount } from "svelte";
-  import AboutDialog from "$lib/components/AboutDialog.svelte";
   import BackupModal from "$lib/components/BackupModal.svelte";
   import RestoreModal from "$lib/components/RestoreModal.svelte";
   import SyncSettingsModal from "$lib/components/SyncSettingsModal.svelte";
@@ -9,7 +8,6 @@
   let dailyGoal = 1000;
   let selectedTheme = "auto";
   let isLoading = true;
-  let showAboutDialog = false;
   let showBackupModal = false;
   let showRestoreModal = false;
   let showSyncModal = false;
@@ -84,10 +82,6 @@
       console.error("Error saving theme:", error);
       showToast("Error saving theme", "error");
     }
-  }
-
-  function openAboutDialog() {
-    showAboutDialog = true;
   }
 
   function openBackupModal() {
@@ -198,25 +192,10 @@
         <span class="material-icons nav-chevron">chevron_right</span>
       </button>
     </div>
-
-    <!-- App Section -->
-    <div class="settings-section">
-      <h3 class="section-title">App</h3>
-
-      <button class="setting-nav-item" on:click={openAboutDialog}>
-        <span class="material-icons setting-icon">info</span>
-        <div class="setting-info">
-          <span class="setting-title">About</span>
-          <span class="setting-subtitle">Version and app information</span>
-        </div>
-        <span class="material-icons nav-chevron">chevron_right</span>
-      </button>
-    </div>
   {/if}
 </div>
 
 <!-- Modal Components -->
-<AboutDialog bind:show={showAboutDialog} />
 <BackupModal bind:show={showBackupModal} />
 <RestoreModal bind:show={showRestoreModal} />
 <SyncSettingsModal bind:show={showSyncModal} />
