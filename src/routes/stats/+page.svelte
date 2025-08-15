@@ -1,5 +1,5 @@
 <script>
-  import { onMount, onDestroy } from "svelte";
+  import { onMount, onDestroy, afterUpdate } from "svelte";
   import { calciumState, calciumService } from "$lib/stores/calcium";
   import { goto } from "$app/navigation";
   import { formatDate, isToday, getTodayString } from "$lib/utils/dateUtils";
@@ -24,6 +24,7 @@
   let chartCanvas;
   let chartLabels;
   let chartScrollWrapper;
+  let hasScrolled = false;
 
   // Touch handling
   let touchStartX = 0;
@@ -130,18 +131,19 @@
     lastReferenceDate = null;
   }
 
-
   async function switchView(viewType) {
     const currentReferenceDate = lastReferenceDate || getCurrentPeriodDate();
     currentView = viewType;
     clearDetailMode();
+
+    hasScrolled = false;
 
     syncViewOffsets(currentReferenceDate);
     lastReferenceDate = currentReferenceDate;
 
     try {
       await loadDataForView();
-      updateViewButtons();
+      //updateViewButtons();
     } catch (error) {
       console.error("Error switching view:", error);
     }
@@ -766,13 +768,15 @@
 
   $: if (currentData) {
     renderChart();
-    // Auto-scroll for monthly view
-    if (currentView === "monthly" && chartScrollWrapper) {
-      setTimeout(() => {
-        scrollToCurrentDay();
-      }, 50);
-    }
   }
+
+  afterUpdate(() => {
+    // This code runs AFTER Svelte has updated the DOM with the new chart
+    if (currentView === "monthly" && chartScrollWrapper && !hasScrolled) {
+      scrollToCurrentDay();
+      hasScrolled = true;
+    }
+  });
 
   function renderChart() {
     if (!currentData || !currentData.data.length || !chartCanvas) return;
@@ -940,7 +944,6 @@
 </svelte:head>
 
 <div class="stats-page">
-
   <div class="stats-content">
     <!-- Time Period Controls -->
     <div class="stats-view-controls">
