@@ -3,6 +3,7 @@ import { calciumState, showToast } from '$lib/stores/calcium';
 import type { FoodEntry, CustomFood, CalciumSettings, UserServingPreference } from '$lib/types/calcium';
 import { DEFAULT_FOOD_DATABASE } from '$lib/data/foodDatabase';
 import { SyncService } from '$lib/services/SyncService';
+import { SyncTrigger } from '$lib/utils/syncTrigger';
 
 export class CalciumService {
   private db: IDBDatabase | null = null;
@@ -275,6 +276,7 @@ export class CalciumService {
 
     await this.applySortToFoods();
     await this.saveDailyFoods();
+    SyncTrigger.triggerDataSync();
   }
 
   // FIXED: Now uses correct index from sorted array
@@ -293,6 +295,7 @@ export class CalciumService {
     }));
 
     await this.saveDailyFoods();
+    SyncTrigger.triggerDataSync();
   }
 
   // FIXED: Now uses correct index from sorted array
@@ -315,6 +318,7 @@ export class CalciumService {
     // Re-sort after update in case sort field changed
     await this.applySortToFoods();
     await this.saveDailyFoods();
+    SyncTrigger.triggerDataSync();
   }
 
   async changeDate(newDate: string): Promise<void> {
@@ -342,12 +346,14 @@ export class CalciumService {
     }));
 
     await this.saveSettings();
+    SyncTrigger.triggerDataSync();
   }
 
   async saveCustomFood(foodData: { name: string; calcium: number; measure: string }): Promise<CustomFood | null> {
     // console.log('Saving custom food:', foodData);
     const result = await this.saveCustomFoodToIndexedDB(foodData);
     // console.log('Custom food saved:', result);
+    SyncTrigger.triggerDataSync();
     return result;
   }
 
@@ -427,6 +433,7 @@ export class CalciumService {
           customFoods: state.customFoods.filter(food => food.id !== id)
         }));
         resolve();
+        SyncTrigger.triggerDataSync();
       };
 
       request.onerror = () => {
@@ -679,6 +686,7 @@ private async clearAllData(): Promise<void> {
           return { ...state, servingPreferences: newPreferences };
         });
         resolve();
+        SyncTrigger.triggerDataSync();
       };
 
       request.onerror = () => {
@@ -709,6 +717,7 @@ private async clearAllData(): Promise<void> {
           return { ...state, servingPreferences: newPreferences };
         });
         resolve();
+        SyncTrigger.triggerDataSync();
       };
 
       request.onerror = () => {
@@ -806,7 +815,7 @@ private async clearAllData(): Promise<void> {
         const request = store.put(journalEntry);
 
         request.onsuccess = () => {
-          console.log(`Saved ${foods.length} foods for ${dateString} (${totalCalcium}mg total)`);
+          // console.log(`Saved ${foods.length} foods for ${dateString} (${totalCalcium}mg total)`);
           resolve();
         };
 
@@ -914,6 +923,7 @@ private async clearAllData(): Promise<void> {
           favorites.delete(foodId);
           calciumState.update(state => ({ ...state, favorites }));
           resolve();
+          SyncTrigger.triggerDataSync();
         };
 
         request.onerror = () => {
@@ -934,6 +944,7 @@ private async clearAllData(): Promise<void> {
           favorites.add(foodId);
           calciumState.update(state => ({ ...state, favorites }));
           resolve();
+          SyncTrigger.triggerDataSync();
         };
 
         request.onerror = () => {

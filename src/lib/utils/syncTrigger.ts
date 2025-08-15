@@ -1,5 +1,3 @@
-// src/lib/utils/syncTrigger.ts
-
 import { SyncService } from '$lib/services/SyncService';
 
 /**
@@ -23,10 +21,11 @@ export class SyncTrigger {
     this.debounceTimer = window.setTimeout(async () => {
       try {
         const syncService = SyncService.getInstance();
-        await syncService.triggerSync();
-        console.log('Data change sync completed');
+        // Use the robust pull-then-push method for all triggered syncs
+        await syncService.performBidirectionalSync(); 
+        console.log('Automatic data change sync completed');
       } catch (error) {
-        console.warn('Data change sync failed:', error);
+        console.warn('Automatic data change sync failed:', error);
       }
     }, this.DEBOUNCE_DELAY);
   }
