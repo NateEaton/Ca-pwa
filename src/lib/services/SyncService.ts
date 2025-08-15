@@ -13,6 +13,7 @@ export class SyncService {
   private encryptionKeyString: string | null = null;
   private autoSyncInterval: number | null = null;
   private isAutoSyncEnabled = false;
+  private isSyncPending = false;
 
   constructor() {
     setSyncStatus('offline');
@@ -26,8 +27,16 @@ export class SyncService {
   }
 
   async initialize(): Promise<void> {
-    // The store already defaults to 'initializing', so no need to set it here.
     console.log('Initializing sync service...');
+
+    // --- SETUP ONLINE/OFFLINE LISTENERS ---
+    window.addEventListener('online', this.handleOnlineStatus.bind(this));
+    window.addEventListener('offline', this.handleOfflineStatus.bind(this));
+
+    // Check initial status
+    if (!navigator.onLine) {
+      setSyncStatus('offline');
+    }
 
     try {
       const storedSettings = localStorage.getItem('calcium_sync_settings');
@@ -58,9 +67,9 @@ export class SyncService {
         this.startAutoSync();
         console.log('Sync service restored and connection is active.');
       } else {
-        // No settings found, so we are offline.
-        console.log('No stored sync settings found. Status is offline.');
-        setSyncStatus('offline');
+        if (navigator.onLine) {
+          setSyncStatus('offline');
+        }
       }
     } catch (error) {
       console.error('Failed to initialize sync service:', error);
@@ -70,7 +79,7 @@ export class SyncService {
     }
   }
 
-// THIS IS THE FINAL, CORRECTED VERSION
+  // THIS IS THE FINAL, CORRECTED VERSION
   async createNewSyncDoc(): Promise<string> {
     try {
       setSyncStatus('syncing');
@@ -89,11 +98,11 @@ export class SyncService {
       };
 
       // FIX: Save the settings FIRST. This populates `this.encryptionKeyString`.
-      await this.saveSettings(); 
+      await this.saveSettings();
 
       // NOW, generate the backup. It will correctly get the syncGenerationId.
       const currentData = await calciumService.generateBackup();
-      
+
       await this.pushToCloud(currentData);
 
       syncState.update(state => ({
@@ -264,7 +273,7 @@ export class SyncService {
     console.log('Current domain/path:', window.location.origin + window.location.pathname);
   }
 
-// In src/lib/services/SyncService.ts
+  // In src/lib/services/SyncService.ts
 
   async joinExistingSyncDoc(syncUrl: string): Promise<void> {
     try {
@@ -297,14 +306,14 @@ export class SyncService {
       if (response.status !== 404) {
         const result = await response.json();
         if (!result.success || !result.encrypted) throw new Error(result.error || 'No encrypted data received');
-        
+
         const decrypted = await CryptoUtils.decrypt(result.encrypted, encryptionKey);
         remoteData = JSON.parse(decrypted);
         remoteGenerationId = remoteData.metadata?.syncGenerationId;
 
         if (!remoteGenerationId) throw new Error('Sync data is missing a generation ID.');
       }
-      
+
       // Step 2: NOW that we have all info, create and save the complete settings object
       this.settings = {
         docId,
@@ -329,14 +338,14 @@ export class SyncService {
         status: 'synced',
         lastSync: remoteData ? new Date().toISOString() : null
       }));
-      
+
       this.startAutoSync();
       showToast("Successfully joined sync!", "success");
 
     } catch (error) {
       console.error('Failed to join sync doc:', error);
       setSyncError(`Failed to join sync: ${error instanceof Error ? error.message : 'Unknown error'}`);
-      
+
       localStorage.removeItem('calcium_sync_settings');
       this.settings = null;
       syncState.update(state => ({ ...state, isEnabled: false, docId: null, status: 'error' }));
@@ -349,6 +358,15 @@ export class SyncService {
    * then pushes local changes. This is the primary method for manual sync.
    */
   async performBidirectionalSync(): Promise<void> {
+    // --- THIS IS THE NEW "GATE" ---
+    if (!navigator.onLine) {
+      console.warn("Sync prevented: application is offline. Sync is now pending.");
+      this.isSyncPending = true; // Set the flag to sync when connection returns
+      setSyncStatus('offline'); // Ensure UI reflects the offline state
+      return; // Stop the function here
+    }
+    // --- END OF GATE ---
+
     if (!this.settings || !get(syncState).isEnabled) {
       console.warn("Bidirectional sync called but sync is not configured.");
       return;
@@ -483,6 +501,26 @@ export class SyncService {
     console.log(`Regenerating Sync ID. Old ID: ${this.settings.syncGenerationId}, New ID: ${newId}`);
     this.settings.syncGenerationId = newId;
     await this.saveSettings();
+  }
+
+  private async handleOnlineStatus(): Promise<void> {
+    console.log("Application is back online.");
+    // If a sync was attempted while offline, run it now.
+    if (this.isSyncPending) {
+      showToast("Connection restored. Syncing changes...", "info");
+      this.isSyncPending = false; // Reset the flag
+      await this.performBidirectionalSync();
+    } else {
+      // If we are connected to a sync doc, just update the status.
+      if (get(syncState).isEnabled) {
+        setSyncStatus('synced');
+      }
+    }
+  }
+
+  private handleOfflineStatus(): void {
+    console.warn("Application is offline. Sync operations will be paused.");
+    setSyncStatus('offline');
   }
 
 }
