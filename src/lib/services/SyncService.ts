@@ -70,6 +70,7 @@ export class SyncService {
     }
   }
 
+// THIS IS THE FINAL, CORRECTED VERSION
   async createNewSyncDoc(): Promise<string> {
     try {
       setSyncStatus('syncing');
@@ -87,15 +88,19 @@ export class SyncService {
         syncGenerationId
       };
 
-      const currentData = await calciumService.generateBackup();
+      // FIX: Save the settings FIRST. This populates `this.encryptionKeyString`.
+      await this.saveSettings(); 
 
-      await this.saveSettings();
+      // NOW, generate the backup. It will correctly get the syncGenerationId.
+      const currentData = await calciumService.generateBackup();
+      
       await this.pushToCloud(currentData);
 
       syncState.update(state => ({
         ...state,
         docId,
-        isEnabled: true
+        isEnabled: true,
+        status: 'synced' // Also good to update status here
       }));
 
       return docId;
@@ -259,7 +264,7 @@ export class SyncService {
     console.log('Current domain/path:', window.location.origin + window.location.pathname);
   }
 
-  // In src/lib/services/SyncService.ts
+// In src/lib/services/SyncService.ts
 
   async joinExistingSyncDoc(syncUrl: string): Promise<void> {
     try {
@@ -275,35 +280,66 @@ export class SyncService {
       const keyString = decodeURIComponent(encodedKeyString);
       const encryptionKey = await CryptoUtils.importKey(keyString);
 
-      // We don't know the generation ID yet, so we leave it undefined for now
+      // Step 1: First, fetch the remote data to learn the correct generation ID
+      const response = await fetch(`${this.workerUrl}/sync/${docId}`, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      if (response.status === 404) { // It's a new, empty doc, which is fine
+        // We will create the first generation ID ourselves
+      } else if (!response.ok) {
+        throw new Error(`Server error: ${response.status}`);
+      }
+
+      let remoteData = null;
+      let remoteGenerationId = null;
+
+      if (response.status !== 404) {
+        const result = await response.json();
+        if (!result.success || !result.encrypted) throw new Error(result.error || 'No encrypted data received');
+        
+        const decrypted = await CryptoUtils.decrypt(result.encrypted, encryptionKey);
+        remoteData = JSON.parse(decrypted);
+        remoteGenerationId = remoteData.metadata?.syncGenerationId;
+
+        if (!remoteGenerationId) throw new Error('Sync data is missing a generation ID.');
+      }
+      
+      // Step 2: NOW that we have all info, create and save the complete settings object
       this.settings = {
         docId,
         encryptionKey,
         workerUrl: this.workerUrl,
         autoSync: false,
         syncInterval: 60,
-        syncGenerationId: '' // Initialize as empty
+        syncGenerationId: remoteGenerationId || CryptoUtils.generateUUID() // Adopt the ID or create a new one for an empty doc
       };
+      await this.saveSettings();
 
-      // Pulling the data will teach us the correct generation ID
-      await this.pullFromCloud();
+      // Step 3: Now, apply the data if we fetched it.
+      if (remoteData) {
+        await calciumService.applySyncData(remoteData);
+      }
 
-      // The pullFromCloud method has now updated this.settings.syncGenerationId
-      // and saved it. We can now finalize the state.
+      // Step 4: Finalize the state for UI reactivity
       syncState.update(state => ({
         ...state,
         docId,
         isEnabled: true,
-        status: 'synced'
+        status: 'synced',
+        lastSync: remoteData ? new Date().toISOString() : null
       }));
-
+      
+      this.startAutoSync();
       showToast("Successfully joined sync!", "success");
 
     } catch (error) {
       console.error('Failed to join sync doc:', error);
-      setSyncError(`Failed to join sync: ${error.message}`);
+      setSyncError(`Failed to join sync: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      
       localStorage.removeItem('calcium_sync_settings');
-      syncState.update(state => ({ ...state, isEnabled: false, docId: null }));
+      this.settings = null;
+      syncState.update(state => ({ ...state, isEnabled: false, docId: null, status: 'error' }));
       throw error;
     }
   }
@@ -321,41 +357,25 @@ export class SyncService {
     setSyncStatus('syncing');
 
     try {
-      // Step 1: Pull latest data from the cloud.
-      // Our existing pullFromCloud method is smart enough to check timestamps
-      // and will apply the data non-destructively using applySyncData.
       console.log("Sync Step 1: Pulling remote changes...");
-      const hadRemoteChanges = await this.pullFromCloud();
+      await this.pullFromCloud();
+      console.log("No new remote changes to apply or changes applied silently.");
 
-      if (hadRemoteChanges) {
-        showToast("Downloaded latest data", "info");
-        // Give the user a moment to see the toast before the next step
-        await new Promise((resolve) => setTimeout(resolve, 500));
-      } else {
-        console.log("No new remote changes to apply.");
-      }
-
-      // Step 2: Push our current (and now updated) local data to the cloud.
       console.log("Sync Step 2: Pushing local state...");
       await this.pushToCloud();
 
-      // If both steps succeed, we show a final success message.
-      // The status is already set to 'synced' inside pushToCloud.
-      showToast("Sync completed", "success");
       console.log("Bidirectional sync completed successfully.");
 
     } catch (error) {
-      // If either the pull or push fails, the entire operation fails.
       console.error('Bidirectional sync failed:', error);
       const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
       showToast(`Sync failed: ${errorMessage}`, "error");
       setSyncError(`Sync failed: ${errorMessage}`);
-      // We throw the error so the caller knows the operation failed.
       throw error;
     }
   }
 
-  getSettings(): { docId: string; encryptionKeyString: string } | null {
+  getSettings(): { docId: string; encryptionKeyString: string; syncGenerationId: string; } | null {
     if (!this.settings || !this.encryptionKeyString) {
       return null;
     }
@@ -363,7 +383,7 @@ export class SyncService {
     return {
       docId: this.settings.docId,
       encryptionKeyString: this.encryptionKeyString,
-      syncGenerationId: this.settings.syncGenerationId
+      syncGenerationId: this.settings.syncGenerationId // This will now be correctly typed and returned
     };
   }
 

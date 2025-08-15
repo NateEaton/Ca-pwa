@@ -5,7 +5,6 @@
   import { showToast } from "$lib/stores/calcium";
   import { syncIcon, syncState, setSyncStatus } from "$lib/stores/sync";
   import { SyncService } from "$lib/services/SyncService";
-  import SyncSettingsModal from "$lib/components/SyncSettingsModal.svelte";
 
   export let pageTitle = "Tracking";
   export let showInfoIcon = false;
@@ -13,7 +12,6 @@
 
   let showSlideoutMenu = false;
   const syncService = SyncService.getInstance();
-  let showSyncModal = false;
 
   // Determine current page for highlighting
   $: currentPath = $page.route?.id || "/";
@@ -62,28 +60,17 @@
     showSyncModal = true;
   }
 
-  // Test function for Phase 1
-  async function testSyncConnection() {
-    await syncService.testConnection();
-  }
-
-  async function handleManualSync() {
-    // This function now correctly handles both creating and performing a sync.
-    if ($syncState.isEnabled) {
-      // If sync is already set up, perform a bidirectional sync.
-      try {
-        await syncService.performBidirectionalSync();
-      } catch (error) {
-        console.log("A manual sync operation failed.");
-      }
-    } else {
-      // If sync is not set up, create a new sync document.
-      try {
-        const docId = await syncService.createNewSyncDoc();
-        showToast(`New sync created: ${docId.substring(0, 8)}...`, "success");
-      } catch (error) {
-        showToast("Failed to create sync", "error");
-      }
+  async function triggerManualSync() {
+    if (!$syncState.isEnabled || $syncState.status === "syncing") {
+      // Do nothing if sync isn't set up or is already in progress
+      return;
+    }
+    try {
+      await syncService.performBidirectionalSync();
+      // Success toast is removed for a silent experience
+    } catch (error) {
+      console.log("A manual sync operation failed.");
+      // Error toast is handled by the service
     }
   }
 </script>
@@ -109,12 +96,12 @@
         </button>
       {/if}
 
-      <!-- Move sync icon here -->
       <button
         class="sync-icon-btn"
-        on:click={handleSyncIconClick}
+        on:click={triggerManualSync}
         title="Sync Status: {$syncState.status}"
-        aria-label="Sync status and settings"
+        aria-label="Trigger manual sync"
+        disabled={$syncState.status === "syncing"}
       >
         <span
           class="material-icons {$syncIcon.spinning ? 'spinning' : ''}"
@@ -122,15 +109,6 @@
         >
           {$syncIcon.icon}
         </span>
-      </button>
-
-      <button
-        class="manual-sync-btn"
-        on:click={handleManualSync}
-        title={$syncState.isEnabled ? "Sync data" : "Create sync"}
-        disabled={$syncState.status === "syncing"}
-      >
-        Sync
       </button>
     </div>
   </div>
@@ -202,12 +180,6 @@
       </div>
     </div>
   {/if}
-
-  <!-- Sync Settings Modal -->
-  <SyncSettingsModal
-    bind:show={showSyncModal}
-    on:close={() => (showSyncModal = false)}
-  />
 </header>
 
 <style>
@@ -438,18 +410,7 @@
     }
   }
 
-  .manual-sync-btn {
-    background: var(--primary-color);
-    color: white;
-    border: none;
-    padding: 4px 8px;
-    border-radius: 4px;
-    font-size: 12px;
-    cursor: pointer;
-    margin-left: 8px;
-  }
-
-  .manual-sync-btn:disabled {
+  .sync-icon-btn:disabled {
     opacity: 0.5;
     cursor: not-allowed;
   }
