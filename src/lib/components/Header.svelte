@@ -27,12 +27,6 @@
   function handleMenuItemClick(path) {
     closeMenu();
 
-    // Show "Future feature" toast for Profile only
-    if (path === "/profile") {
-      showToast("Future feature", "info");
-      return;
-    }
-
     goto(base + path);
   }
 
@@ -53,11 +47,6 @@
     if (onInfoClick) {
       onInfoClick();
     }
-  }
-
-  function handleSyncIconClick() {
-    // Open sync settings modal
-    showSyncModal = true;
   }
 
   async function triggerManualSync() {
@@ -167,14 +156,6 @@
           >
             <span class="material-icons">settings</span>
             <span>Settings</span>
-          </button>
-          <button
-            class="menu-item"
-            class:current={currentPath === "/profile"}
-            on:click={() => handleMenuItemClick("/profile")}
-          >
-            <span class="material-icons">person</span>
-            <span>Profile</span>
           </button>
         </div>
       </div>

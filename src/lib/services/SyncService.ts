@@ -431,7 +431,7 @@ export class SyncService {
       if (this.settings && get(syncState).isEnabled) {
         await this.pullFromCloud().catch(err => console.warn('Auto-sync pull failed:', err));
       }
-    }, 60000);
+    }, 300000);
 
     window.addEventListener('focus', this.handleWindowFocus.bind(this));
     document.addEventListener('visibilitychange', this.handleVisibilityChange.bind(this));
