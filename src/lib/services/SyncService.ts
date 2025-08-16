@@ -122,9 +122,21 @@ export class SyncService {
 
   async pullFromCloud(): Promise<boolean> {
     if (!this.settings) {
+      // This path is already logged by hasRemoteChanges, but we can add one here for clarity
+      console.warn('[SYNC_PULL_DIAG] pullFromCloud called, but sync is not configured. Aborting.');
       throw new Error('Sync not configured');
     }
 
+    // This call will now produce detailed [SYNC_HEAD_DIAG] logs
+    if (!(await this.hasRemoteChanges())) {
+      console.log("[SYNC_PULL_DIAG] Final decision: Skipping full pull based on HEAD check.");
+      // Ensure status is correct if we skip
+      if (get(syncState).status !== 'synced') setSyncStatus('synced');
+      return false;
+    }
+
+    console.log("[SYNC_PULL_DIAG] Final decision: Proceeding with full pull based on HEAD check.");
+    
     try {
       // The setSyncStatus is now handled by the calling function (performBidirectionalSync)
       // setSyncStatus('syncing'); // This can be removed to avoid redundant state changes
@@ -358,14 +370,12 @@ export class SyncService {
    * then pushes local changes. This is the primary method for manual sync.
    */
   async performBidirectionalSync(): Promise<void> {
-    // --- THIS IS THE NEW "GATE" ---
     if (!navigator.onLine) {
       console.warn("Sync prevented: application is offline. Sync is now pending.");
-      this.isSyncPending = true; // Set the flag to sync when connection returns
-      setSyncStatus('offline'); // Ensure UI reflects the offline state
-      return; // Stop the function here
+      this.isSyncPending = true;
+      setSyncStatus('offline');
+      return;
     }
-    // --- END OF GATE ---
 
     if (!this.settings || !get(syncState).isEnabled) {
       console.warn("Bidirectional sync called but sync is not configured.");
@@ -375,13 +385,16 @@ export class SyncService {
     setSyncStatus('syncing');
 
     try {
-      console.log("Sync Step 1: Pulling remote changes...");
+      // Step 1: Perform an intelligent pull.
+      // The pullFromCloud() method already contains the efficient 'hasRemoteChanges()' check.
+      console.log("Sync Step 1: Checking for remote changes and pulling if necessary...");
       await this.pullFromCloud();
-      console.log("No new remote changes to apply or changes applied silently.");
 
-      console.log("Sync Step 2: Pushing local state...");
+      // Step 2: Always perform a forceful push.
+      // This guarantees that any local state is sent to the cloud, fulfilling the user's intent for a manual sync.
+      console.log("Sync Step 2: Forcefully pushing local state to the cloud...");
       await this.pushToCloud();
-
+      
       console.log("Bidirectional sync completed successfully.");
 
     } catch (error) {
@@ -431,7 +444,7 @@ export class SyncService {
       if (this.settings && get(syncState).isEnabled) {
         await this.pullFromCloud().catch(err => console.warn('Auto-sync pull failed:', err));
       }
-    }, 300000);
+    }, 60000);
 
     window.addEventListener('focus', this.handleWindowFocus.bind(this));
     document.addEventListener('visibilitychange', this.handleVisibilityChange.bind(this));
@@ -521,6 +534,59 @@ export class SyncService {
   private handleOfflineStatus(): void {
     console.warn("Application is offline. Sync operations will be paused.");
     setSyncStatus('offline');
+  }
+
+// In src/lib/services/SyncService.ts
+
+  private async hasRemoteChanges(): Promise<boolean> {
+    if (!this.settings) {
+      console.warn('[SYNC_HEAD_DIAG] hasRemoteChanges check aborted: settings not available.');
+      return false;
+    }
+
+    try {
+      console.log('[SYNC_HEAD_DIAG] Performing HEAD request to check for remote changes...');
+      const response = await fetch(`${this.settings.workerUrl}/sync/${this.settings.docId}`, {
+        method: 'HEAD'
+      });
+
+      console.log(`[SYNC_HEAD_DIAG] HEAD request completed with status: ${response.status}`);
+
+      if (response.status === 404) {
+        console.log("[SYNC_HEAD_DIAG] Result: No remote document. No changes to pull.");
+        return false;
+      }
+      if (!response.ok) {
+        console.warn("[SYNC_HEAD_DIAG] Result: HEAD request failed. Assuming remote has changes as a failsafe.");
+        return true;
+      }
+
+      const remoteLastModifiedHeader = response.headers.get('X-Last-Modified');
+      const localTimestamp = get(syncState).lastSync;
+      
+      console.log(`[SYNC_HEAD_DIAG] Raw X-Last-Modified header from server: "${remoteLastModifiedHeader}"`);
+      console.log(`[SYNC_HEAD_DIAG] Current local lastSync timestamp: "${localTimestamp}"`);
+
+      if (!remoteLastModifiedHeader) {
+        console.warn("[SYNC_HEAD_DIAG] Result: X-Last-Modified header was missing. Assuming remote has changes as a failsafe.");
+        return true;
+      }
+
+      const remoteTime = new Date(remoteLastModifiedHeader).getTime();
+      const localTime = localTimestamp ? new Date(localTimestamp).getTime() : 0;
+      
+      const hasChanges = remoteTime > localTime;
+
+      console.log(`[SYNC_HEAD_DIAG] Comparing timestamps: isRemoteNewer = (${remoteTime} > ${localTime}) = ${hasChanges}`);
+      console.log(`[SYNC_HEAD_DIAG] Result: ${hasChanges ? 'Remote has changes.' : 'Local is up-to-date.'}`);
+      
+      return hasChanges;
+
+    } catch (error) {
+      console.error("[SYNC_HEAD_DIAG] HEAD request itself failed:", error);
+      console.warn("[SYNC_HEAD_DIAG] Result: Assuming remote has changes as a failsafe.");
+      return true;
+    }
   }
 
 }
