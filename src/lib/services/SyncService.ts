@@ -67,6 +67,7 @@ export class SyncService {
         this.startAutoSync();
         console.log('Sync service restored and connection is active.');
       } else {
+        console.log('No stored sync settings found. Sync service is offline.');
         if (navigator.onLine) {
           setSyncStatus('offline');
         }
@@ -136,7 +137,7 @@ export class SyncService {
     }
 
     console.log("[SYNC_PULL_DIAG] Final decision: Proceeding with full pull based on HEAD check.");
-    
+
     try {
       // The setSyncStatus is now handled by the calling function (performBidirectionalSync)
       // setSyncStatus('syncing'); // This can be removed to avoid redundant state changes
