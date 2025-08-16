@@ -1,0 +1,10 @@
+calcium-tracker-svelte@2.0.0 /volume1/projects/Ca-pwa-svelte
+├── @sveltejs/adapter-static@3.0.9
+├── @sveltejs/kit@2.30.1
+├── @sveltejs/vite-plugin-svelte@3.1.2
+├── @vite-pwa/sveltekit@1.0.0
+├── qrcode@1.5.4
+├── svelte@4.2.20
+├── vite-plugin-pwa@0.20.5
+└── vite@5.4.19
+
