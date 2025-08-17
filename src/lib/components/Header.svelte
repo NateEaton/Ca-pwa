@@ -110,7 +110,9 @@
     <div class="menu-backdrop" on:click={handleBackdropClick}>
       <div class="slide-out-menu">
         <div class="menu-header">
-          <h2>My Calcium</h2>
+          <div class="menu-header-content">
+            <h2>My Calcium</h2>
+          </div>
         </div>
 
         <div class="menu-main">
@@ -298,14 +300,26 @@
     padding: var(--spacing-lg);
     flex-shrink: 0;
     min-height: var(--header-height);
-    display: flex;
+  }
+
+  .menu-header-content {
+    display: grid;
+    grid-template-columns: 1fr;
     align-items: center;
+    max-width: 30rem;
+    margin: 0 auto;
+    min-height: var(--touch-target-min);
   }
 
   .menu-header h2 {
     font-size: var(--font-size-xl);
     font-weight: 600;
     margin: 0;
+    text-align: left;
+    grid-column: 1;
+    min-height: var(--touch-target-min);
+    display: flex;
+    align-items: center;
   }
 
   .menu-main {
@@ -420,6 +434,10 @@
   @media (max-width: 30rem) {
     /* 480px equivalent */
     .header {
+      padding: var(--spacing-md) var(--spacing-lg);
+    }
+
+    .menu-header {
       padding: var(--spacing-md) var(--spacing-lg);
     }
 
