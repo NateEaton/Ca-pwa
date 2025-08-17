@@ -21,14 +21,13 @@
     showAddModal = true;
   }
 
-
   async function handleSortChange(event) {
     const { sortBy } = event.detail;
     // Map UI sort types to service sort types
     const sortMapping = {
-      'added': 'time',
-      'name': 'name', 
-      'calcium': 'calcium'
+      added: "time",
+      name: "name",
+      calcium: "calcium",
     };
     const serviceSortBy = sortMapping[sortBy] || sortBy;
     await calciumService.updateSort(serviceSortBy);
@@ -125,7 +124,6 @@
   />
 {/if}
 
-
 <style>
   .page-container {
     position: relative;
@@ -216,7 +214,8 @@
   }
 
   /* Mobile responsive */
-  @media (max-width: 30rem) { /* 480px equivalent */
+  @media (max-width: 30rem) {
+    /* 480px equivalent */
     .foods-section {
       margin: 0 var(--spacing-sm);
     }

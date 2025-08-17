@@ -357,9 +357,9 @@
       unit: "mg",
       averageValue: Math.round(
         data
-          .filter((d) => !d.isFuture && d.value > 0)
+          .filter((d) => !d.isFuture) // Remove: && d.value > 0
           .reduce((sum, d) => sum + d.value, 0) /
-          Math.max(1, data.filter((d) => !d.isFuture && d.value > 0).length)
+          Math.max(1, data.filter((d) => !d.isFuture).length) // Remove: && d.value > 0
       ),
       maxValue: Math.max(...data.map((d) => d.value)),
       minValue: Math.min(
@@ -428,9 +428,9 @@
       unit: "mg",
       averageValue: Math.round(
         data
-          .filter((d) => !d.isFuture && d.value > 0)
+          .filter((d) => !d.isFuture) // Remove: && d.value > 0
           .reduce((sum, d) => sum + d.value, 0) /
-          Math.max(1, data.filter((d) => !d.isFuture && d.value > 0).length)
+          Math.max(1, data.filter((d) => !d.isFuture).length) // Remove: && d.value > 0
       ),
       maxValue: Math.max(...data.map((d) => d.value)),
       minValue: Math.min(
@@ -507,9 +507,9 @@
       unit: "mg",
       averageValue: Math.round(
         data
-          .filter((d) => !d.isFuture && d.value > 0)
+          .filter((d) => !d.isFuture) // Remove: && d.value > 0
           .reduce((sum, d) => sum + d.value, 0) /
-          Math.max(1, data.filter((d) => !d.isFuture && d.value > 0).length)
+          Math.max(1, data.filter((d) => !d.isFuture).length) // Remove: && d.value > 0
       ),
       maxValue: Math.max(...data.map((d) => d.value)),
       minValue: Math.min(
@@ -708,13 +708,21 @@
         : Math.round((dayTotal / $calciumState.settings.dailyGoal) * 100);
     }
 
-    const validDays = currentData.data.filter(
-      (item) => !item.isFuture && item.value > 0
+    const allNonFutureDays = currentData.data.filter(
+      (item) => !item.isFuture // Remove: && item.value > 0
     );
-    if (validDays.length === 0) return 0;
+    if (allNonFutureDays.length === 0) return 0;
 
-    const goalsAchieved = validDays.filter((item) => item.goalMet).length;
-    return Math.round((goalsAchieved / validDays.length) * 100);
+    // Calculate average and express as percentage of goal
+    const totalValue = allNonFutureDays.reduce(
+      (sum, item) => sum + item.value,
+      0
+    );
+    const averageValue = totalValue / allNonFutureDays.length;
+    const percentageOfGoal =
+      (averageValue / $calciumState.settings.dailyGoal) * 100;
+
+    return Math.round(percentageOfGoal);
   })();
 
   // Reactive statement for tracking info
