@@ -65,10 +65,11 @@ export function getFormattedBuildTime(): string {
 }
 
 /**
- * Logs build information to console (development only)
+ * Logs build information to console (development builds and test mode)
  */
 export function logBuildInfo(): void {
-  if (import.meta.env.DEV) {
+  // Show console logs for development builds or when running in dev server/preview
+  if (import.meta.env.MODE === 'development' || import.meta.env.DEV) {
     const info = getBuildInfo();
     console.group('🔨 Build Information');
     console.log('Build ID:', info.buildId);
