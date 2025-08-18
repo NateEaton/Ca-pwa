@@ -19,6 +19,7 @@
 <script>
   import { calciumState, showToast, calciumService } from "$lib/stores/calcium";
   import { onMount } from "svelte";
+  import { FEATURES } from "$lib/utils/featureFlags";
   import BackupModal from "$lib/components/BackupModal.svelte";
   import RestoreModal from "$lib/components/RestoreModal.svelte";
   import SyncSettingsModal from "$lib/components/SyncSettingsModal.svelte";
@@ -133,6 +134,7 @@
       <h3 class="section-title">Goal</h3>
 
       <div class="setting-item inline">
+        <span class="material-icons setting-icon">flag</span>
         <div class="setting-info">
           <span class="setting-title">Daily Calcium Target</span>
           <span class="setting-subtitle">Your daily calcium goal in mg</span>
@@ -159,6 +161,7 @@
       <h3 class="section-title">Appearance</h3>
 
       <div class="setting-item inline">
+        <span class="material-icons setting-icon">palette</span>
         <div class="setting-info">
           <span class="setting-title">Theme</span>
           <span class="setting-subtitle">Choose your preferred appearance</span>
@@ -181,16 +184,18 @@
     <div class="settings-section">
       <h3 class="section-title">Data</h3>
 
-      <button class="setting-nav-item" on:click={openSyncModal}>
-        <span class="material-icons setting-icon">sync</span>
-        <div class="setting-info">
-          <span class="setting-title">Sync</span>
-          <span class="setting-subtitle"
-            >Manage device pairing and sync status</span
-          >
-        </div>
-        <span class="material-icons nav-chevron">chevron_right</span>
-      </button>
+      {#if FEATURES.SYNC_ENABLED}
+        <button class="setting-nav-item" on:click={openSyncModal}>
+          <span class="material-icons setting-icon">sync</span>
+          <div class="setting-info">
+            <span class="setting-title">Sync</span>
+            <span class="setting-subtitle"
+              >Manage device pairing and sync status</span
+            >
+          </div>
+          <span class="material-icons nav-chevron">chevron_right</span>
+        </button>
+      {/if}
 
       <button class="setting-nav-item" on:click={openBackupModal}>
         <span class="material-icons setting-icon">backup</span>
@@ -216,7 +221,9 @@
 <!-- Modal Components -->
 <BackupModal bind:show={showBackupModal} />
 <RestoreModal bind:show={showRestoreModal} />
-<SyncSettingsModal bind:show={showSyncModal} />
+{#if FEATURES.SYNC_ENABLED}
+  <SyncSettingsModal bind:show={showSyncModal} />
+{/if}
 
 <style>
   .settings-container {

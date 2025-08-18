@@ -20,6 +20,7 @@ import { get } from 'svelte/store';
 import { syncState, setSyncStatus, setSyncError } from '$lib/stores/sync';
 import { showToast, calciumService } from '$lib/stores/calcium';
 import { CryptoUtils } from '$lib/utils/cryptoUtils';
+import { FEATURES } from '$lib/utils/featureFlags';
 import type { SyncSettings, CloudSyncResponse } from '$lib/types/sync';
 
 /**
@@ -51,10 +52,21 @@ export class SyncService {
   }
 
   /**
+   * Checks if sync functionality is enabled via feature flag
+   * @throws {Error} When sync is disabled
+   */
+  private checkSyncEnabled(): void {
+    if (!FEATURES.SYNC_ENABLED) {
+      throw new Error('Sync functionality is not enabled. Configure VITE_WORKER_URL to enable sync.');
+    }
+  }
+
+  /**
    * Initializes the sync service, restores settings from localStorage,
    * and sets up online/offline event listeners.
    */
   async initialize(): Promise<void> {
+    this.checkSyncEnabled();
 
     window.addEventListener('online', this.handleOnlineStatus.bind(this));
     window.addEventListener('offline', this.handleOfflineStatus.bind(this));
@@ -109,6 +121,8 @@ export class SyncService {
    * @throws Error if sync creation fails
    */
   async createNewSyncDoc(): Promise<string> {
+    this.checkSyncEnabled();
+    
     try {
       setSyncStatus('syncing');
 
@@ -302,6 +316,8 @@ export class SyncService {
    * @throws Error if URL is invalid or join fails
    */
   async joinExistingSyncDoc(syncUrl: string): Promise<void> {
+    this.checkSyncEnabled();
+    
     try {
       setSyncStatus('syncing');
 
@@ -385,6 +401,8 @@ export class SyncService {
    * @throws Error if sync is not configured or sync fails
    */
   async performBidirectionalSync(): Promise<void> {
+    this.checkSyncEnabled();
+    
     if (!navigator.onLine) {
       this.isSyncPending = true;
       setSyncStatus('offline');

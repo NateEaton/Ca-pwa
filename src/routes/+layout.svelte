@@ -27,16 +27,19 @@
   import AboutDialog from "$lib/components/AboutDialog.svelte";
   import "../app.css";
 
+  import { FEATURES } from "$lib/utils/featureFlags";
   import { SyncUrlHandler } from "$lib/utils/syncUrlHandler";
   import { SyncService } from "$lib/services/SyncService";
 
   onMount(async () => {
     await calciumService.initialize();
 
-    const syncService = SyncService.getInstance();
-    await syncService.initialize();
-
-    await SyncUrlHandler.checkForSyncUrl();
+    // Conditionally initialize sync services
+    if (FEATURES.SYNC_ENABLED) {
+      const syncService = SyncService.getInstance();
+      await syncService.initialize();
+      await SyncUrlHandler.checkForSyncUrl();
+    }
 
     initializeTheme();
 

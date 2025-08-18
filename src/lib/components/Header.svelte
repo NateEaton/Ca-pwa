@@ -21,6 +21,7 @@
   import { page } from "$app/stores";
   import { base } from "$app/paths";
   import { showToast } from "$lib/stores/calcium";
+  import { FEATURES } from "$lib/utils/featureFlags";
   import { syncIcon, syncState, setSyncStatus } from "$lib/stores/sync";
   import { SyncService } from "$lib/services/SyncService";
 
@@ -30,7 +31,7 @@
   export let onAboutClick = () => {};
 
   let showSlideoutMenu = false;
-  const syncService = SyncService.getInstance();
+  const syncService = FEATURES.SYNC_ENABLED ? SyncService.getInstance() : null;
 
   // Determine current page for highlighting
   $: currentPath = $page.route?.id || "/";
@@ -69,6 +70,10 @@
   }
 
   async function triggerManualSync() {
+    if (!FEATURES.SYNC_ENABLED || !syncService) {
+      return;
+    }
+    
     if (!$syncState.isEnabled || $syncState.status === "syncing") {
       // Do nothing if sync isn't set up or is already in progress
       return;
@@ -104,20 +109,22 @@
         </button>
       {/if}
 
-      <button
-        class="sync-icon-btn"
-        on:click={triggerManualSync}
-        title="Sync Status: {$syncState.status}"
-        aria-label="Trigger manual sync"
-        disabled={$syncState.status === "syncing"}
-      >
-        <span
-          class="material-icons {$syncIcon.spinning ? 'spinning' : ''}"
-          style="color: {$syncIcon.color}"
+      {#if FEATURES.SYNC_ENABLED}
+        <button
+          class="sync-icon-btn"
+          on:click={triggerManualSync}
+          title="Sync Status: {$syncState.status}"
+          aria-label="Trigger manual sync"
+          disabled={$syncState.status === "syncing"}
         >
-          {$syncIcon.icon}
-        </span>
-      </button>
+          <span
+            class="material-icons {$syncIcon.spinning ? 'spinning' : ''}"
+            style="color: {$syncIcon.color}"
+          >
+            {$syncIcon.icon}
+          </span>
+        </button>
+      {/if}
     </div>
   </div>
 

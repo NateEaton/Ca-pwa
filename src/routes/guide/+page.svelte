@@ -16,6 +16,10 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
 -->
 
+<script>
+  import { FEATURES } from "$lib/utils/featureFlags";
+</script>
+
 <svelte:head>
   <title>User Guide - My Calcium</title>
 </svelte:head>
@@ -105,39 +109,41 @@
       </p>
       <p>
         <strong>Settings Page:</strong> Adjust your daily goal, change the app theme,
-        and manage data sync and backups.
+        and manage data {#if FEATURES.SYNC_ENABLED}sync and {/if}backups.
       </p>
     </div>
   </details>
 
-  <details class="guide-section">
-    <summary>
-      <span class="material-icons">sync</span>
-      Syncing Across Devices
-    </summary>
-    <div class="section-content">
-      <h4>What It Is</h4>
-      <p>
-        Sync keeps your data automatically updated across multiple devices
-        (e.g., your phone and a tablet). It requires an internet connection to
-        work.
-      </p>
+  {#if FEATURES.SYNC_ENABLED}
+    <details class="guide-section">
+      <summary>
+        <span class="material-icons">sync</span>
+        Syncing Across Devices
+      </summary>
+      <div class="section-content">
+        <h4>What It Is</h4>
+        <p>
+          Sync keeps your data automatically updated across multiple devices
+          (e.g., your phone and a tablet). It requires an internet connection to
+          work.
+        </p>
 
-      <h4>How to Set Up</h4>
-      <ol class="steps-list">
-        <li>
-          On your first device, go to <strong>Settings > Data > Sync</strong> and
-          tap "Create New Sync".
-        </li>
-        <li>A QR code will be displayed on the screen.</li>
-        <li>
-          On your second device, go to <strong>Settings > Data > Sync</strong>,
-          tap "Join Existing Sync", and scan the QR code from your first device.
-        </li>
-      </ol>
-      <p>Your devices are now connected and will sync automatically.</p>
-    </div>
-  </details>
+        <h4>How to Set Up</h4>
+        <ol class="steps-list">
+          <li>
+            On your first device, go to <strong>Settings > Data > Sync</strong> and
+            tap "Create New Sync".
+          </li>
+          <li>A QR code will be displayed on the screen.</li>
+          <li>
+            On your second device, go to <strong>Settings > Data > Sync</strong>,
+            tap "Join Existing Sync", and scan the QR code from your first device.
+          </li>
+        </ol>
+        <p>Your devices are now connected and will sync automatically.</p>
+      </div>
+    </details>
+  {/if}
 
   <details class="guide-section">
     <summary>
