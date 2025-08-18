@@ -1041,7 +1041,7 @@
   @media print {
     /* Reset to light theme variables for print */
     :root,
-    [data-theme="dark"] {
+    :global([data-theme="dark"]) {
       --background: #ffffff !important;
       --surface: #ffffff !important;
       --surface-variant: #f0f0f0 !important;

@@ -17,7 +17,7 @@
 -->
 
 <script>
-  import { goto } from "$app/navigation";
+  import { goto, preloadData } from "$app/navigation";
   import { page } from "$app/stores";
   import { base } from "$app/paths";
   import { showToast } from "$lib/stores/calcium";
@@ -48,6 +48,28 @@
     closeMenu();
 
     goto(base + path);
+  }
+
+  let preloadTimeout;
+
+  async function handleMenuItemHover(path) {
+    // Skip preload on touch devices to avoid unnecessary requests
+    if ('ontouchstart' in window) return;
+    
+    // Clear any existing timeout to debounce rapid hovering
+    clearTimeout(preloadTimeout);
+    
+    preloadTimeout = setTimeout(async () => {
+      try {
+        // Only preload if not already on that page
+        if (currentPath !== path) {
+          await preloadData(base + path);
+        }
+      } catch (error) {
+        // Silently handle preload errors to avoid disrupting UX
+        console.debug('Preload failed for:', path, error);
+      }
+    }, 100); // 100ms delay to avoid excessive preloading
   }
 
   function handleKeydown(event) {
@@ -145,6 +167,7 @@
             class="menu-item"
             class:current={currentPath === "/"}
             on:click={() => handleMenuItemClick("/")}
+            on:mouseenter={() => handleMenuItemHover("/")}
           >
             <span class="material-icons">home</span>
             <span>Tracking</span>
@@ -153,6 +176,7 @@
             class="menu-item"
             class:current={currentPath === "/stats"}
             on:click={() => handleMenuItemClick("/stats")}
+            on:mouseenter={() => handleMenuItemHover("/stats")}
           >
             <span class="material-icons">analytics</span>
             <span>Statistics</span>
@@ -161,6 +185,7 @@
             class="menu-item"
             class:current={currentPath === "/data"}
             on:click={() => handleMenuItemClick("/data")}
+            on:mouseenter={() => handleMenuItemHover("/data")}
           >
             <span class="material-icons">table_chart</span>
             <span>Database</span>
@@ -169,6 +194,7 @@
             class="menu-item"
             class:current={currentPath === "/report"}
             on:click={() => handleMenuItemClick("/report")}
+            on:mouseenter={() => handleMenuItemHover("/report")}
           >
             <span class="material-icons">assessment</span>
             <span>Report</span>
@@ -181,6 +207,7 @@
             class="menu-item"
             class:current={currentPath === "/settings"}
             on:click={() => handleMenuItemClick("/settings")}
+            on:mouseenter={() => handleMenuItemHover("/settings")}
           >
             <span class="material-icons">settings</span>
             <span>Settings</span>
@@ -190,6 +217,7 @@
             class="menu-item"
             class:current={currentPath === "/guide"}
             on:click={() => handleMenuItemClick("/guide")}
+            on:mouseenter={() => handleMenuItemHover("/guide")}
           >
             <span class="material-icons">help_outline</span>
             <span>User Guide</span>

@@ -293,6 +293,11 @@
     background: var(--surface-variant);
     border-radius: var(--spacing-sm);
     min-height: var(--touch-target-min);
+    gap: var(--spacing-sm);
+  }
+
+  .setting-item.inline .setting-icon {
+    margin-right: var(--spacing-sm);
   }
 
   .setting-info {
