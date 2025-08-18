@@ -1,9 +1,28 @@
+<!--
+ * My Calcium Tracker PWA
+ * Copyright (C) 2025 Nathan A. Eaton Jr.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <https://www.gnu.org/licenses/>.
+-->
+
 <script>
   import { showToast, calciumService } from "$lib/stores/calcium";
   import { onDestroy } from "svelte";
   import { syncState } from "$lib/stores/sync";
   import { SyncService } from "$lib/services/SyncService";
 
+  /** Whether the restore modal is visible */
   export let show = false;
 
   let isRestoring = false;
@@ -16,139 +35,78 @@
 
   // Prevent body scroll when modal is open (mobile fix)
   $: if (typeof window !== "undefined") {
-    console.log("🔄 RestoreModal show state changed:", show);
     if (show) {
-      console.log("📱 Modal opening - applying body scroll lock");
       // Store current scroll position
       const scrollY = window.scrollY;
-      console.log("   - Current scroll position:", scrollY);
       document.body.style.overflow = "hidden";
       document.body.style.position = "fixed";
       document.body.style.top = `-${scrollY}px`;
       document.body.style.width = "100%";
-      console.log("   - Body styles applied for modal");
     } else {
-      console.log("📱 Modal closing - restoring body scroll");
       // Restore scroll position
       const scrollY = document.body.style.top;
-      console.log("   - Restoring scroll position:", scrollY);
       document.body.style.overflow = "";
       document.body.style.position = "";
       document.body.style.top = "";
       document.body.style.width = "";
       if (scrollY) {
         const scrollPosition = parseInt(scrollY || "0") * -1;
-        console.log("   - Scrolling to position:", scrollPosition);
         window.scrollTo(0, scrollPosition);
       }
-      console.log("   - Body styles restored");
     }
   }
 
   // Cleanup on unmount
   onDestroy(() => {
-    console.log("💀 RestoreModal onDestroy called - cleaning up body styles");
     if (typeof window !== "undefined") {
       document.body.style.overflow = "";
       document.body.style.position = "";
       document.body.style.top = "";
       document.body.style.width = "";
-      console.log("   - Body styles cleaned up on destroy");
     }
   });
 
   function handleClose() {
-    console.log("🚪 handleClose() called");
-    console.log("   - isRestoring:", isRestoring);
-    console.log("   - show:", show);
     if (isRestoring) {
-      console.log("❌ handleClose() blocked - currently restoring");
       return;
     }
-    console.log("✅ Proceeding with modal close");
     resetModalState();
   }
 
   function resetModalState() {
-    console.log("🧹 resetModalState() called");
-    console.log("   - Current show value:", show);
     show = false;
-    console.log("   - Set show = false");
-
     restoreError = "";
-    console.log("   - Cleared restoreError");
-
     showPreview = false;
-    console.log("   - Set showPreview = false");
-
     backupData = null;
-    console.log("   - Cleared backupData");
-
     previewStats = "";
-    console.log("   - Cleared previewStats");
-
     isRestoring = false;
-    console.log("   - Set isRestoring = false");
 
     if (fileInput) {
       fileInput.value = "";
-      console.log("   - Cleared file input");
     }
-    console.log("✅ resetModalState() completed");
   }
 
   function handleBackdropClick(event) {
-    console.log("🎯 handleBackdropClick triggered");
-    console.log(
-      "   - event.target:",
-      event.target.className || event.target.tagName
-    );
-    console.log(
-      "   - event.currentTarget:",
-      event.currentTarget.className || event.currentTarget.tagName
-    );
-    console.log(
-      "   - target === currentTarget:",
-      event.target === event.currentTarget
-    );
-    console.log("   - isRestoring:", isRestoring);
-
     // Only close if clicking the backdrop itself
     if (event.target === event.currentTarget && !isRestoring) {
-      console.log("✅ Valid backdrop click - closing modal");
       handleClose();
-    } else {
-      console.log("❌ Invalid backdrop click - ignoring");
     }
   }
 
   function handleKeydown(event) {
-    console.log("⌨️  handleKeydown triggered:", event.key);
-    console.log("   - show:", show);
-    console.log("   - isRestoring:", isRestoring);
-
     if (event.key === "Escape" && show && !isRestoring) {
-      console.log("✅ Valid Escape key press - closing modal");
       event.preventDefault();
       handleClose();
-    } else {
-      console.log("❌ Escape key ignored due to conditions");
     }
   }
 
   function triggerFileSelect() {
-    console.log("📁 triggerFileSelect() called");
-    console.log("   - isRestoring:", isRestoring);
-
     if (isRestoring) {
-      console.log("❌ File select blocked - currently restoring");
       return;
     }
 
-    console.log("⏳ Adding 100ms delay for mobile stability");
     // Add small delay for mobile to ensure modal state is stable
     setTimeout(() => {
-      console.log("📂 Triggering file input click");
       fileInput?.click();
     }, 100);
   }
@@ -183,91 +141,49 @@
   }
 
   async function handleFileSelect(event) {
-    console.log("📄 handleFileSelect() called");
-    console.log("   - event.target:", event.target);
-    console.log("   - files length:", event.target?.files?.length || 0);
-
     // Small delay to handle mobile file picker return properly
-    console.log("⏳ Adding 50ms delay for mobile file picker stability");
     await new Promise((resolve) => setTimeout(resolve, 50));
 
     const file = event.target?.files?.[0];
-    console.log("📂 Selected file:", file?.name || "none");
 
     if (!file) {
-      console.log("❌ No file selected");
       return;
     }
 
-    console.log("📋 File details:");
-    console.log("   - name:", file.name);
-    console.log("   - type:", file.type);
-    console.log("   - size:", file.size);
-
     if (file.type !== "application/json") {
-      console.log("❌ Invalid file type:", file.type);
       restoreError = "Please select a valid JSON backup file";
       return;
     }
 
-    console.log("✅ File type valid - processing file");
     restoreError = "";
 
     try {
-      console.log("📖 Reading file content...");
       const fileContent = await file.text();
-      console.log("   - File content length:", fileContent.length);
-
-      console.log("🔍 Parsing JSON...");
       const parsedBackupData = JSON.parse(fileContent);
-      console.log(
-        "   - Parsed backup data keys:",
-        Object.keys(parsedBackupData)
-      );
 
       if (!parsedBackupData.metadata || !parsedBackupData.journalEntries) {
-        console.log("❌ Invalid backup structure - missing required fields");
         throw new Error("Invalid backup file format");
       }
 
-      console.log("✅ Backup file structure valid");
       backupData = parsedBackupData;
-
-      console.log("📊 Calculating preview statistics...");
       previewStats = calculateStats(backupData);
-      console.log("   - Preview stats generated");
-
-      console.log("🎯 Setting showPreview = true");
       showPreview = true;
     } catch (error) {
-      console.error("❌ Error processing backup file:", error);
+      console.error("Error processing backup file:", error);
       restoreError =
         error instanceof Error ? error.message : "Failed to read backup file";
     } finally {
       if (event.target) {
-        console.log("🧹 Clearing file input value");
         event.target.value = "";
       }
     }
   }
 
   function handleBackToFileSelect() {
-    console.log("⬅️  handleBackToFileSelect() called");
-    console.log("   - Returning to file selection from preview");
-
     showPreview = false;
-    console.log("   - Set showPreview = false");
-
     backupData = null;
-    console.log("   - Cleared backupData");
-
     previewStats = "";
-    console.log("   - Cleared previewStats");
-
     restoreError = "";
-    console.log("   - Cleared restoreError");
-
-    console.log("✅ Back to file select completed");
   }
 
   async function handleConfirmRestore() {
@@ -294,7 +210,6 @@
         showToast("Data restored successfully!", "success");
       }
 
-      // --- FIX: Reset state BEFORE closing ---
       isRestoring = false;
       handleClose();
     } catch (error) {
@@ -302,7 +217,6 @@
       const errorMessage = `Restore failed: ${error instanceof Error ? error.message : "Unknown error"}`;
       showToast(errorMessage, "error");
 
-      // --- FIX: Reset state on error too ---
       isRestoring = false;
       handleClose();
     }

@@ -1,3 +1,21 @@
+/*
+ * My Calcium Tracker PWA
+ * Copyright (C) 2025 Nathan A. Eaton Jr.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <https://www.gnu.org/licenses/>.
+ */
+
 import { get } from 'svelte/store';
 import { calciumState, showToast } from '$lib/stores/calcium';
 import type { FoodEntry, CustomFood, CalciumSettings, UserServingPreference } from '$lib/types/calcium';
@@ -5,9 +23,16 @@ import { DEFAULT_FOOD_DATABASE } from '$lib/data/foodDatabase';
 import { SyncService } from '$lib/services/SyncService';
 import { SyncTrigger } from '$lib/utils/syncTrigger';
 
+/**
+ * Main service class for managing calcium tracking data including foods, settings, and IndexedDB operations.
+ * Handles CRUD operations, data migration, favorites, and backup/restore functionality.
+ */
 export class CalciumService {
   private db: IDBDatabase | null = null;
 
+  /**
+   * Initializes the service by setting up IndexedDB, running migrations, and loading all data.
+   */
   async initialize(): Promise<void> {
     await this.initializeIndexedDB();
     await this.migrateCustomFoodsIfNeeded();
@@ -51,7 +76,6 @@ export class CalciumService {
         if (!db.objectStoreNames.contains('servingPreferences')) {
           db.createObjectStore('servingPreferences', { keyPath: 'foodId' });
         }
-        // This is where the correct name 'journalEntries' is defined
         if (oldVersion < 6 && !db.objectStoreNames.contains('journalEntries')) {
           const journalStore = db.createObjectStore('journalEntries', { keyPath: 'date' });
           journalStore.createIndex('lastModified', 'lastModified', { unique: false });
@@ -71,7 +95,6 @@ export class CalciumService {
       const legacyCustomFoods = this.getLegacyCustomFoods();
 
       if (legacyCustomFoods.length > 0) {
-        // console.log(`Migrating ${legacyCustomFoods.length} custom foods to IndexedDB...`);
 
         for (const food of legacyCustomFoods) {
           await this.saveCustomFoodToIndexedDB({
@@ -97,7 +120,6 @@ export class CalciumService {
     if (migrationStatus) return;
 
     try {
-      // Get existing name-based favorites
       const transaction = this.db.transaction(['favorites'], 'readonly');
       const store = transaction.objectStore('favorites');
       const request = store.getAll();
@@ -108,7 +130,6 @@ export class CalciumService {
       });
 
       if (legacyFavorites.length > 0) {
-        // Convert names to IDs
         const favoriteFoodIds: number[] = [];
 
         for (const favRecord of legacyFavorites) {
@@ -119,19 +140,16 @@ export class CalciumService {
           }
         }
 
-        // Clear old favorites store and create new ID-based records
         if (favoriteFoodIds.length > 0) {
           const writeTransaction = this.db.transaction(['favorites'], 'readwrite');
           const writeStore = writeTransaction.objectStore('favorites');
 
-          // Clear old name-based favorites
           await new Promise<void>((resolve, reject) => {
             const clearRequest = writeStore.clear();
             clearRequest.onsuccess = () => resolve();
             clearRequest.onerror = () => reject(clearRequest.error);
           });
 
-          // Add new ID-based favorites
           for (const foodId of favoriteFoodIds) {
             const favoriteData = {
               foodId,
@@ -203,7 +221,6 @@ export class CalciumService {
     });
   }
 
-  // FIXED: Sort the main foods array instead of using derived store
   private async applySortToFoods(): Promise<void> {
     const state = get(calciumState);
 
@@ -231,21 +248,23 @@ export class CalciumService {
     }));
   }
 
-  // NEW: Public method to change sort settings
+  /**
+   * Updates the sort settings for food entries and re-sorts the current food list.
+   * @param sortBy The field to sort by
+   * @param sortOrder Optional sort order; if not provided, toggles current order
+   */
   async updateSort(sortBy: 'time' | 'name' | 'calcium', sortOrder?: 'asc' | 'desc'): Promise<void> {
     const state = get(calciumState);
 
-    // If clicking same sort field, toggle order
     let newSortOrder = sortOrder;
     if (!newSortOrder) {
       if (state.settings.sortBy === sortBy) {
         newSortOrder = state.settings.sortOrder === 'asc' ? 'desc' : 'asc';
       } else {
-        newSortOrder = 'desc'; // Default to desc for new fields
+        newSortOrder = 'desc';
       }
     }
 
-    // Update settings
     calciumState.update(state => ({
       ...state,
       settings: {
@@ -255,20 +274,21 @@ export class CalciumService {
       }
     }));
 
-    // Apply sort to foods array
     await this.applySortToFoods();
 
-    // Save settings
     await this.saveSettings();
   }
 
+  /**
+   * Adds a new food entry to the current day's food list.
+   * @param food The food entry data (timestamp will be added automatically)
+   */
   async addFood(food: Omit<FoodEntry, 'timestamp'>): Promise<void> {
     const newFood: FoodEntry = {
       ...food,
       timestamp: new Date().toISOString()
     };
 
-    // Add to array and re-sort
     calciumState.update(state => ({
       ...state,
       foods: [...state.foods, newFood]
@@ -279,7 +299,11 @@ export class CalciumService {
     SyncTrigger.triggerDataSync();
   }
 
-  // FIXED: Now uses correct index from sorted array
+  /**
+   * Removes a food entry at the specified index from the current day's food list.
+   * @param index The index of the food entry to remove
+   * @throws Error if index is invalid
+   */
   async removeFood(index: number): Promise<void> {
     const state = get(calciumState);
 
@@ -298,7 +322,12 @@ export class CalciumService {
     SyncTrigger.triggerDataSync();
   }
 
-  // FIXED: Now uses correct index from sorted array
+  /**
+   * Updates a food entry at the specified index while preserving the original timestamp.
+   * @param index The index of the food entry to update
+   * @param updatedFood The updated food data
+   * @throws Error if index is invalid
+   */
   async updateFood(index: number, updatedFood: Omit<FoodEntry, 'timestamp'>): Promise<void> {
     const state = get(calciumState);
 
@@ -310,17 +339,20 @@ export class CalciumService {
       const foods = [...state.foods];
       foods[index] = {
         ...updatedFood,
-        timestamp: foods[index].timestamp // Keep original timestamp
+        timestamp: foods[index].timestamp
       };
       return { ...state, foods };
     });
 
-    // Re-sort after update in case sort field changed
     await this.applySortToFoods();
     await this.saveDailyFoods();
     SyncTrigger.triggerDataSync();
   }
 
+  /**
+   * Changes the current date, saving current foods and loading foods for the new date.
+   * @param newDate The new date string in YYYY-MM-DD format
+   */
   async changeDate(newDate: string): Promise<void> {
     await this.saveDailyFoods();
 
@@ -331,14 +363,22 @@ export class CalciumService {
     }));
 
     await this.loadDailyFoods();
-    await this.applySortToFoods(); // Apply sort to newly loaded foods
+    await this.applySortToFoods();
   }
 
+  /**
+   * Gets the current settings.
+   * @returns Promise resolving to the current settings
+   */
   async getSettings(): Promise<CalciumSettings> {
     const state = get(calciumState);
     return state.settings;
   }
 
+  /**
+   * Updates the settings with new values.
+   * @param newSettings Partial settings object with values to update
+   */
   async updateSettings(newSettings: Partial<CalciumSettings>): Promise<void> {
     calciumState.update(state => ({
       ...state,
@@ -349,10 +389,13 @@ export class CalciumService {
     SyncTrigger.triggerDataSync();
   }
 
+  /**
+   * Saves a new custom food to IndexedDB.
+   * @param foodData The custom food data
+   * @returns Promise resolving to the saved custom food or null if failed
+   */
   async saveCustomFood(foodData: { name: string; calcium: number; measure: string }): Promise<CustomFood | null> {
-    // console.log('Saving custom food:', foodData);
     const result = await this.saveCustomFoodToIndexedDB(foodData);
-    // console.log('Custom food saved:', result);
     SyncTrigger.triggerDataSync();
     return result;
   }
@@ -365,10 +408,7 @@ export class CalciumService {
       const store = transaction.objectStore('customFoods');
       let request: IDBRequest;
 
-      // This is the core logic that handles both creating and updating.
       if (foodData.id) {
-        // UPDATE/SYNC PATH: An ID exists. Use put() to overwrite.
-        // This is used by restoreFromBackup and applySyncData.
         const dbObject = {
           name: foodData.name,
           calcium: foodData.calcium,
@@ -380,8 +420,6 @@ export class CalciumService {
         request = store.put(dbObject);
 
       } else {
-        // CREATE NEW PATH: No ID exists. Use add() to generate a new one.
-        // This is used when a user creates a new food in the modal.
         const newFoodObject = {
           name: foodData.name,
           calcium: foodData.calcium,
@@ -393,7 +431,6 @@ export class CalciumService {
       }
 
       request.onsuccess = () => {
-        // The result of .add() is the new key. The result of .put() is the same key.
         const newId = request.result as number;
         const savedFood: CustomFood = {
             name: foodData.name,
@@ -404,7 +441,6 @@ export class CalciumService {
             id: newId
         };
 
-        // Update the Svelte store non-destructively
         calciumState.update(state => {
           const newCustomFoods = [...state.customFoods.filter(f => f.id !== savedFood.id), savedFood];
           return { ...state, customFoods: newCustomFoods };
@@ -419,6 +455,10 @@ export class CalciumService {
     });
   }
 
+  /**
+   * Deletes a custom food from IndexedDB.
+   * @param id The ID of the custom food to delete
+   */
   async deleteCustomFood(id: number): Promise<void> {
     if (!this.db) return;
 
@@ -524,12 +564,15 @@ export class CalciumService {
     });
   }
 
+  /**
+   * Generates a complete backup of all user data including settings, foods, and sync metadata.
+   * @returns Promise resolving to the backup data object
+   */
   async generateBackup(): Promise<any> {
     const state = get(calciumState);
     const syncService = SyncService.getInstance();
     const syncSettings = syncService.getSettings();
 
-    // Correctly fetch all data to ensure the backup is current
     const journalEntries = await this.getAllJournalData();
     const customFoods = await this.getAllCustomFoods();
 
@@ -548,16 +591,19 @@ export class CalciumService {
     };
   }
 
+  /**
+   * Restores all data from a backup, optionally preserving sync settings.
+   * @param backupData The backup data to restore
+   * @param options Restore options including whether to preserve sync settings
+   */
   async restoreFromBackup(backupData: any, options: { preserveSync: boolean } = { preserveSync: false }): Promise<void> {
     try {
       const syncService = SyncService.getInstance();
 
       if (options.preserveSync) {
-        console.log("Restoring backup while preserving sync settings...");
         await this.clearApplicationData();
         await syncService.regenerateSyncId();
       } else {
-        console.log("Performing a full destructive restore, including sync settings...");
         await this.clearAllData();
       }
       
@@ -610,11 +656,13 @@ private async clearAllData(): Promise<void> {
       }
     }
     keysToRemove.forEach(key => localStorage.removeItem(key));
-    console.log("All data cleared from localStorage, including sync settings.");
     
     await this.clearApplicationData();
   }
 
+  /**
+   * Clears all application data from IndexedDB while preserving sync settings.
+   */
   async clearApplicationData(): Promise<void> {
     if (!this.db) {
       console.warn('Database connection not available for clearing IndexedDB data');
@@ -633,12 +681,10 @@ private async clearAllData(): Promise<void> {
         console.error(`Error clearing IndexedDB store ${storeName}:`, error);
       }
     }
-    console.log("Application data cleared from IndexedDB. Sync settings preserved.");
   }
 
   private async getAllCustomFoods(): Promise<CustomFood[]> {
     if (!this.db) {
-      // console.log('No database connection for custom foods');
       return [];
     }
 
@@ -652,7 +698,6 @@ private async clearAllData(): Promise<void> {
           ...food,
           isCustom: true
         }));
-        // console.log('Found custom foods for backup:', customFoods.length, customFoods);
         resolve(customFoods);
       };
 
@@ -663,6 +708,12 @@ private async clearAllData(): Promise<void> {
     });
   }
 
+  /**
+   * Saves a user's preferred serving size for a specific food.
+   * @param foodId The ID of the food
+   * @param quantity The preferred quantity
+   * @param unit The preferred unit
+   */
   async saveServingPreference(foodId: number, quantity: number, unit: string): Promise<void> {
     if (!this.db) return;
 
@@ -679,7 +730,6 @@ private async clearAllData(): Promise<void> {
       const request = store.put(preference);
 
       request.onsuccess = () => {
-        // Update the local state
         calciumState.update(state => {
           const newPreferences = new Map(state.servingPreferences);
           newPreferences.set(foodId, preference);
@@ -696,11 +746,20 @@ private async clearAllData(): Promise<void> {
     });
   }
 
+  /**
+   * Gets the user's saved serving preference for a specific food.
+   * @param foodId The ID of the food
+   * @returns The serving preference or null if none exists
+   */
   getServingPreference(foodId: number): UserServingPreference | null {
     const state = get(calciumState);
     return state.servingPreferences.get(foodId) || null;
   }
 
+  /**
+   * Deletes a user's serving preference for a specific food.
+   * @param foodId The ID of the food
+   */
   async deleteServingPreference(foodId: number): Promise<void> {
     if (!this.db) return;
 
@@ -710,7 +769,6 @@ private async clearAllData(): Promise<void> {
       const request = store.delete(foodId);
 
       request.onsuccess = () => {
-        // Update the local state
         calciumState.update(state => {
           const newPreferences = new Map(state.servingPreferences);
           newPreferences.delete(foodId);
@@ -729,6 +787,11 @@ private async clearAllData(): Promise<void> {
 
   /**
    * Get all journal entries from localStorage for reporting (DEPRECATED - use getAllJournalData)
+   */
+  /**
+   * Gets all journal entries from localStorage (deprecated - use getAllJournalData).
+   * @returns Promise resolving to a record of date strings to food entry arrays
+   * @deprecated Use getAllJournalData instead
    */
   async getAllEntries(): Promise<Record<string, FoodEntry[]>> {
     const journalData: Record<string, FoodEntry[]> = {};
@@ -754,6 +817,10 @@ private async clearAllData(): Promise<void> {
   /**
    * Get all journal data from IndexedDB in the format expected by stats page
    */
+  /**
+   * Gets all journal data from IndexedDB in the format expected by stats page.
+   * @returns Promise resolving to a record of date strings to food entry arrays
+   */
   async getAllJournalData(): Promise<Record<string, FoodEntry[]>> {
     const journalData: Record<string, FoodEntry[]> = {};
 
@@ -774,6 +841,11 @@ private async clearAllData(): Promise<void> {
   /**
    * Load foods for a specific date from IndexedDB
    */
+  /**
+   * Loads food entries for a specific date from IndexedDB.
+   * @param dateString The date string in YYYY-MM-DD format
+   * @returns Promise resolving to array of food entries
+   */
   async loadFoodsForDate(dateString: string): Promise<FoodEntry[]> {
     if (!this.db) {
       console.error('Database not initialized');
@@ -791,6 +863,11 @@ private async clearAllData(): Promise<void> {
 
   /**
    * Save foods for a specific date to IndexedDB
+   */
+  /**
+   * Saves food entries for a specific date to IndexedDB.
+   * @param dateString The date string in YYYY-MM-DD format
+   * @param foods Array of food entries to save
    */
   async saveFoodsForDate(dateString: string, foods: FoodEntry[]): Promise<void> {
     if (!this.db) {
@@ -815,7 +892,6 @@ private async clearAllData(): Promise<void> {
         const request = store.put(journalEntry);
 
         request.onsuccess = () => {
-          // console.log(`Saved ${foods.length} foods for ${dateString} (${totalCalcium}mg total)`);
           resolve();
         };
 
@@ -832,6 +908,10 @@ private async clearAllData(): Promise<void> {
 
   /**
    * Get all journal entries from IndexedDB
+   */
+  /**
+   * Gets all journal entries from IndexedDB with metadata.
+   * @returns Promise resolving to array of journal entry objects
    */
   async getAllJournalEntries(): Promise<any[]> {
     if (!this.db) {
@@ -859,6 +939,10 @@ private async clearAllData(): Promise<void> {
 
   /**
    * Get date range for journal entries
+   */
+  /**
+   * Gets the date range of all journal entries.
+   * @returns Promise resolving to object with first and last dates or null if no entries
    */
   async getJournalDateRange(): Promise<{ firstDate: string | null, lastDate: string | null }> {
     try {
@@ -894,10 +978,14 @@ private async clearAllData(): Promise<void> {
     });
   }
 
+  /**
+   * Toggles the favorite status of a food by its ID.
+   * @param foodId The ID of the food to toggle
+   * @throws Error if foodId is invalid
+   */
   async toggleFavorite(foodId: number): Promise<void> {
     if (!this.db) return;
 
-    // Validate foodId
     if (!foodId || typeof foodId !== 'number' || foodId <= 0) {
       console.error('Invalid foodId for toggleFavorite:', foodId);
       showToast('Cannot favorite this food', 'error');
@@ -907,7 +995,6 @@ private async clearAllData(): Promise<void> {
     const state = get(calciumState);
     const favorites = new Set(state.favorites);
 
-    // Find food name for toast message
     const food = DEFAULT_FOOD_DATABASE.find(f => f.id === foodId);
     const foodName = food ? food.name : `Food ID ${foodId}`;
 
@@ -916,7 +1003,6 @@ private async clearAllData(): Promise<void> {
       const store = transaction.objectStore('favorites');
 
       if (favorites.has(foodId)) {
-        // Remove from favorites
         const request = store.delete(foodId);
 
         request.onsuccess = () => {
@@ -932,7 +1018,6 @@ private async clearAllData(): Promise<void> {
           reject(request.error);
         };
       } else {
-        // Add to favorites
         const favoriteData = {
           foodId,
           dateAdded: new Date().toISOString()
@@ -974,7 +1059,6 @@ private async clearAllData(): Promise<void> {
 
       request.onerror = () => {
         console.error('Error loading favorites:', request.error);
-        // Initialize with empty set on error
         calciumState.update(state => ({ ...state, favorites: new Set() }));
         resolve();
       };
@@ -1003,7 +1087,6 @@ private async clearAllData(): Promise<void> {
 
       request.onerror = () => {
         console.error('Error loading serving preferences:', request.error);
-        // Initialize with empty map on error
         calciumState.update(state => ({ ...state, servingPreferences: new Map() }));
         resolve();
       };
@@ -1017,15 +1100,12 @@ private async clearAllData(): Promise<void> {
       const transaction = this.db!.transaction(['favorites'], 'readwrite');
       const store = transaction.objectStore('favorites');
 
-      // Convert legacy name-based favorites to ID-based
       const foodIds: number[] = [];
 
       for (const favorite of favoritesArray) {
         if (typeof favorite === 'number') {
-          // New format: already an ID
           foodIds.push(favorite);
         } else if (typeof favorite === 'string') {
-          // Legacy format: convert name to ID
           const databaseFood = DEFAULT_FOOD_DATABASE.find(food => food.name === favorite);
           if (databaseFood) {
             foodIds.push(databaseFood.id);
@@ -1046,7 +1126,6 @@ private async clearAllData(): Promise<void> {
       const checkComplete = () => {
         completedCount++;
         if (completedCount === expectedCount) {
-          // Update the state after all favorites are restored
           const favorites = new Set(foodIds);
           calciumState.update(state => ({ ...state, favorites }));
 
@@ -1064,7 +1143,7 @@ private async clearAllData(): Promise<void> {
         request.onsuccess = checkComplete;
         request.onerror = () => {
           console.error(`Error restoring favorite: ${foodId}`, request.error);
-          checkComplete(); // Continue even if one fails
+          checkComplete();
         };
       }
     });
@@ -1088,7 +1167,6 @@ private async clearAllData(): Promise<void> {
       const checkComplete = () => {
         completedCount++;
         if (completedCount === expectedCount) {
-          // Update the state after all preferences are restored
           const servingPreferences = new Map();
           for (const pref of preferencesArray) {
             servingPreferences.set(pref.foodId, pref);
@@ -1103,7 +1181,7 @@ private async clearAllData(): Promise<void> {
         request.onsuccess = checkComplete;
         request.onerror = () => {
           console.error(`Error restoring serving preference for food ${preference.foodId}`, request.error);
-          checkComplete(); // Continue even if one fails
+          checkComplete();
         };
       }
     });
@@ -1113,12 +1191,14 @@ private async clearAllData(): Promise<void> {
    * Applies data from a sync operation without clearing existing data.
    * This is the non-destructive counterpart to restoreFromBackup.
    */
+  /**
+   * Applies data from a sync operation without clearing existing data.
+   * This is the non-destructive counterpart to restoreFromBackup.
+   * @param syncData The sync data to apply
+   */
   async applySyncData(syncData: any): Promise<void> {
-    console.log("Applying non-destructive sync data...");
     try {
-      // NOTE: We DO NOT clear existing data here.
 
-      // Restore preferences/settings
       if (syncData.preferences) {
         calciumState.update(state => ({
           ...state,
@@ -1127,11 +1207,9 @@ private async clearAllData(): Promise<void> {
         await this.saveSettings();
       }
 
-      // Restore custom foods to IndexedDB by putting (upserting) them
       if (syncData.customFoods && Array.isArray(syncData.customFoods)) {
         for (const customFood of syncData.customFoods) {
           try {
-            // This will add new foods or update existing ones
             await this.saveCustomFoodToIndexedDB(customFood);
           } catch (error) {
             console.warn('Failed to apply synced custom food:', customFood.name, error);
@@ -1139,7 +1217,6 @@ private async clearAllData(): Promise<void> {
         }
       }
 
-      // Restore favorites
       if (syncData.favorites && Array.isArray(syncData.favorites)) {
         try {
           await this.restoreFavorites(syncData.favorites);
@@ -1148,7 +1225,6 @@ private async clearAllData(): Promise<void> {
         }
       }
 
-      // Restore serving preferences
       if (syncData.servingPreferences && Array.isArray(syncData.servingPreferences)) {
         try {
           await this.restoreServingPreferences(syncData.servingPreferences);
@@ -1157,12 +1233,10 @@ private async clearAllData(): Promise<void> {
         }
       }
 
-      // Restore journal entries to IndexedDB by putting (upserting) them
       if (syncData.journalEntries) {
         for (const [dateString, foods] of Object.entries(syncData.journalEntries)) {
           if (Array.isArray(foods)) {
             try {
-              // This will add new entries or update existing ones
               await this.saveFoodsForDate(dateString, foods as FoodEntry[]);
             } catch (error) {
               console.warn('Failed to apply synced journal entry for date:', dateString, error);
@@ -1171,29 +1245,24 @@ private async clearAllData(): Promise<void> {
         }
       }
 
-      // Small delay before reloading to ensure all DB transactions complete
       await new Promise(resolve => setTimeout(resolve, 200));
 
-      console.log("Reloading all stores with new synced data...");
-      // Reload all data into the stores to reflect the changes
       await this.loadSettings();
       await this.loadCustomFoods();
       await this.loadFavorites();
       await this.loadServingPreferences();
-      await this.loadDailyFoods(); // This reloads the food for the current date
+      await this.loadDailyFoods();
       await this.applySortToFoods();
-      console.log("Sync data application complete.");
 
     } catch (error) {
       console.error('Error applying sync data:', error);
-      throw error; // Propagate the error to be handled by the sync service
+      throw error;
     }
   }
 
   async regenerateSyncId(): Promise<void> {
     if (!this.settings) return;
     const newId = CryptoUtils.generateUUID();
-    console.log(`Regenerating Sync ID. New ID: ${newId}`);
     this.settings.syncGenerationId = newId;
     await this.saveSettings();
   }

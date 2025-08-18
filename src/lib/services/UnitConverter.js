@@ -1,6 +1,24 @@
+/*
+ * My Calcium Tracker PWA
+ * Copyright (C) 2025 Nathan A. Eaton Jr.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <https://www.gnu.org/licenses/>.
+ */
+
 /**
- * UnitConverter - A comprehensive unit conversion system for calcium tracking app
- * Handles volume, weight, and count-based measurements with USDA measure parsing
+ * A comprehensive unit conversion system for calcium tracking app.
+ * Handles volume, weight, and count-based measurements with USDA measure parsing.
  */
 export class UnitConverter {
     constructor() {
@@ -13,7 +31,6 @@ export class UnitConverter {
         ];
 
         // Base conversion tables - all conversions to base units
-        // FIXED: Using original working ratios from attached UnitConverter.js
         this.conversions = {
             // Volume conversions (to cups as base)
             volume: {
@@ -135,6 +152,11 @@ export class UnitConverter {
     /**
      * Check if a measure is non-convertible (descriptive)
      */
+    /**
+     * Checks if a measure string contains non-convertible descriptors.
+     * @param {string} measureString The measure string to check
+     * @returns {boolean} True if the measure is non-convertible
+     */
     isNonConvertible(measureString) {
         return this.nonConvertiblePatterns.some(pattern => pattern.test(measureString));
     }
@@ -143,6 +165,11 @@ export class UnitConverter {
      * Parse USDA measure string to extract quantity and unit
      * @param {string} measureString - The USDA measure string to parse
      * @returns {Object} Parsed measure information
+     */
+    /**
+     * Parses a USDA measure string into components for unit conversion.
+     * @param {string} measureString The USDA measure string to parse
+     * @returns {Object} Parsed measure object with quantity, unit, and type information
      */
     parseUSDAMeasure(measureString) {
         // Clean the string
@@ -213,6 +240,11 @@ export class UnitConverter {
      * @param {string} unitString - The unit string to parse
      * @returns {Object} Parsed unit information
      */
+    /**
+     * Parses a simple measure string for basic unit detection.
+     * @param {string} unitString The unit string to parse
+     * @returns {Object} Parsed measure object
+     */
     parseSimpleMeasure(unitString) {
         // Remove common descriptors that don't affect measurement
         const descriptorsToRemove = [
@@ -257,6 +289,11 @@ export class UnitConverter {
      * @param {string} unitString - The unit string to analyze
      * @returns {string} The detected unit
      */
+    /**
+     * Detects the type of unit (volume, weight, count, etc.).
+     * @param {string} unitString The unit string to analyze
+     * @returns {string} The detected unit type
+     */
     detectUnitType(unitString) {
         // Split into words and check each one
         const words = unitString.toLowerCase().split(/\s+/);
@@ -282,6 +319,11 @@ export class UnitConverter {
      * @param {string} unit - The unit to categorize
      * @returns {string} The unit category or 'unknown'
      */
+    /**
+     * Gets the unit type for a specific unit.
+     * @param {string} unit The unit to get the type for
+     * @returns {string} The unit type or 'unknown'
+     */
     getUnitType(unit) {
         for (const [category, units] of Object.entries(this.conversions)) {
             if (units.hasOwnProperty(unit)) {
@@ -298,6 +340,14 @@ export class UnitConverter {
      * @param {string} fromUnit - The source unit
      * @param {string} toUnit - The target unit
      * @returns {number} The converted quantity
+     */
+    /**
+     * Converts a quantity from one unit to another.
+     * @param {number} fromQuantity The original quantity
+     * @param {string} fromUnit The original unit
+     * @param {string} toUnit The target unit
+     * @returns {number} The converted quantity
+     * @throws {Error} If units are incompatible or unknown
      */
     convertUnits(fromQuantity, fromUnit, toUnit) {
         const fromType = this.getUnitType(fromUnit);
@@ -327,6 +377,15 @@ export class UnitConverter {
      * @param {string} newUnit - New unit
      * @returns {number} Calculated calcium amount
      */
+    /**
+     * Calculates calcium content when converting between units.
+     * @param {number} originalCalcium The original calcium amount
+     * @param {number} originalQuantity The original quantity
+     * @param {string} originalUnit The original unit
+     * @param {number} newQuantity The new quantity
+     * @param {string} newUnit The new unit
+     * @returns {number} The calculated calcium amount for the new units
+     */
     calculateCalciumForConvertedUnits(originalCalcium, originalQuantity, originalUnit, newQuantity, newUnit) {
         try {
             // Convert the new quantity back to the original unit system
@@ -347,6 +406,12 @@ export class UnitConverter {
      * @param {string} unit1 - First unit
      * @param {string} unit2 - Second unit 
      * @returns {boolean} Whether the units are equivalent
+     */
+    /**
+     * Checks if two units are equivalent (same base unit).
+     * @param {string} unit1 First unit to compare
+     * @param {string} unit2 Second unit to compare
+     * @returns {boolean} True if units are equivalent
      */
     areUnitsEquivalent(unit1, unit2) {
         if (unit1 === unit2) return true;
@@ -413,6 +478,12 @@ export class UnitConverter {
      * @param {string} originalUnit - The original unit
      * @param {number} currentQuantity - The CURRENT quantity (not original)
      * @returns {Array} Array of alternative units with conversion info
+     */
+    /**
+     * Detects the best alternative units for a given quantity and unit.
+     * @param {string} originalUnit The original unit
+     * @param {number} currentQuantity The current quantity
+     * @returns {Array} Array of alternative unit suggestions
      */
     detectBestAlternativeUnits(originalUnit, currentQuantity) {
         const unitType = this.getUnitType(originalUnit);

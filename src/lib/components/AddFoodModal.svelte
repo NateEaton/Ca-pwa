@@ -1,3 +1,21 @@
+<!--
+ * My Calcium Tracker PWA
+ * Copyright (C) 2025 Nathan A. Eaton Jr.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <https://www.gnu.org/licenses/>.
+-->
+
 <script>
   import { createEventDispatcher } from "svelte";
   import { calciumState, calciumService } from "$lib/stores/calcium";
@@ -5,8 +23,11 @@
   import UnitConverter from "$lib/services/UnitConverter.js";
   import ConfirmDialog from "./ConfirmDialog.svelte";
 
+  /** Whether the modal is visible */
   export let show = false;
+  /** The food being edited (null for add mode) */
   export let editingFood = null;
+  /** The index of the food being edited (-1 for add mode) */
   export let editingIndex = -1;
 
   const dispatch = createEventDispatcher();
@@ -186,7 +207,6 @@
       servingUnit = parsedFoodMeasure.cleanedUnit || parsedFoodMeasure.detectedUnit;
     }
     
-    // FIXED: Generate unit suggestions with current serving details
     updateUnitSuggestions();
 
     searchResults = [];
@@ -232,11 +252,9 @@
       }
     }
 
-    // FIXED: Update unit suggestions dynamically when serving quantity changes
     updateUnitSuggestions();
   }
 
-  // NEW FUNCTION: Update unit suggestions based on current serving quantity
   function updateUnitSuggestions() {
     if (parsedFoodMeasure && parsedFoodMeasure.unitType !== 'unknown' && servingQuantity) {
       unitSuggestions = unitConverter.detectBestAlternativeUnits(
@@ -254,7 +272,7 @@
     servingQuantity = suggestion.quantity;
     servingUnit = suggestion.unit;
     hasResetToOriginal = false; // User changed from reset values
-    updateCalcium(); // This will also update suggestions via updateUnitSuggestions()
+    updateCalcium();
     showUnitSuggestions = false;
   }
 
@@ -317,7 +335,7 @@
     hasResetToOriginal = true;
     
     // Recalculate calcium with original serving
-    updateCalcium(); // This will also update suggestions via updateUnitSuggestions()
+    updateCalcium();
   }
 
   async function handleSubmit() {

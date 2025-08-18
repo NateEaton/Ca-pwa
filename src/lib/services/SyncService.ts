@@ -1,4 +1,20 @@
-// src/lib/services/SyncService.ts
+/*
+ * My Calcium Tracker PWA
+ * Copyright (C) 2025 Nathan A. Eaton Jr.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <https://www.gnu.org/licenses/>.
+ */
 
 import { get } from 'svelte/store';
 import { syncState, setSyncStatus, setSyncError } from '$lib/stores/sync';
@@ -6,6 +22,10 @@ import { showToast, calciumService } from '$lib/stores/calcium';
 import { CryptoUtils } from '$lib/utils/cryptoUtils';
 import type { SyncSettings, CloudSyncResponse } from '$lib/types/sync';
 
+/**
+ * Service for managing cross-device synchronization using Cloudflare Workers and KV storage.
+ * Handles encryption/decryption, offline/online states, and automatic sync operations.
+ */
 export class SyncService {
   private static instance: SyncService | null = null;
   private settings: SyncSettings | null = null;
@@ -19,6 +39,10 @@ export class SyncService {
     setSyncStatus('offline');
   }
 
+  /**
+   * Gets the singleton instance of SyncService.
+   * @returns The SyncService instance
+   */
   static getInstance(): SyncService {
     if (!SyncService.instance) {
       SyncService.instance = new SyncService();
@@ -26,10 +50,12 @@ export class SyncService {
     return SyncService.instance;
   }
 
+  /**
+   * Initializes the sync service, restores settings from localStorage,
+   * and sets up online/offline event listeners.
+   */
   async initialize(): Promise<void> {
-    console.log('Initializing sync service...');
 
-    // --- SETUP ONLINE/OFFLINE LISTENERS ---
     window.addEventListener('online', this.handleOnlineStatus.bind(this));
     window.addEventListener('offline', this.handleOfflineStatus.bind(this));
 
@@ -41,7 +67,6 @@ export class SyncService {
     try {
       const storedSettings = localStorage.getItem('calcium_sync_settings');
       if (storedSettings) {
-        console.log('Found stored sync settings. Restoring connection...');
         const settings = JSON.parse(storedSettings);
 
         this.encryptionKeyString = settings.encryptionKeyString;
@@ -65,9 +90,7 @@ export class SyncService {
         }));
 
         this.startAutoSync();
-        console.log('Sync service restored and connection is active.');
       } else {
-        console.log('No stored sync settings found. Sync service is offline.');
         if (navigator.onLine) {
           setSyncStatus('offline');
         }
@@ -80,7 +103,11 @@ export class SyncService {
     }
   }
 
-  // THIS IS THE FINAL, CORRECTED VERSION
+  /**
+   * Creates a new sync document with encryption keys and pushes current data to cloud.
+   * @returns Promise resolving to the new document ID
+   * @throws Error if sync creation fails
+   */
   async createNewSyncDoc(): Promise<string> {
     try {
       setSyncStatus('syncing');
@@ -98,10 +125,8 @@ export class SyncService {
         syncGenerationId
       };
 
-      // FIX: Save the settings FIRST. This populates `this.encryptionKeyString`.
       await this.saveSettings();
 
-      // NOW, generate the backup. It will correctly get the syncGenerationId.
       const currentData = await calciumService.generateBackup();
 
       await this.pushToCloud(currentData);
@@ -121,26 +146,23 @@ export class SyncService {
     }
   }
 
+  /**
+   * Pulls data from cloud storage and applies it locally if remote changes exist.
+   * @returns Promise resolving to true if data was pulled and applied, false otherwise
+   * @throws Error if sync is not configured or pull fails
+   */
   async pullFromCloud(): Promise<boolean> {
     if (!this.settings) {
-      // This path is already logged by hasRemoteChanges, but we can add one here for clarity
-      console.warn('[SYNC_PULL_DIAG] pullFromCloud called, but sync is not configured. Aborting.');
       throw new Error('Sync not configured');
     }
 
-    // This call will now produce detailed [SYNC_HEAD_DIAG] logs
     if (!(await this.hasRemoteChanges())) {
-      console.log("[SYNC_PULL_DIAG] Final decision: Skipping full pull based on HEAD check.");
       // Ensure status is correct if we skip
       if (get(syncState).status !== 'synced') setSyncStatus('synced');
       return false;
     }
 
-    console.log("[SYNC_PULL_DIAG] Final decision: Proceeding with full pull based on HEAD check.");
-
     try {
-      // The setSyncStatus is now handled by the calling function (performBidirectionalSync)
-      // setSyncStatus('syncing'); // This can be removed to avoid redundant state changes
 
       const response = await fetch(`${this.settings.workerUrl}/sync/${this.settings.docId}`, {
         method: 'GET',
@@ -150,17 +172,14 @@ export class SyncService {
       });
 
       if (response.status === 404) {
-        // This is not an error. It just means this is a new sync doc with no remote data yet.
-        console.log('No remote sync data found (404), which is normal for a new sync.');
-        // Don't set status to synced here, let the calling function do it.
-        return false; // No remote changes were pulled.
+        return false;
       }
 
       if (!response.ok) {
         throw new Error(`Server error: ${response.status}`);
       }
 
-      const result = await response.json(); // Define `result` from the network response.
+      const result = await response.json();
 
       if (!result.success || !result.encrypted) {
         throw new Error(result.error || 'No encrypted data received');
@@ -171,8 +190,7 @@ export class SyncService {
       const remoteLastModified = new Date(result.lastModified).getTime();
 
       if (currentLastSync && remoteLastModified <= new Date(currentLastSync).getTime()) {
-        console.log('Local data is already up to date.');
-        return false; // No changes needed
+        return false;
       }
 
       // Decrypt and apply data
@@ -181,37 +199,35 @@ export class SyncService {
 
       const remoteGenerationId = remoteData.metadata?.syncGenerationId;
 
-      // --- THE CORE LOGIC FIX ---
       if (remoteGenerationId && remoteGenerationId !== this.settings.syncGenerationId) {
-        console.warn("New sync generation detected! Wiping local data before applying sync.");
         showToast("Sync source has been reset. Applying new data...", "info");
 
-        // 1. Wipe local application data
-        await calciumService.clearApplicationData(); // The safe, data-only wipe
+        await calciumService.clearApplicationData();
 
-        // 2. Update local generation ID to match the new master
         this.settings.syncGenerationId = remoteGenerationId;
         await this.saveSettings();
       }
 
       await calciumService.applySyncData(remoteData);
 
-      // IMPORTANT: Update the lastSync time in the store
       syncState.update(state => ({
         ...state,
         lastSync: result.lastModified,
       }));
 
-      console.log('Successfully pulled and applied remote data');
-      return true; // Had remote changes
+      return true;
 
     } catch (error) {
       console.error('Pull from cloud failed:', error);
-      // Let the calling function handle the final error state
       throw error;
     }
   }
 
+  /**
+   * Pushes data to cloud storage with encryption.
+   * @param dataToPush Optional data to push; if not provided, generates current backup
+   * @throws Error if sync is not configured or push fails
+   */
   async pushToCloud(dataToPush?: any): Promise<void> {
     if (!this.settings) {
       throw new Error('Sync not configured');
@@ -251,7 +267,6 @@ export class SyncService {
         status: 'synced'
       }));
 
-      console.log('Successfully pushed data to cloud');
 
     } catch (error) {
       console.error('Push to cloud failed:', error);
@@ -262,7 +277,6 @@ export class SyncService {
 
   private async saveSettings(): Promise<void> {
     if (!this.settings) {
-      console.log('No settings to save');
       return;
     }
 
@@ -277,17 +291,16 @@ export class SyncService {
       syncGenerationId: this.settings.syncGenerationId
     };
 
-    console.log('Saving sync settings:', { docId: storageData.docId.substring(0, 8) + '...' });
     localStorage.setItem('calcium_sync_settings', JSON.stringify(storageData));
-
-    // Immediately verify it was saved
-    const verification = localStorage.getItem('calcium_sync_settings');
-    console.log('Verification - settings in localStorage:', verification ? 'FOUND' : 'NOT FOUND');
-    console.log('Current domain/path:', window.location.origin + window.location.pathname);
   }
 
   // In src/lib/services/SyncService.ts
 
+  /**
+   * Joins an existing sync document using a sync URL.
+   * @param syncUrl The sync URL containing document ID and encryption key
+   * @throws Error if URL is invalid or join fails
+   */
   async joinExistingSyncDoc(syncUrl: string): Promise<void> {
     try {
       setSyncStatus('syncing');
@@ -307,8 +320,7 @@ export class SyncService {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' },
       });
-      if (response.status === 404) { // It's a new, empty doc, which is fine
-        // We will create the first generation ID ourselves
+      if (response.status === 404) {
       } else if (!response.ok) {
         throw new Error(`Server error: ${response.status}`);
       }
@@ -327,23 +339,20 @@ export class SyncService {
         if (!remoteGenerationId) throw new Error('Sync data is missing a generation ID.');
       }
 
-      // Step 2: NOW that we have all info, create and save the complete settings object
       this.settings = {
         docId,
         encryptionKey,
         workerUrl: this.workerUrl,
         autoSync: false,
         syncInterval: 60,
-        syncGenerationId: remoteGenerationId || CryptoUtils.generateUUID() // Adopt the ID or create a new one for an empty doc
+        syncGenerationId: remoteGenerationId || CryptoUtils.generateUUID()
       };
       await this.saveSettings();
 
-      // Step 3: Now, apply the data if we fetched it.
       if (remoteData) {
         await calciumService.applySyncData(remoteData);
       }
 
-      // Step 4: Finalize the state for UI reactivity
       syncState.update(state => ({
         ...state,
         docId,
@@ -370,33 +379,28 @@ export class SyncService {
    * Performs a full bidirectional sync: pulls remote changes first,
    * then pushes local changes. This is the primary method for manual sync.
    */
+  /**
+   * Performs a complete bidirectional sync: pulls remote changes, then pushes local changes.
+   * This is the primary method for manual sync operations.
+   * @throws Error if sync is not configured or sync fails
+   */
   async performBidirectionalSync(): Promise<void> {
     if (!navigator.onLine) {
-      console.warn("Sync prevented: application is offline. Sync is now pending.");
       this.isSyncPending = true;
       setSyncStatus('offline');
       return;
     }
 
     if (!this.settings || !get(syncState).isEnabled) {
-      console.warn("Bidirectional sync called but sync is not configured.");
       return;
     }
 
     setSyncStatus('syncing');
 
     try {
-      // Step 1: Perform an intelligent pull.
-      // The pullFromCloud() method already contains the efficient 'hasRemoteChanges()' check.
-      console.log("Sync Step 1: Checking for remote changes and pulling if necessary...");
       await this.pullFromCloud();
 
-      // Step 2: Always perform a forceful push.
-      // This guarantees that any local state is sent to the cloud, fulfilling the user's intent for a manual sync.
-      console.log("Sync Step 2: Forcefully pushing local state to the cloud...");
       await this.pushToCloud();
-      
-      console.log("Bidirectional sync completed successfully.");
 
     } catch (error) {
       console.error('Bidirectional sync failed:', error);
@@ -407,6 +411,10 @@ export class SyncService {
     }
   }
 
+  /**
+   * Gets the current sync settings including document ID and encryption key.
+   * @returns Sync settings object or null if not configured
+   */
   getSettings(): { docId: string; encryptionKeyString: string; syncGenerationId: string; } | null {
     if (!this.settings || !this.encryptionKeyString) {
       return null;
@@ -415,10 +423,14 @@ export class SyncService {
     return {
       docId: this.settings.docId,
       encryptionKeyString: this.encryptionKeyString,
-      syncGenerationId: this.settings.syncGenerationId // This will now be correctly typed and returned
+      syncGenerationId: this.settings.syncGenerationId
     };
   }
 
+  /**
+   * Tests the connection to the sync worker.
+   * @returns Promise resolving to true if connection is successful
+   */
   async testConnection(): Promise<boolean> {
     try {
       setSyncStatus('syncing');
@@ -437,6 +449,9 @@ export class SyncService {
     }
   }
 
+  /**
+   * Starts automatic sync operations including periodic pulls and window focus events.
+   */
   startAutoSync(): void {
     if (!this.settings || this.isAutoSyncEnabled) return;
     this.isAutoSyncEnabled = true;
@@ -449,9 +464,11 @@ export class SyncService {
 
     window.addEventListener('focus', this.handleWindowFocus.bind(this));
     document.addEventListener('visibilitychange', this.handleVisibilityChange.bind(this));
-    console.log('Auto-sync started');
   }
 
+  /**
+   * Stops all automatic sync operations and removes event listeners.
+   */
   stopAutoSync(): void {
     if (!this.isAutoSyncEnabled) return;
     this.isAutoSyncEnabled = false;
@@ -463,7 +480,6 @@ export class SyncService {
 
     window.removeEventListener('focus', this.handleWindowFocus.bind(this));
     document.removeEventListener('visibilitychange', this.handleVisibilityChange.bind(this));
-    console.log('Auto-sync stopped');
   }
 
   private async handleWindowFocus(): Promise<void> {
@@ -478,8 +494,10 @@ export class SyncService {
     }
   }
 
+  /**
+   * Disconnects from sync by clearing settings and stopping auto-sync.
+   */
   async disconnectSync(): Promise<void> {
-    console.log('Disconnecting from sync...');
 
     // Stop auto-sync
     this.stopAutoSync();
@@ -501,31 +519,32 @@ export class SyncService {
       lastSync: null
     }));
 
-    console.log('Sync disconnected successfully');
   }
 
+  /**
+   * Triggers a push-only sync operation.
+   */
   async triggerSync(): Promise<void> {
     if (!this.settings || !get(syncState).isEnabled) return;
     await this.pushToCloud().catch(err => console.warn('Triggered sync failed:', err));
   }
 
+  /**
+   * Regenerates the sync generation ID, effectively creating a new sync session.
+   */
   async regenerateSyncId(): Promise<void> {
     if (!this.settings) return;
     const newId = CryptoUtils.generateUUID();
-    console.log(`Regenerating Sync ID. Old ID: ${this.settings.syncGenerationId}, New ID: ${newId}`);
     this.settings.syncGenerationId = newId;
     await this.saveSettings();
   }
 
   private async handleOnlineStatus(): Promise<void> {
-    console.log("Application is back online.");
-    // If a sync was attempted while offline, run it now.
     if (this.isSyncPending) {
       showToast("Connection restored. Syncing changes...", "info");
-      this.isSyncPending = false; // Reset the flag
+      this.isSyncPending = false;
       await this.performBidirectionalSync();
     } else {
-      // If we are connected to a sync doc, just update the status.
       if (get(syncState).isEnabled) {
         setSyncStatus('synced');
       }
@@ -533,7 +552,6 @@ export class SyncService {
   }
 
   private handleOfflineStatus(): void {
-    console.warn("Application is offline. Sync operations will be paused.");
     setSyncStatus('offline');
   }
 
@@ -541,51 +559,35 @@ export class SyncService {
 
   private async hasRemoteChanges(): Promise<boolean> {
     if (!this.settings) {
-      console.warn('[SYNC_HEAD_DIAG] hasRemoteChanges check aborted: settings not available.');
       return false;
     }
 
     try {
-      console.log('[SYNC_HEAD_DIAG] Performing HEAD request to check for remote changes...');
       const response = await fetch(`${this.settings.workerUrl}/sync/${this.settings.docId}`, {
         method: 'HEAD'
       });
 
-      console.log(`[SYNC_HEAD_DIAG] HEAD request completed with status: ${response.status}`);
-
       if (response.status === 404) {
-        console.log("[SYNC_HEAD_DIAG] Result: No remote document. No changes to pull.");
         return false;
       }
       if (!response.ok) {
-        console.warn("[SYNC_HEAD_DIAG] Result: HEAD request failed. Assuming remote has changes as a failsafe.");
         return true;
       }
 
       const remoteLastModifiedHeader = response.headers.get('X-Last-Modified');
       const localTimestamp = get(syncState).lastSync;
       
-      console.log(`[SYNC_HEAD_DIAG] Raw X-Last-Modified header from server: "${remoteLastModifiedHeader}"`);
-      console.log(`[SYNC_HEAD_DIAG] Current local lastSync timestamp: "${localTimestamp}"`);
-
       if (!remoteLastModifiedHeader) {
-        console.warn("[SYNC_HEAD_DIAG] Result: X-Last-Modified header was missing. Assuming remote has changes as a failsafe.");
         return true;
       }
 
       const remoteTime = new Date(remoteLastModifiedHeader).getTime();
       const localTime = localTimestamp ? new Date(localTimestamp).getTime() : 0;
       
-      const hasChanges = remoteTime > localTime;
-
-      console.log(`[SYNC_HEAD_DIAG] Comparing timestamps: isRemoteNewer = (${remoteTime} > ${localTime}) = ${hasChanges}`);
-      console.log(`[SYNC_HEAD_DIAG] Result: ${hasChanges ? 'Remote has changes.' : 'Local is up-to-date.'}`);
-      
-      return hasChanges;
+      return remoteTime > localTime;
 
     } catch (error) {
-      console.error("[SYNC_HEAD_DIAG] HEAD request itself failed:", error);
-      console.warn("[SYNC_HEAD_DIAG] Result: Assuming remote has changes as a failsafe.");
+      console.error("HEAD request failed:", error);
       return true;
     }
   }

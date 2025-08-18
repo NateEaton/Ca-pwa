@@ -1,3 +1,21 @@
+<!--
+ * My Calcium Tracker PWA
+ * Copyright (C) 2025 Nathan A. Eaton Jr.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <https://www.gnu.org/licenses/>.
+-->
+
 <script>
   import { onMount, onDestroy } from "svelte";
   import { calciumState, showToast, calciumService } from "$lib/stores/calcium";
@@ -102,13 +120,16 @@
   }
 
   async function handleDeleteFood() {
-    if (!foodToDelete) return;
+    if (!foodToDelete || !foodToDelete.id) return;
     
+    // Store the name before deletion in case the object becomes stale
+    const foodName = foodToDelete.name;
+    const foodId = foodToDelete.id;
     
     if (calciumService) {
       try {
-        await calciumService.deleteCustomFood(foodToDelete.id);
-        showToast(`Deleted ${foodToDelete.name}`, 'success');
+        await calciumService.deleteCustomFood(foodId);
+        showToast(`Deleted ${foodName}`, 'success');
       } catch (error) {
         console.error('Error deleting custom food:', error);
         showToast('Failed to delete food', 'error');
@@ -302,7 +323,7 @@
       </div>
       
       <div class="modal-body">
-        <p>Are you sure you want to delete <strong>{foodToDelete.name}</strong>?</p>
+        <p>Are you sure you want to delete <strong>{foodToDelete?.name || 'this food'}</strong>?</p>
         <p class="warning-text">This action cannot be undone. Past journal entries will keep this food's data.</p>
       </div>
       

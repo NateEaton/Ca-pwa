@@ -1,4 +1,21 @@
-<!-- src/lib/components/SyncSettingsModal.svelte -->
+<!--
+ * My Calcium Tracker PWA
+ * Copyright (C) 2025 Nathan A. Eaton Jr.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <https://www.gnu.org/licenses/>.
+-->
+
 <script>
   import { createEventDispatcher } from "svelte";
   import { syncState } from "$lib/stores/sync";
@@ -7,6 +24,7 @@
   import ConfirmDialog from "$lib/components/ConfirmDialog.svelte";
   import QRCode from "qrcode";
 
+  /** Whether the sync settings modal is visible */
   export let show = false;
 
   const dispatch = createEventDispatcher();
@@ -19,13 +37,10 @@
   let showJoinInput = false;
   let showDisconnectConfirm = false;
 
-  // This reactive block is correct. When the modal shows, it calls the function to generate the URL.
   $: if (show && $syncState.isEnabled && $syncState.docId) {
     setTimeout(() => generateSyncUrl(), 100);
   }
 
-  // This reactive block is also correct. It is now the ONLY place that generates the QR code.
-  // It runs automatically any time the `syncUrl` variable receives a value.
   $: if (syncUrl) {
     QRCode.toDataURL(syncUrl, { width: 256, margin: 2 })
       .then((url) => {
@@ -36,14 +51,12 @@
       });
   }
 
-  // This function is now simplified. Its only job is to create the URL string.
   async function generateSyncUrl() {
     try {
       const settings = syncService.getSettings();
       if (settings) {
         const baseUrl = window.location.origin + window.location.pathname;
         const safeKey = encodeURIComponent(settings.encryptionKeyString);
-        // This line triggers the reactive block above.
         syncUrl = `${baseUrl}#sync=${settings.docId}&key=${safeKey}`;
       }
     } catch (error) {
