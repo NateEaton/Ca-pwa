@@ -574,6 +574,8 @@ export class CalciumService {
     const syncService = SyncService.getInstance();
     const syncSettings = syncService.getSettings();
 
+    const buildInfo = getBuildInfo();
+
     const journalEntries = await this.getAllJournalData();
     const customFoods = await this.getAllCustomFoods();
 

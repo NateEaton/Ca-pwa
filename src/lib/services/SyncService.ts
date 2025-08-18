@@ -29,7 +29,7 @@ import type { SyncSettings, CloudSyncResponse } from '$lib/types/sync';
 export class SyncService {
   private static instance: SyncService | null = null;
   private settings: SyncSettings | null = null;
-  private workerUrl = 'https://calcium-sync-worker.calcium-sync.workers.dev';
+  private workerUrl = import.meta.env.VITE_WORKER_URL;
   private encryptionKeyString: string | null = null;
   private autoSyncInterval: number | null = null;
   private isAutoSyncEnabled = false;
@@ -555,7 +555,7 @@ export class SyncService {
     setSyncStatus('offline');
   }
 
-// In src/lib/services/SyncService.ts
+  // In src/lib/services/SyncService.ts
 
   private async hasRemoteChanges(): Promise<boolean> {
     if (!this.settings) {
@@ -576,14 +576,14 @@ export class SyncService {
 
       const remoteLastModifiedHeader = response.headers.get('X-Last-Modified');
       const localTimestamp = get(syncState).lastSync;
-      
+
       if (!remoteLastModifiedHeader) {
         return true;
       }
 
       const remoteTime = new Date(remoteLastModifiedHeader).getTime();
       const localTime = localTimestamp ? new Date(localTimestamp).getTime() : 0;
-      
+
       return remoteTime > localTime;
 
     } catch (error) {

@@ -3,11 +3,19 @@
 # My Calcium PWA - Multi-Environment Build & Deploy Script
 set -e # Exit on any error
 
+# --- Load environment variables if .env exists ---
+if [ -f .env ]; then
+    echo "📄 Loading environment variables from .env file..."
+    export $(grep -v '^#' .env | xargs)
+fi
+
 # --- Configuration ---
 PROJECT_ROOT=$(pwd)
 BUILD_OUTPUT_DIR="${PROJECT_ROOT}/build"
-PROD_DEPLOY_DIR="/volume1/web/Ca-pwa-deploy"
-DEV_DEPLOY_DIR="/volume1/web/Ca-pwa-dev"
+
+# Use environment variables with fallback to empty strings
+PROD_DEPLOY_DIR="${PROD_DEPLOY_DIR:-}"
+DEV_DEPLOY_DIR="${DEV_DEPLOY_DIR:-}"
 
 # --- Environment Handling ---
 ENVIRONMENT=$1
@@ -53,11 +61,7 @@ rm -rf "$BUILD_OUTPUT_DIR"
 
 # --- CORRECTED: Execute the build command and then check its status ---
 echo "🚀 Running the SvelteKit build..."
-if [ "$ENVIRONMENT" = "dev" ]; then
-    npm run build:dev
-else
-    npm run build
-fi
+npm run build
 
 if [ $? -eq 0 ]; then
     echo "✅ Build completed successfully"
@@ -79,7 +83,7 @@ if [ $? -eq 0 ]; then
             exit 1
         fi
 
-        if [ -d "$DEPLOY_DIR" ]; then
+        if [ -n "$DEPLOY_DIR" ] && [ -d "$DEPLOY_DIR" ]; then
             echo "📁 Deploying to $DEPLOY_DIR..."
             
             echo "🧹 Removing existing files from $DEPLOY_DIR..."
@@ -92,8 +96,8 @@ if [ $? -eq 0 ]; then
             echo "📊 Build size:"
             du -sh "$DEPLOY_DIR"
         else
-            echo "⚠️ Deployment directory $DEPLOY_DIR does not exist."
-            echo "Please create it manually or adjust the DEPLOY_DIR path."
+            echo "⚠️ Deployment directory not configured or does not exist."
+            echo "Please set PROD_DEPLOY_DIR or DEV_DEPLOY_DIR in your .env file."
             echo "📦 Built files are available in $BUILD_OUTPUT_DIR/"
         fi
     fi
