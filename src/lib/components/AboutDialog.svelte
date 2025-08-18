@@ -22,6 +22,7 @@
     getFormattedBuildTime,
     getShortBuildId,
   } from "$lib/utils/buildInfo";
+  import { FEATURES } from "$lib/utils/featureFlags";
 
   export let show = false;
 
@@ -96,12 +97,21 @@
           <div class="features-section">
             <h4>Features</h4>
             <ul class="features-list">
-              <li>Track calcium from list of Database-verified foods</li>
+              <li>
+                Track calcium from curated list of foods from official sources
+              </li>
               <li>Add custom foods with your own calcium values</li>
               <li>Set personalized daily calcium goals</li>
               <li>View historical data and food database</li>
+              {#if FEATURES.SYNC_ENABLED}
+                <li>Cross-device sync with end-to-end encryption</li>
+              {/if}
+              {#if FEATURES.SYNC_ENABLED}
+                <li>Your data stays private with encryption</li>
+              {:else}
+                <li>Your data stays private on your device</li>
+              {/if}
               <li>Can run in browser or installed locally</li>
-              <li>Your data stays private on your device</li>
             </ul>
           </div>
 

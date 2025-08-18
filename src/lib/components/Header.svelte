@@ -73,7 +73,7 @@
     if (!FEATURES.SYNC_ENABLED || !syncService) {
       return;
     }
-    
+
     if (!$syncState.isEnabled || $syncState.status === "syncing") {
       // Do nothing if sync isn't set up or is already in progress
       return;

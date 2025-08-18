@@ -28,16 +28,17 @@
   async function generateReportData() {
     const allData = await getAllJournalData();
     const dates = Object.keys(allData).sort();
-    
+
     return {
       metadata: {
         generatedAt: new Date().toISOString(),
         reportDate: new Date().toLocaleDateString("en-US", {
           year: "numeric",
-          month: "long", 
+          month: "long",
           day: "numeric",
         }),
-        dailyGoal: $calciumState.dailyGoal || $calciumState.settings?.dailyGoal || 1000,
+        dailyGoal:
+          $calciumState.dailyGoal || $calciumState.settings?.dailyGoal || 1000,
         appVersion: "My Calcium v1.0",
       },
       summary: await generateSummary(allData, dates),
@@ -73,10 +74,9 @@
       totals.reduce((sum, total) => sum + total, 0) / totals.length
     );
 
-    const dailyGoal = $calciumState.dailyGoal || $calciumState.settings?.dailyGoal || 1000;
-    const daysAtGoal = dailyTotals.filter(
-      (d) => d.total >= dailyGoal
-    ).length;
+    const dailyGoal =
+      $calciumState.dailyGoal || $calciumState.settings?.dailyGoal || 1000;
+    const daysAtGoal = dailyTotals.filter((d) => d.total >= dailyGoal).length;
     const goalPercentage = Math.round((daysAtGoal / dates.length) * 100);
 
     return {
@@ -90,24 +90,34 @@
   async function generateRecentActivity(allData) {
     const today = new Date();
     // Use local date instead of UTC to avoid timezone issues
-    const todayLocal = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const todayLocal = new Date(
+      today.getFullYear(),
+      today.getMonth(),
+      today.getDate()
+    );
     const weekData = [];
 
     for (let i = 0; i < 7; i++) {
       const date = new Date(todayLocal);
       date.setDate(date.getDate() - (6 - i));
-      const dateStr = date.getFullYear() + "-" + 
-                     String(date.getMonth() + 1).padStart(2, "0") + "-" + 
-                     String(date.getDate()).padStart(2, "0");
+      const dateStr =
+        date.getFullYear() +
+        "-" +
+        String(date.getMonth() + 1).padStart(2, "0") +
+        "-" +
+        String(date.getDate()).padStart(2, "0");
 
       const foods = allData[dateStr] || [];
       const totalCalcium = foods.reduce((sum, food) => sum + food.calcium, 0);
-      const dailyGoal = $calciumState.dailyGoal || $calciumState.settings?.dailyGoal || 1000;
+      const dailyGoal =
+        $calciumState.dailyGoal || $calciumState.settings?.dailyGoal || 1000;
       const goalMet = totalCalcium >= dailyGoal;
 
       weekData.push({
         date: formatDateForReport(dateStr),
-        dayName: new Date(dateStr + "T00:00:00").toLocaleDateString("en-US", { weekday: "short" }),
+        dayName: new Date(dateStr + "T00:00:00").toLocaleDateString("en-US", {
+          weekday: "short",
+        }),
         totalCalcium,
         goalMet,
       });
@@ -119,8 +129,20 @@
   async function generateYearlyChartData(allData) {
     const today = new Date();
     const yearlyData = [];
-    const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", 
-                       "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const monthNames = [
+      "Jan",
+      "Feb",
+      "Mar",
+      "Apr",
+      "May",
+      "Jun",
+      "Jul",
+      "Aug",
+      "Sep",
+      "Oct",
+      "Nov",
+      "Dec",
+    ];
 
     for (let i = 11; i >= 0; i--) {
       const monthDate = new Date(today.getFullYear(), today.getMonth() - i, 1);
@@ -143,17 +165,21 @@
           return sum + foods.reduce((daySum, food) => daySum + food.calcium, 0);
         }, 0);
         averageDaily = Math.round(monthTotal / monthDays.length);
-        const dailyGoal = $calciumState.dailyGoal || $calciumState.settings?.dailyGoal || 1000;
+        const dailyGoal =
+          $calciumState.dailyGoal || $calciumState.settings?.dailyGoal || 1000;
         goalMet = averageDaily >= dailyGoal;
       }
 
       yearlyData.push({
         month: monthNames[month],
-        fullMonth: monthDate.toLocaleDateString("en-US", { year: "numeric", month: "short" }),
+        fullMonth: monthDate.toLocaleDateString("en-US", {
+          year: "numeric",
+          month: "short",
+        }),
         value: averageDaily,
         goalMet,
         isFuture: isFutureMonth,
-        daysTracked: monthDays.length
+        daysTracked: monthDays.length,
       });
     }
 
@@ -164,43 +190,56 @@
     const today = new Date();
     const thirtyDaysAgo = new Date(today);
     thirtyDaysAgo.setDate(today.getDate() - 29); // 30 days total including today
-    
+
     const monthlyData = [];
 
     // Generate data for last 30 days
     for (let i = 0; i < 30; i++) {
       const date = new Date(thirtyDaysAgo);
       date.setDate(thirtyDaysAgo.getDate() + i);
-      
-      const dateStr = date.getFullYear() + "-" + 
-                     String(date.getMonth() + 1).padStart(2, "0") + "-" + 
-                     String(date.getDate()).padStart(2, "0");
-      
-      const isToday = dateStr === today.toISOString().split('T')[0];
+
+      const dateStr =
+        date.getFullYear() +
+        "-" +
+        String(date.getMonth() + 1).padStart(2, "0") +
+        "-" +
+        String(date.getDate()).padStart(2, "0");
+
+      const isToday = dateStr === today.toISOString().split("T")[0];
       const isFuture = date > today;
 
       const foods = allData[dateStr] || [];
       const totalCalcium = foods.reduce((sum, food) => sum + food.calcium, 0);
-      const dailyGoal = $calciumState.dailyGoal || $calciumState.settings?.dailyGoal || 1000;
+      const dailyGoal =
+        $calciumState.dailyGoal || $calciumState.settings?.dailyGoal || 1000;
       const goalMet = totalCalcium >= dailyGoal;
 
       monthlyData.push({
         date: dateStr,
         day: date.getDate().toString(),
-        fullDate: date.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+        fullDate: date.toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+        }),
         value: totalCalcium,
         goalMet,
         isToday,
-        isFuture
+        isFuture,
       });
     }
 
-    const startDate = thirtyDaysAgo.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-    const endDate = today.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+    const startDate = thirtyDaysAgo.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+    });
+    const endDate = today.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+    });
 
     return {
       data: monthlyData,
-      monthName: `Last 30 Days (${startDate} - ${endDate})`
+      monthName: `Last 30 Days (${startDate} - ${endDate})`,
     };
   }
 
@@ -214,60 +253,72 @@
   }
 
   function getYearlyChartData(yearlyChart, dailyGoal) {
-    const dataValues = yearlyChart.filter(m => !m.isFuture && m.daysTracked > 0).map(m => m.value);
-    const maxValue = dataValues.length > 0 
-      ? Math.max(...dataValues, dailyGoal) * 1.2
-      : dailyGoal * 1.2;
-    
-    const goalLineHeight = ((dailyGoal / maxValue) * 100);
-    
+    const dataValues = yearlyChart
+      .filter((m) => !m.isFuture && m.daysTracked > 0)
+      .map((m) => m.value);
+    const maxValue =
+      dataValues.length > 0
+        ? Math.max(...dataValues, dailyGoal) * 1.2
+        : dailyGoal * 1.2;
+
+    const goalLineHeight = (dailyGoal / maxValue) * 100;
+
     return {
       maxValue,
       goalLineHeight,
-      bars: yearlyChart.map(month => {
+      bars: yearlyChart.map((month) => {
         if (month.isFuture || month.daysTracked === 0) {
-          return { heightPercent: 2, barClass: 'chart-bar future-bar', title: 'No data' };
+          return {
+            heightPercent: 2,
+            barClass: "chart-bar future-bar",
+            title: "No data",
+          };
         }
         const heightPercent = Math.max((month.value / maxValue) * 100, 2);
-        const barClass = month.goalMet ? 'chart-bar' : 'chart-bar below-goal';
-        return { 
-          heightPercent, 
-          barClass, 
-          title: `${month.fullMonth}: ${month.value}mg avg (${month.daysTracked} days)` 
+        const barClass = month.goalMet ? "chart-bar" : "chart-bar below-goal";
+        return {
+          heightPercent,
+          barClass,
+          title: `${month.fullMonth}: ${month.value}mg avg (${month.daysTracked} days)`,
         };
-      })
+      }),
     };
   }
 
   function getMonthlyChartData(monthlyChart, dailyGoal) {
-    const dataValues = monthlyChart.data.filter(d => !d.isFuture && d.value > 0).map(d => d.value);
-    const maxValue = dataValues.length > 0
-      ? Math.max(...dataValues, dailyGoal) * 1.2
-      : dailyGoal * 1.2;
-    
-    const goalLineHeight = ((dailyGoal / maxValue) * 100);
-    
+    const dataValues = monthlyChart.data
+      .filter((d) => !d.isFuture && d.value > 0)
+      .map((d) => d.value);
+    const maxValue =
+      dataValues.length > 0
+        ? Math.max(...dataValues, dailyGoal) * 1.2
+        : dailyGoal * 1.2;
+
+    const goalLineHeight = (dailyGoal / maxValue) * 100;
+
     return {
       maxValue,
       goalLineHeight,
-      bars: monthlyChart.data.map(day => {
+      bars: monthlyChart.data.map((day) => {
         if (day.isFuture || day.value === 0) {
-          const barClass = day.isFuture ? 'chart-bar future-bar' : 'chart-bar no-data-bar';
-          return { 
-            heightPercent: 2, 
-            barClass, 
-            title: day.isFuture ? 'Future date' : 'No data' 
+          const barClass = day.isFuture
+            ? "chart-bar future-bar"
+            : "chart-bar no-data-bar";
+          return {
+            heightPercent: 2,
+            barClass,
+            title: day.isFuture ? "Future date" : "No data",
           };
         }
         const heightPercent = Math.max((day.value / maxValue) * 100, 2);
-        const barClass = day.goalMet ? 'chart-bar' : 'chart-bar below-goal';
-        const todayClass = day.isToday ? ' today-bar' : '';
-        return { 
-          heightPercent, 
-          barClass: barClass + todayClass, 
-          title: `${day.fullDate}: ${day.value}mg` 
+        const barClass = day.goalMet ? "chart-bar" : "chart-bar below-goal";
+        const todayClass = day.isToday ? " today-bar" : "";
+        return {
+          heightPercent,
+          barClass: barClass + todayClass,
+          title: `${day.fullDate}: ${day.value}mg`,
         };
-      })
+      }),
     };
   }
 
@@ -275,15 +326,13 @@
     window.print();
   }
 
-
   onMount(async () => {
     try {
-      
       // console.log('Calcium state on report page:', $calciumState);
       reportData = await generateReportData();
       // console.log('Report data generated:', reportData);
     } catch (error) {
-      console.error('Error generating report:', error);
+      console.error("Error generating report:", error);
     } finally {
       isLoading = false;
     }
@@ -291,8 +340,15 @@
     // No keyboard event listeners needed
   });
 
-  $: yearlyChartData = reportData ? getYearlyChartData(reportData.yearlyChart, reportData.metadata.dailyGoal) : null;
-  $: monthlyChartData = reportData ? getMonthlyChartData(reportData.monthlyChart, reportData.metadata.dailyGoal) : null;
+  $: yearlyChartData = reportData
+    ? getYearlyChartData(reportData.yearlyChart, reportData.metadata.dailyGoal)
+    : null;
+  $: monthlyChartData = reportData
+    ? getMonthlyChartData(
+        reportData.monthlyChart,
+        reportData.metadata.dailyGoal
+      )
+    : null;
 </script>
 
 <svelte:head>
@@ -300,7 +356,6 @@
 </svelte:head>
 
 <div class="report-page">
-
   <div class="report-content">
     {#if isLoading}
       <div class="loading">
@@ -314,7 +369,9 @@
       <div class="report-header">
         <h2>Calcium Intake Health Report</h2>
         <p class="report-date">Generated: {reportData.metadata.reportDate}</p>
-        <p class="daily-goal">Daily Goal: {reportData.metadata.dailyGoal}mg calcium</p>
+        <p class="daily-goal">
+          Daily Goal: {reportData.metadata.dailyGoal}mg calcium
+        </p>
       </div>
 
       {#if reportData.summary.totalDaysTracked === 0}
@@ -325,32 +382,50 @@
           <h3>Summary Statistics</h3>
           <div class="summary-grid">
             <div class="summary-card">
-              <div class="summary-value">{reportData.summary.totalDaysTracked}</div>
+              <div class="summary-value">
+                {reportData.summary.totalDaysTracked}
+              </div>
               <div class="summary-label">Days Tracked</div>
             </div>
             <div class="summary-card">
-              <div class="summary-value">{reportData.summary.averageDaily}mg</div>
+              <div class="summary-value">
+                {reportData.summary.averageDaily}mg
+              </div>
               <div class="summary-label">Average Daily</div>
             </div>
             <div class="summary-card">
-              <div class="summary-value">{reportData.summary.goalPercentage}%</div>
+              <div class="summary-value">
+                {reportData.summary.goalPercentage}%
+              </div>
               <div class="summary-label">Days at Goal</div>
             </div>
           </div>
-          <p class="tracking-period"><strong>Tracking Period:</strong> {reportData.summary.trackingPeriod}</p>
+          <p class="tracking-period">
+            <strong>Tracking Period:</strong>
+            {reportData.summary.trackingPeriod}
+          </p>
         </div>
 
         <!-- Yearly Chart -->
-        {#if reportData.yearlyChart.filter(m => m.daysTracked > 0).length > 0}
+        {#if reportData.yearlyChart.filter((m) => m.daysTracked > 0).length > 0}
           <div class="report-section">
             <h3>12-Month Progress Trend</h3>
             <div class="chart-container">
               <div class="chart-canvas yearly-chart">
-                <div class="goal-line" style="top: {100 - yearlyChartData.goalLineHeight}%;">
-                  <span class="goal-label">Goal: {reportData.metadata.dailyGoal}mg</span>
+                <div
+                  class="goal-line"
+                  style="top: {100 - yearlyChartData.goalLineHeight}%;"
+                >
+                  <span class="goal-label"
+                    >Goal: {reportData.metadata.dailyGoal}mg</span
+                  >
                 </div>
                 {#each yearlyChartData.bars as bar}
-                  <div class="{bar.barClass}" style="height: {bar.heightPercent}%" title="{bar.title}"></div>
+                  <div
+                    class={bar.barClass}
+                    style="height: {bar.heightPercent}%"
+                    title={bar.title}
+                  ></div>
                 {/each}
               </div>
               <div class="chart-labels">
@@ -363,16 +438,25 @@
         {/if}
 
         <!-- Monthly Chart -->
-        {#if reportData.monthlyChart.data.filter(d => d.value > 0).length > 0}
+        {#if reportData.monthlyChart.data.filter((d) => d.value > 0).length > 0}
           <div class="report-section">
             <h3>{reportData.monthlyChart.monthName} - Daily View</h3>
             <div class="chart-container">
               <div class="chart-canvas monthly-chart">
-                <div class="goal-line" style="top: {100 - monthlyChartData.goalLineHeight}%;">
-                  <span class="goal-label">Goal: {reportData.metadata.dailyGoal}mg</span>
+                <div
+                  class="goal-line"
+                  style="top: {100 - monthlyChartData.goalLineHeight}%;"
+                >
+                  <span class="goal-label"
+                    >Goal: {reportData.metadata.dailyGoal}mg</span
+                  >
                 </div>
                 {#each monthlyChartData.bars as bar}
-                  <div class="{bar.barClass}" style="height: {bar.heightPercent}%" title="{bar.title}"></div>
+                  <div
+                    class={bar.barClass}
+                    style="height: {bar.heightPercent}%"
+                    title={bar.title}
+                  ></div>
                 {/each}
               </div>
               <div class="chart-labels monthly-labels">
@@ -402,8 +486,8 @@
                   <td>{day.date}</td>
                   <td>{day.dayName}</td>
                   <td>{day.totalCalcium}mg</td>
-                  <td class="{day.goalMet ? 'goal-met' : 'goal-not-met'}">
-                    {day.goalMet ? '✓ Goal Met' : '✗ Below Goal'}
+                  <td class={day.goalMet ? "goal-met" : "goal-not-met"}>
+                    {day.goalMet ? "✓ Goal Met" : "✗ Below Goal"}
                   </td>
                 </tr>
               {/each}
@@ -415,8 +499,12 @@
       <!-- Report Footer -->
       <div class="report-footer">
         <p><strong>Report generated by My Calcium</strong></p>
-        <p>This report is intended for sharing with healthcare professionals.</p>
-        <p>Data is self-reported and based on USDA food composition database.</p>
+        <p>
+          This report is intended for sharing with healthcare professionals.
+        </p>
+        <p>
+          Data is self-reported and based on USDA food composition database.
+        </p>
       </div>
     {:else}
       <p class="error">Error generating report. Please try again.</p>
@@ -485,7 +573,6 @@
     font-family: "Material Icons";
   }
 
-
   .report-content {
     flex: 1;
     max-width: 480px;
@@ -520,8 +607,12 @@
   }
 
   @keyframes spin {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
   }
 
   .report-header {
@@ -578,7 +669,7 @@
     border-radius: 8px;
     padding: 1rem;
     text-align: center;
-    box-shadow: var(--shadow, 0 2px 4px rgba(0,0,0,0.1));
+    box-shadow: var(--shadow, 0 2px 4px rgba(0, 0, 0, 0.1));
   }
 
   .summary-value {
@@ -677,7 +768,7 @@
   }
 
   .chart-bar.today-bar::after {
-    content: '';
+    content: "";
     position: absolute;
     top: -6px;
     left: 50%;
@@ -943,6 +1034,64 @@
 
     .scroll-spacer {
       display: none;
+    }
+  }
+
+  /* Force light theme for print regardless of current theme */
+  @media print {
+    /* Reset to light theme variables for print */
+    :root,
+    [data-theme="dark"] {
+      --background: #ffffff !important;
+      --surface: #ffffff !important;
+      --surface-variant: #f0f0f0 !important;
+      --text-primary: #212121 !important;
+      --text-secondary: #757575 !important;
+      --text-hint: #9e9e9e !important;
+      --divider: #e0e0e0 !important;
+      --primary-color: #1976d2 !important;
+      --error-color: #f44336 !important;
+      --secondary-color: #ffc107 !important;
+    }
+
+    /* Ensure all text renders in dark for print */
+    * {
+      color: #000 !important;
+      background-color: transparent !important;
+    }
+
+    /* Re-apply specific colors for important elements */
+    .report-header h2,
+    .report-section h3 {
+      color: #1976d2 !important;
+    }
+
+    .summary-value {
+      color: #1976d2 !important;
+    }
+
+    .report-date,
+    .daily-goal,
+    .summary-label,
+    .tracking-period,
+    .report-footer p {
+      color: #666 !important;
+    }
+
+    .goal-met {
+      color: #1976d2 !important;
+    }
+
+    .goal-not-met {
+      color: #f44336 !important;
+    }
+
+    /* Ensure white background for all containers */
+    .report-page,
+    .report-content,
+    .summary-card,
+    .chart-container {
+      background-color: #ffffff !important;
     }
   }
 </style>
