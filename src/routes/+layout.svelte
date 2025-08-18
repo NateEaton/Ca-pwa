@@ -18,6 +18,7 @@
 
 <script>
   import { onMount } from "svelte";
+  import { logBuildInfo } from "$lib/utils/buildInfo";
   import { page } from "$app/stores";
   import { calciumState, calciumService } from "$lib/stores/calcium";
   import Header from "$lib/components/Header.svelte";
@@ -46,6 +47,7 @@
         onOfflineReady() {},
       });
     }
+    logBuildInfo();
   });
 
   $: pageTitle = (() => {

@@ -22,6 +22,7 @@ import type { FoodEntry, CustomFood, CalciumSettings, UserServingPreference } fr
 import { DEFAULT_FOOD_DATABASE } from '$lib/data/foodDatabase';
 import { SyncService } from '$lib/services/SyncService';
 import { SyncTrigger } from '$lib/utils/syncTrigger';
+import { getBuildInfo } from '$lib/utils/buildInfo';
 
 /**
  * Main service class for managing calcium tracking data including foods, settings, and IndexedDB operations.
@@ -580,7 +581,9 @@ export class CalciumService {
       metadata: {
         version: '2.1.0',
         createdAt: new Date().toISOString(),
-        appVersion: 'Svelte Calcium Tracker',
+        appVersion: buildInfo.appVersion,
+        buildId: buildInfo.buildId,
+        buildTime: buildInfo.buildTime,
         syncGenerationId: syncSettings ? syncSettings.syncGenerationId : null
       },
       preferences: state.settings,

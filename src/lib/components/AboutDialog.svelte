@@ -17,7 +17,18 @@
 -->
 
 <script>
+  import {
+    getBuildInfo,
+    getFormattedBuildTime,
+    getShortBuildId,
+  } from "$lib/utils/buildInfo";
+
   export let show = false;
+
+  $: buildInfo = getBuildInfo();
+  $: buildDisplay = buildInfo.gitBranch
+    ? `${buildInfo.buildId.split("-")[0]} (${buildInfo.gitBranch})`
+    : buildInfo.buildId;
 
   function handleClose() {
     show = false;
@@ -45,28 +56,43 @@
 <svelte:window on:keydown={handleKeydown} />
 
 {#if show}
-  <div class="modal-backdrop full-screen" on:click={handleBackdropClick} on:keydown={handleBackdropKeydown} role="button" tabindex="0">
-    <div class="modal-container full-screen" role="dialog" aria-labelledby="about-title" aria-modal="true">
+  <div
+    class="modal-backdrop full-screen"
+    on:click={handleBackdropClick}
+    on:keydown={handleBackdropKeydown}
+    role="button"
+    tabindex="0"
+  >
+    <div
+      class="modal-container full-screen"
+      role="dialog"
+      aria-labelledby="about-title"
+      aria-modal="true"
+    >
       <!-- Modal Header -->
       <div class="modal-header">
-        <button class="back-btn" on:click={handleClose} aria-label="Close about dialog">
+        <button
+          class="back-btn"
+          on:click={handleClose}
+          aria-label="Close about dialog"
+        >
           <span class="material-icons">arrow_back</span>
         </button>
         <h2 id="about-title" class="modal-title">About</h2>
         <div class="header-spacer"></div>
       </div>
-      
+
       <!-- Modal Content (restore original content) -->
       <div class="modal-content">
         <div class="about-content">
           <div class="app-info">
             <h3 class="app-name">My Calcium</h3>
             <p class="app-description">
-              A simple, privacy-focused app to help you track your daily calcium intake 
-              in support of achieving your health goals.
+              A simple, privacy-focused app to help you track your daily calcium
+              intake in support of achieving your health goals.
             </p>
           </div>
-          
+
           <div class="features-section">
             <h4>Features</h4>
             <ul class="features-list">
@@ -78,9 +104,21 @@
               <li>Your data stays private on your device</li>
             </ul>
           </div>
-          
+
           <div class="app-meta">
-            <p class="version-info">Version 1.0 • Built with ❤️ for better nutrition tracking</p>
+            <p class="version-info">
+              Version {buildInfo.appVersion} • Built with ❤️ for better nutrition
+              tracking
+            </p>
+          </div>
+
+          <div class="build-info-compact">
+            <span class="build-id" title="Build ID: {buildInfo.buildId}">
+              Build: {getShortBuildId()}
+            </span>
+            <span class="build-time">
+              {getFormattedBuildTime()}
+            </span>
           </div>
         </div>
       </div>
@@ -211,7 +249,6 @@
     position: absolute;
     left: var(--spacing-sm);
   }
-
   .version-info {
     text-align: center;
     color: var(--text-hint);
@@ -221,13 +258,25 @@
     border-top: 1px solid var(--divider);
   }
 
+  .build-info-compact {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    font-family: monospace;
+    text-align: center;
+  }
+
+  .build-time {
+    margin-left: 0.5rem;
+    font-style: italic;
+  }
+
   /* Mobile responsive */
   @media (max-width: 480px) {
     .modal-backdrop.full-screen {
       /* Prevent touch scrolling on backdrop */
       touch-action: none;
     }
-    
+
     .modal-container.full-screen {
       width: 100vw;
       height: 100vh;

@@ -1,0 +1,81 @@
+/*
+ * My Calcium Tracker PWA
+ * Copyright (C) 2025 Nathan A. Eaton Jr.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <https://www.gnu.org/licenses/>.
+ */
+
+/**
+ * Build information interface for type safety
+ */
+export interface BuildInfo {
+  buildId: string;
+  buildTime: string;
+  gitBranch: string | null;
+  appVersion: string;
+  nodeVersion: string;
+  buildPlatform: string;
+  buildAge: number; // Minutes since build
+}
+
+/**
+ * Gets formatted build information from Vite-injected constants
+ * @returns {BuildInfo} Complete build information object
+ */
+export function getBuildInfo(): BuildInfo {
+  const buildTime = new Date(__BUILD_TIME__);
+  const buildAge = Math.floor((Date.now() - buildTime.getTime()) / (1000 * 60));
+
+  return {
+    buildId: __BUILD_ID__,
+    buildTime: __BUILD_TIME__,
+    gitBranch: __GIT_BRANCH__,
+    appVersion: __APP_VERSION__,
+    nodeVersion: __NODE_VERSION__,
+    buildPlatform: __BUILD_PLATFORM__,
+    buildAge
+  };
+}
+
+/**
+ * Gets a short display version of the build ID for compact UI display
+ * @returns {string} Shortened build ID (last 8 characters)
+ */
+export function getShortBuildId(): string {
+  return __BUILD_ID__.slice(-8);
+}
+
+/**
+ * Formats build time for human-readable display
+ * @returns {string} Formatted build time string
+ */
+export function getFormattedBuildTime(): string {
+  return new Date(__BUILD_TIME__).toLocaleString();
+}
+
+/**
+ * Logs build information to console (development only)
+ */
+export function logBuildInfo(): void {
+  if (import.meta.env.DEV) {
+    const info = getBuildInfo();
+    console.group('🔨 Build Information');
+    console.log('Build ID:', info.buildId);
+    console.log('Build Time:', info.buildTime);
+    console.log('Git Branch:', info.gitBranch || 'unknown');
+    console.log('App Version:', info.appVersion);
+    console.log('Build Age:', `${info.buildAge} minutes`);
+    console.groupEnd();
+  }
+}

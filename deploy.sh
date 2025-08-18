@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Daily Calcium Tracker PWA - Multi-Environment Build & Deploy Script
+# My Calcium PWA - Multi-Environment Build & Deploy Script
 set -e # Exit on any error
 
 # --- Configuration ---
@@ -19,9 +19,9 @@ if [ -z "$ENVIRONMENT" ]; then
 fi
 
 if [ "$ENVIRONMENT" = "test" ]; then
-    echo "🧪 Building Daily Calcium Tracker PWA for testing with preview server..."
+    echo "🧪 Building My Calcium PWA for testing with preview server..."
 else
-    echo "🔨 Building Daily Calcium Tracker PWA for '$ENVIRONMENT' environment..."
+    echo "🔨 Building My Calcium PWA for '$ENVIRONMENT' environment..."
 fi
 
 # --- Build Process ---
