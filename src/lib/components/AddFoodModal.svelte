@@ -162,7 +162,7 @@
     // Debounce search
     searchTimeout = setTimeout(() => {
       if (foodName.trim().length >= 2) {
-        searchResults = searchFoods(foodName.trim(), $calciumState.customFoods, $calciumState.favorites);
+        searchResults = searchFoods(foodName.trim(), $calciumState.customFoods, $calciumState.favorites, $calciumState.hiddenFoods);
         showSearchResults = searchResults.length > 0;
       } else {
         searchResults = [];

@@ -52,6 +52,7 @@ export interface BackupData {
   preferences: CalciumSettings;
   customFoods: CustomFood[];
   favorites?: (number | string)[]; // Support both legacy (string) and new (number) formats
+  hiddenFoods?: (number | string)[]; // Support both legacy (string) and new (number) formats
   servingPreferences?: UserServingPreference[];
   journalEntries: Record<string, FoodEntry[]>;
 }
@@ -61,6 +62,7 @@ export interface CalciumState {
   foods: FoodEntry[];
   customFoods: CustomFood[];
   favorites: Set<number>;
+  hiddenFoods: Set<number>;
   servingPreferences: Map<number, UserServingPreference>;
   settings: CalciumSettings;
   isLoading: boolean;

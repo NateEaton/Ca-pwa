@@ -23,7 +23,7 @@
   import { goto } from "$app/navigation";
 
   let searchQuery = "";
-  let selectedFilter = "all";
+  let selectedFilter = "available"; // New default filter
   let sortBy = "calcium";
   let sortOrder = "desc";
   let filteredFoods = [];
@@ -33,19 +33,37 @@
   let foodToDelete = null;
 
 
+  // Get food type for sorting based on current filter context
+  function getFoodTypeForSort(food) {
+    if (selectedFilter === "available") {
+      if (food.isCustom) return "Custom";
+      if ($calciumState.favorites.has(food.id)) return "Favorite";
+      return "Database";
+    } else if (selectedFilter === "database") {
+      if ($calciumState.favorites.has(food.id)) return "Favorite";
+      if ($calciumState.hiddenFoods.has(food.id)) return "Hidden";
+      return "Database";
+    } else if (selectedFilter === "user") {
+      return "Custom"; // All are custom in user filter
+    }
+    return "Unknown";
+  }
+
   // Filter and sort foods
   $: {
     let foods = [];
     
     // Apply filter
-    if (selectedFilter === "all") {
-      foods = [...DEFAULT_FOOD_DATABASE, ...$calciumState.customFoods];
+    if (selectedFilter === "available") {
+      // Show all addable foods: database foods (excluding hidden ones) + custom foods + favorites
+      const visibleDatabaseFoods = [...DEFAULT_FOOD_DATABASE].filter(food => !$calciumState.hiddenFoods.has(food.id));
+      foods = [...visibleDatabaseFoods, ...$calciumState.customFoods];
     } else if (selectedFilter === "database") {
-      foods = [...DEFAULT_FOOD_DATABASE].filter(food => !$calciumState.favorites.has(food.id));
+      // Show all database foods for management (including hidden and favorites)
+      foods = [...DEFAULT_FOOD_DATABASE];
     } else if (selectedFilter === "user") {
-      // Include custom foods and database favorites
-      const databaseFavorites = [...DEFAULT_FOOD_DATABASE].filter(food => $calciumState.favorites.has(food.id));
-      foods = [...databaseFavorites, ...$calciumState.customFoods];
+      // Show only custom foods
+      foods = [...$calciumState.customFoods];
     }
     
     // Apply search
@@ -67,8 +85,8 @@
           comparison = a.calcium - b.calcium;
           break;
         case "type":
-          const aType = a.isCustom ? "User" : "Database";
-          const bType = b.isCustom ? "User" : "Database";
+          const aType = getFoodTypeForSort(a);
+          const bType = getFoodTypeForSort(b);
           comparison = aType.localeCompare(bType);
           break;
       }
@@ -82,6 +100,12 @@
 
   function handleFilterClick(filter) {
     selectedFilter = filter;
+    
+    // If switching to User filter and Type sort is active, change to Calcium sort
+    if (filter === "user" && sortBy === "type") {
+      sortBy = "calcium";
+      sortOrder = "desc"; // Default for calcium sort
+    }
   }
 
   function handleSortClick(sort) {
@@ -100,11 +124,26 @@
     return sortOrder === "desc" ? "expand_more" : "expand_less";
   }
 
+  async function toggleFoodHidden(food) {
+    if (food.isCustom || !food.id) return; // Can't hide custom foods
+    
+    if (calciumService) {
+      // If food is currently a favorite and we're trying to hide it, remove from favorites first
+      if ($calciumState.favorites.has(food.id) && !$calciumState.hiddenFoods.has(food.id)) {
+        await calciumService.toggleFavorite(food.id);
+      }
+      await calciumService.toggleHiddenFood(food.id);
+    }
+  }
+
   async function toggleFavorite(food) {
     if (food.isCustom) return; // Only allow favorites for database foods
     
-    
     if (calciumService) {
+      // If food is currently hidden and we're trying to favorite it, unhide it first
+      if ($calciumState.hiddenFoods.has(food.id) && !$calciumState.favorites.has(food.id)) {
+        await calciumService.toggleHiddenFood(food.id);
+      }
       await calciumService.toggleFavorite(food.id);
     }
   }
@@ -188,14 +227,14 @@
       <div class="sort-options">
         <div 
           class="sort-option" 
-          class:active={selectedFilter === "all"}
-          on:click={() => handleFilterClick("all")}
-          on:keydown={(e) => handleFilterKeydown(e, "all")}
+          class:active={selectedFilter === "available"}
+          on:click={() => handleFilterClick("available")}
+          on:keydown={(e) => handleFilterKeydown(e, "available")}
           role="button"
           tabindex="0"
         >
-          <span class="material-icons">all_inclusive</span>
-          <span>All</span>
+          <span class="material-icons">visibility</span>
+          <span>Available</span>
         </div>
         <div 
           class="sort-option" 
@@ -253,14 +292,15 @@
         <div 
           class="sort-option" 
           class:active={sortBy === "type"}
-          on:click={() => handleSortClick("type")}
-          on:keydown={(e) => handleSortKeydown(e, "type")}
+          class:disabled={selectedFilter === "user"}
+          on:click={() => selectedFilter !== "user" && handleSortClick("type")}
+          on:keydown={(e) => selectedFilter !== "user" && handleSortKeydown(e, "type")}
           role="button"
-          tabindex="0"
+          tabindex={selectedFilter === "user" ? "-1" : "0"}
         >
           <span class="material-icons">category</span>
           <span>Type</span>
-          <span class="material-icons sort-icon">{getSortIcon("type")}</span>
+          <span class="material-icons sort-icon">{selectedFilter === "user" ? "" : getSortIcon("type")}</span>
         </div>
       </div>
     </div>
@@ -268,7 +308,18 @@
     <!-- Results -->
     <div class="results-container">
       {#each filteredFoods as food}
-        <div class="food-item" class:custom={food.isCustom}>
+        <div class="food-item" class:custom={food.isCustom} class:database-mode={selectedFilter === "database"}>
+          {#if selectedFilter === "database" && !food.isCustom}
+            <div class="hide-checkbox-container">
+              <input
+                type="checkbox"
+                class="hide-checkbox"
+                checked={$calciumState.hiddenFoods.has(food.id)}
+                on:change={() => toggleFoodHidden(food)}
+                title={$calciumState.hiddenFoods.has(food.id) ? "Unhide food" : "Hide food"}
+              />
+            </div>
+          {/if}
           <div class="food-info">
             <div class="food-name">{food.name}</div>
             <div class="food-measure">{food.measure}</div>
@@ -290,7 +341,7 @@
                 {$calciumState.favorites.has(food.id) ? "star" : "star_border"}
               </span>
             </button>
-          {:else}
+          {:else if selectedFilter !== "database"}
             <button 
               class="delete-btn"
               on:click={() => confirmDeleteFood(food)}
@@ -358,7 +409,7 @@
 
   .data-search {
     width: 100%;
-    padding: var(--spacing-md) var(--spacing-lg) var(--spacing-md) 3rem; /* 48px equivalent */
+    padding: var(--spacing-md) var(--spacing-lg) var(--spacing-md) 3rem; /* Space for search icon only */
     border: 1px solid var(--divider);
     border-radius: var(--spacing-sm);
     font-size: var(--input-font-min); /* Prevent iOS zoom */
@@ -380,6 +431,7 @@
     color: var(--text-secondary);
     font-size: var(--icon-size-lg);
   }
+
 
   .data-filter-controls,
   .data-sort-controls {
@@ -441,6 +493,12 @@
     border-color: var(--primary-color);
   }
 
+  .sort-option.disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+
   .sort-icon {
     font-size: 16px;
   }
@@ -464,6 +522,24 @@
   .food-item.custom {
     border-left: 3px solid var(--secondary-color);
     background-color: var(--custom-food-bg);
+  }
+
+  .food-item.database-mode {
+    align-items: center;
+  }
+
+  .hide-checkbox-container {
+    margin-right: var(--spacing-md);
+    display: flex;
+    align-items: center;
+  }
+
+  .hide-checkbox {
+    width: 18px;
+    height: 18px;
+    margin: 0;
+    cursor: pointer;
+    accent-color: var(--primary-color);
   }
 
   .food-info {
@@ -693,7 +769,7 @@
     }
 
     .data-search {
-      padding: var(--spacing-sm) var(--spacing-md) var(--spacing-sm) 2.5rem; /* 40px equivalent */
+      padding: var(--spacing-sm) var(--spacing-md) var(--spacing-sm) 2.5rem; /* Space for search icon only */
       font-size: var(--font-size-sm);
     }
 

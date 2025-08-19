@@ -49,6 +49,7 @@ export const calciumState = writable<CalciumState>({
   foods: [], // This array will be sorted in-place by CalciumService
   customFoods: [],
   favorites: new Set<number>(),
+  hiddenFoods: new Set<number>(),
   servingPreferences: new Map<number, UserServingPreference>(),
   settings: {
     dailyGoal: 1000,

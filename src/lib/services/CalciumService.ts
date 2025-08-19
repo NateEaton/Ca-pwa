@@ -43,6 +43,7 @@ export class CalciumService {
     await this.loadDailyFoods();
     await this.loadCustomFoods();
     await this.loadFavorites();
+    await this.loadHiddenFoods();
     await this.loadServingPreferences();
     await this.applySortToFoods();
 
@@ -51,7 +52,7 @@ export class CalciumService {
 
   private async initializeIndexedDB(): Promise<void> {
     return new Promise((resolve, reject) => {
-      const request = indexedDB.open('CalciumTracker', 6);
+      const request = indexedDB.open('CalciumTracker', 7);
 
       request.onerror = () => reject(request.error);
       request.onsuccess = () => {
@@ -81,6 +82,9 @@ export class CalciumService {
           const journalStore = db.createObjectStore('journalEntries', { keyPath: 'date' });
           journalStore.createIndex('lastModified', 'lastModified', { unique: false });
           journalStore.createIndex('syncStatus', 'syncStatus', { unique: false });
+        }
+        if (oldVersion < 7 && !db.objectStoreNames.contains('hiddenFoods')) {
+          db.createObjectStore('hiddenFoods', { keyPath: 'foodId' });
         }
       };
     });
@@ -591,6 +595,7 @@ export class CalciumService {
       preferences: state.settings,
       customFoods: customFoods,
       favorites: Array.from(state.favorites),
+      hiddenFoods: Array.from(state.hiddenFoods),
       servingPreferences: Array.from(state.servingPreferences.values()),
       journalEntries
     };
@@ -626,6 +631,9 @@ export class CalciumService {
       if (backupData.favorites && Array.isArray(backupData.favorites)) {
         await this.restoreFavorites(backupData.favorites);
       }
+      if (backupData.hiddenFoods && Array.isArray(backupData.hiddenFoods)) {
+        await this.restoreHiddenFoods(backupData.hiddenFoods);
+      }
       if (backupData.servingPreferences && Array.isArray(backupData.servingPreferences)) {
         await this.restoreServingPreferences(backupData.servingPreferences);
       }
@@ -642,6 +650,7 @@ export class CalciumService {
       await this.loadSettings();
       await this.loadCustomFoods();
       await this.loadFavorites();
+      await this.loadHiddenFoods();
       await this.loadServingPreferences();
       await this.loadDailyFoods();
       await this.applySortToFoods();
@@ -673,7 +682,7 @@ private async clearAllData(): Promise<void> {
       console.warn('Database connection not available for clearing IndexedDB data');
       return;
     }
-    const storesToClear = ['journalEntries', 'customFoods', 'favorites', 'servingPreferences'];
+    const storesToClear = ['journalEntries', 'customFoods', 'favorites', 'hiddenFoods', 'servingPreferences'];
     for (const storeName of storesToClear) {
       try {
         await new Promise<void>((resolve, reject) => {
@@ -1070,6 +1079,98 @@ private async clearAllData(): Promise<void> {
     });
   }
 
+  private async loadHiddenFoods(): Promise<void> {
+    if (!this.db) return;
+
+    return new Promise((resolve) => {
+      const transaction = this.db!.transaction(['hiddenFoods'], 'readonly');
+      const store = transaction.objectStore('hiddenFoods');
+      const request = store.getAll();
+
+      request.onsuccess = () => {
+        const hiddenRecords = request.result || [];
+        const hiddenFoods = new Set(hiddenRecords.map((record: any) => record.foodId));
+
+        calciumState.update(state => ({ ...state, hiddenFoods }));
+        resolve();
+      };
+
+      request.onerror = () => {
+        console.error('Error loading hidden foods:', request.error);
+        calciumState.update(state => ({ ...state, hiddenFoods: new Set() }));
+        resolve();
+      };
+    });
+  }
+
+  /**
+   * Toggles the hidden status of a food by its ID.
+   * @param foodId The ID of the food to toggle
+   * @throws Error if foodId is invalid
+   */
+  async toggleHiddenFood(foodId: number): Promise<void> {
+    if (!this.db) return;
+
+    if (!foodId || typeof foodId !== 'number' || foodId <= 0) {
+      console.error('Invalid foodId for toggleHiddenFood:', foodId);
+      showToast('Cannot hide this food', 'error');
+      return;
+    }
+
+    const state = get(calciumState);
+    const hiddenFoods = new Set(state.hiddenFoods);
+
+    return new Promise((resolve, reject) => {
+      const transaction = this.db!.transaction(['hiddenFoods'], 'readwrite');
+      const store = transaction.objectStore('hiddenFoods');
+
+      if (hiddenFoods.has(foodId)) {
+        const request = store.delete(foodId);
+
+        request.onsuccess = () => {
+          hiddenFoods.delete(foodId);
+          calciumState.update(state => ({ ...state, hiddenFoods }));
+          resolve();
+        };
+
+        request.onerror = () => {
+          console.error('Error removing hidden food:', request.error);
+          showToast('Failed to unhide food', 'error');
+          reject(request.error);
+        };
+      } else {
+        const hiddenData = {
+          foodId,
+          dateHidden: new Date().toISOString()
+        };
+
+        const request = store.put(hiddenData);
+
+        request.onsuccess = () => {
+          hiddenFoods.add(foodId);
+          calciumState.update(state => ({ ...state, hiddenFoods }));
+          resolve();
+        };
+
+        request.onerror = () => {
+          console.error('Error adding hidden food:', request.error);
+          showToast('Failed to hide food', 'error');
+          reject(request.error);
+        };
+      }
+    });
+  }
+
+  /**
+   * Checks if a food is hidden.
+   * @param foodId The ID of the food to check
+   * @returns True if the food is hidden, false otherwise
+   */
+  isHidden(foodId: number): boolean {
+    const state = get(calciumState);
+    return state.hiddenFoods.has(foodId);
+  }
+
   private async loadServingPreferences(): Promise<void> {
     if (!this.db) return;
 
@@ -1154,6 +1255,62 @@ private async clearAllData(): Promise<void> {
     });
   }
 
+  private async restoreHiddenFoods(hiddenFoodsArray: (number | string)[]): Promise<void> {
+    if (!this.db) return;
+    
+    return new Promise((resolve, reject) => {
+      const transaction = this.db!.transaction(['hiddenFoods'], 'readwrite');
+      const store = transaction.objectStore('hiddenFoods');
+      const foodIds: number[] = [];
+      
+      for (const hiddenFood of hiddenFoodsArray) {
+        if (typeof hiddenFood === 'number') {
+          foodIds.push(hiddenFood);
+        } else if (typeof hiddenFood === 'string') {
+          const databaseFood = DEFAULT_FOOD_DATABASE.find(food => food.name === hiddenFood);
+          if (databaseFood) {
+            foodIds.push(databaseFood.id);
+          } else {
+            console.warn(`Could not find food ID for legacy hidden food: ${hiddenFood}`);
+          }
+        }
+      }
+      
+      let completedCount = 0;
+      const expectedCount = foodIds.length;
+      
+      if (expectedCount === 0) {
+        const hiddenFoods = new Set<number>();
+        calciumState.update(state => ({ ...state, hiddenFoods }));
+        resolve();
+        return;
+      }
+      
+      const checkComplete = () => {
+        completedCount++;
+        if (completedCount === expectedCount) {
+          const hiddenFoods = new Set(foodIds);
+          calciumState.update(state => ({ ...state, hiddenFoods }));
+          resolve();
+        }
+      };
+      
+      for (const foodId of foodIds) {
+        const hiddenData = {
+          foodId,
+          dateHidden: new Date().toISOString()
+        };
+        
+        const request = store.put(hiddenData);
+        request.onsuccess = checkComplete;
+        request.onerror = () => {
+          console.error(`Error restoring hidden food: ${foodId}`, request.error);
+          checkComplete();
+        };
+      }
+    });
+  }
+
   private async restoreServingPreferences(preferencesArray: UserServingPreference[]): Promise<void> {
     if (!this.db) return;
 
@@ -1230,6 +1387,14 @@ private async clearAllData(): Promise<void> {
         }
       }
 
+      if (syncData.hiddenFoods && Array.isArray(syncData.hiddenFoods)) {
+        try {
+          await this.restoreHiddenFoods(syncData.hiddenFoods);
+        } catch (error) {
+          console.warn('Failed to apply synced hidden foods:', error);
+        }
+      }
+
       if (syncData.servingPreferences && Array.isArray(syncData.servingPreferences)) {
         try {
           await this.restoreServingPreferences(syncData.servingPreferences);
@@ -1255,6 +1420,7 @@ private async clearAllData(): Promise<void> {
       await this.loadSettings();
       await this.loadCustomFoods();
       await this.loadFavorites();
+      await this.loadHiddenFoods();
       await this.loadServingPreferences();
       await this.loadDailyFoods();
       await this.applySortToFoods();

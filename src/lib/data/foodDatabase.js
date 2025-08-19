@@ -24026,7 +24026,7 @@ const SEARCH_STOPWORDS = [
 ];
 
 // Helper function to search foods
-export function searchFoods(query, customFoods = [], favorites = new Set()) {
+export function searchFoods(query, customFoods = [], favorites = new Set(), hiddenFoods = new Set()) {
   if (!query || query.length < 2) return [];
 
   const keywords = query
@@ -24065,6 +24065,11 @@ export function searchFoods(query, customFoods = [], favorites = new Set()) {
 
       // Must match at least one keyword
       if (!hasMatch) return null;
+
+      // Exclude hidden foods (custom foods can't be hidden, so only check database foods)
+      if (!food.isCustom && hiddenFoods.has(food.id)) {
+        return null;
+      }
 
       // Prioritize favorites first (highest priority)
       if (favorites.has(food.id)) {
