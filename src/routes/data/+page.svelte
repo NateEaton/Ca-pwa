@@ -31,6 +31,15 @@
   let isBulkOperationInProgress = false;
   let typeSortRotation = 0; // 0, 1, 2 for three-way type rotation
   
+  // Calcium filter state
+  let calciumFilter = {
+    type: 'all', // 'all', 'preset', 'custom'
+    preset: null, // '0mg', '1-50mg', '51-200mg', '201-500mg', '500mg+'
+    min: null,
+    max: null
+  };
+  let showCalciumDropdown = false;
+  
   // Delete confirmation modal state
   let showDeleteModal = false;
   let foodToDelete = null;
@@ -79,8 +88,9 @@
 
   // Filter and sort foods
   $: {
-    // Explicitly depend on typeSortRotation to trigger re-sort
+    // Explicitly depend on typeSortRotation and calciumFilter to trigger re-sort
     typeSortRotation;
+    calciumFilter;
     let foods = [];
     
     // Apply filter
@@ -105,6 +115,11 @@
         maxResults: 100 // Higher limit for database browsing
       });
       foods = results.map(result => result.food);
+    }
+    
+    // Apply calcium filter
+    if (calciumFilter.type !== 'all') {
+      foods = foods.filter(food => passesCalciumFilter(food));
     }
     
     // Apply sort
@@ -161,7 +176,7 @@
     : `Hide all ${eligibleFoodsForBulk.length} foods`;
   
   $: showBulkActions = selectedFilter === "database" && 
-    searchQuery.trim() && 
+    (searchQuery.trim() || calciumFilter.type !== 'all') && 
     filteredFoods.length > 0 && 
     eligibleFoodsForBulk.length > 0;
 
@@ -281,6 +296,61 @@
     searchQuery = "";
   }
 
+  function toggleCalciumDropdown() {
+    showCalciumDropdown = !showCalciumDropdown;
+  }
+
+  function selectCalciumFilter(type, preset = null, min = null, max = null) {
+    calciumFilter = { type, preset, min, max };
+    if (type !== 'custom') {
+      showCalciumDropdown = false;
+    }
+  }
+
+
+  function clearCalciumFilter() {
+    calciumFilter = { type: 'all', preset: null, min: null, max: null };
+    showCalciumDropdown = false;
+  }
+
+  function getCalciumFilterText() {
+    if (calciumFilter.type === 'all') return 'Ca';
+    if (calciumFilter.type === 'preset') return `Ca:${calciumFilter.preset}`;
+    if (calciumFilter.type === 'custom') return `Ca:${calciumFilter.min || 0}-${calciumFilter.max || '∞'}mg`;
+    return 'Ca';
+  }
+
+  function passesCalciumFilter(food) {
+    if (calciumFilter.type === 'all') return true;
+    
+    const calcium = food.calcium;
+    
+    if (calciumFilter.type === 'preset') {
+      switch (calciumFilter.preset) {
+        case '0mg': return calcium === 0;
+        case '1-50mg': return calcium >= 1 && calcium <= 50;
+        case '51-200mg': return calcium >= 51 && calcium <= 200;
+        case '201-500mg': return calcium >= 201 && calcium <= 500;
+        case '500mg+': return calcium > 500;
+        default: return true;
+      }
+    }
+    
+    if (calciumFilter.type === 'custom') {
+      const min = calciumFilter.min || 0;
+      const max = calciumFilter.max || Infinity;
+      return calcium >= min && calcium <= max;
+    }
+    
+    return true;
+  }
+
+  function handleClickOutside(event) {
+    if (showCalciumDropdown && !event.target.closest('.calcium-filter-container')) {
+      showCalciumDropdown = false;
+    }
+  }
+
   async function handleBulkToggle() {
     if (isBulkOperationInProgress || !calciumService) return;
     
@@ -329,22 +399,144 @@
 <div class="data-page">
 
   <div class="content">
-    <!-- Search -->
-    <div class="search-container">
-      <input 
-        type="text" 
-        class="data-search" 
-        placeholder="Search foods..."
-        bind:value={searchQuery}
-      />
-      <span class="material-icons search-icon">search</span>
-      {#if searchQuery}
-        <button class="clear-search-btn" on:click={clearSearch}>
-          <span class="material-icons">close</span>
+    <!-- Search and Calcium Filter Row -->
+    <div class="search-row">
+      <div class="search-container">
+        <input 
+          type="text" 
+          class="data-search" 
+          placeholder="Search foods..."
+          bind:value={searchQuery}
+        />
+        <span class="material-icons search-icon">search</span>
+        
+        {#if searchQuery}
+          <button class="clear-search-btn" on:click={clearSearch}>
+            <span class="material-icons">close</span>
+          </button>
+        {/if}
+      </div>
+      
+      <!-- Calcium Filter Button with Dropdown -->
+      <div class="calcium-filter-container">
+        <button 
+          class="calcium-filter-btn" 
+          class:active={calciumFilter.type !== 'all'}
+          on:click={toggleCalciumDropdown}
+          title="Filter by calcium content"
+        >
+          {getCalciumFilterText()}
+          <span class="material-icons">expand_more</span>
         </button>
-      {/if}
+        
+        <!-- Calcium Filter Dropdown -->
+        {#if showCalciumDropdown}
+          <div class="calcium-dropdown">
+        <div class="calcium-dropdown-content">
+          <div class="filter-section">
+            <h4>Calcium Filter</h4>
+            
+            <label class="filter-option">
+              <input
+                type="radio"
+                name="calcium-filter"
+                checked={calciumFilter.type === 'all'}
+                on:change={() => selectCalciumFilter('all')}
+              />
+              All levels
+            </label>
+            
+            <label class="filter-option">
+              <input
+                type="radio"
+                name="calcium-filter"
+                checked={calciumFilter.preset === '0mg'}
+                on:change={() => selectCalciumFilter('preset', '0mg')}
+              />
+              0mg (no calcium)
+            </label>
+            
+            <label class="filter-option">
+              <input
+                type="radio"
+                name="calcium-filter"
+                checked={calciumFilter.preset === '1-50mg'}
+                on:change={() => selectCalciumFilter('preset', '1-50mg')}
+              />
+              1-50mg (very low)
+            </label>
+            
+            <label class="filter-option">
+              <input
+                type="radio"
+                name="calcium-filter"
+                checked={calciumFilter.preset === '51-200mg'}
+                on:change={() => selectCalciumFilter('preset', '51-200mg')}
+              />
+              51-200mg (low)
+            </label>
+            
+            <label class="filter-option">
+              <input
+                type="radio"
+                name="calcium-filter"
+                checked={calciumFilter.preset === '201-500mg'}
+                on:change={() => selectCalciumFilter('preset', '201-500mg')}
+              />
+              201-500mg (moderate)
+            </label>
+            
+            <label class="filter-option">
+              <input
+                type="radio"
+                name="calcium-filter"
+                checked={calciumFilter.preset === '500mg+'}
+                on:change={() => selectCalciumFilter('preset', '500mg+')}
+              />
+              500mg+ (high)
+            </label>
+            
+            <div class="custom-range">
+              <label class="filter-option">
+                <input
+                  type="radio"
+                  name="calcium-filter"
+                  checked={calciumFilter.type === 'custom'}
+                  on:change={() => { calciumFilter = { type: 'custom', preset: null, min: calciumFilter.min || 0, max: calciumFilter.max || 1000 }; }}
+                />
+                Custom range:
+              </label>
+              <div class="range-inputs">
+                <input
+                  type="number"
+                  placeholder="Min"
+                  bind:value={calciumFilter.min}
+                  on:input={() => { calciumFilter = { type: 'custom', preset: null, min: calciumFilter.min, max: calciumFilter.max }; }}
+                  min="0"
+                />
+                <span>to</span>
+                <input
+                  type="number"
+                  placeholder="Max"
+                  bind:value={calciumFilter.max}
+                  on:input={() => { calciumFilter = { type: 'custom', preset: null, min: calciumFilter.min, max: calciumFilter.max }; }}
+                  min="0"
+                />
+                <span>mg</span>
+              </div>
+            </div>
+            
+            {#if calciumFilter.type !== 'all'}
+              <button class="clear-filter-btn" on:click={clearCalciumFilter}>
+                Clear Filter
+              </button>
+            {/if}
+          </div>
+        </div>
+      </div>
+        {/if}
+      </div>
     </div>
-
 
     <!-- Bulk Actions (only shown for search results in database mode) -->
     {#if showBulkActions}
@@ -540,6 +732,8 @@
   </div>
 {/if}
 
+<svelte:window on:click={handleClickOutside} />
+
 <style>
   .data-page {
     background-color: var(--background);
@@ -556,14 +750,22 @@
     min-height: 0; /* Important for flex child scrolling */
   }
 
+  .search-row {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    margin-bottom: var(--spacing-lg);
+    position: relative;
+  }
+
   .search-container {
     position: relative;
-    margin-bottom: var(--spacing-lg);
+    flex: 1;
   }
 
   .data-search {
     width: 100%;
-    padding: var(--spacing-md) 3rem var(--spacing-md) 3rem; /* Space for search icon on left and clear button on right */
+    padding: var(--spacing-md) 2.5rem var(--spacing-md) 3rem; /* Space for search icon on left and clear button on right */
     border: 1px solid var(--divider);
     border-radius: var(--spacing-sm);
     font-size: var(--input-font-min); /* Prevent iOS zoom */
@@ -1042,6 +1244,159 @@
       font-size: var(--font-size-xs);
       width: 100%;
       margin-top: var(--spacing-xs);
+    }
+  }
+
+  /* Calcium Filter Styles */
+  .calcium-filter-container {
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+
+  .calcium-filter-btn {
+    background: none;
+    border: 1px solid var(--divider);
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 0.5rem;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: var(--font-size-sm);
+    transition: all 0.2s ease;
+  }
+
+  .calcium-filter-btn:hover {
+    background-color: var(--surface-variant);
+    border-color: var(--primary-color);
+    color: var(--text-primary);
+  }
+
+  .calcium-filter-btn.active {
+    background-color: var(--primary-alpha-10);
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+  }
+
+  .calcium-filter-btn .material-icons {
+    font-size: 16px;
+  }
+
+
+  /* Calcium Dropdown */
+  .calcium-dropdown {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    z-index: 1000;
+    margin-top: 4px;
+  }
+
+  .calcium-dropdown-content {
+    background: var(--surface);
+    border: 1px solid var(--divider);
+    border-radius: 8px;
+    box-shadow: var(--shadow-lg);
+    min-width: 220px;
+    max-width: 280px;
+  }
+
+  .filter-section {
+    padding: var(--spacing-lg);
+  }
+
+  .filter-section h4 {
+    margin: 0 0 var(--spacing-md) 0;
+    color: var(--text-primary);
+    font-size: var(--font-size-base);
+    font-weight: 600;
+  }
+
+  .filter-option {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    margin-bottom: var(--spacing-sm);
+    cursor: pointer;
+    font-size: var(--font-size-sm);
+    color: var(--text-primary);
+  }
+
+  .filter-option input[type="radio"] {
+    margin: 0;
+    accent-color: var(--primary-color);
+  }
+
+  .custom-range {
+    margin-top: var(--spacing-md);
+    padding-top: var(--spacing-md);
+    border-top: 1px solid var(--divider);
+  }
+
+  .range-inputs {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    margin-top: var(--spacing-sm);
+    margin-left: 1.5rem;
+  }
+
+  .range-inputs input {
+    width: 60px;
+    padding: 0.25rem;
+    border: 1px solid var(--divider);
+    border-radius: 4px;
+    font-size: var(--font-size-sm);
+    background: var(--background);
+    color: var(--text-primary);
+  }
+
+  .range-inputs span {
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+  }
+
+  .clear-filter-btn {
+    margin-top: var(--spacing-md);
+    padding: var(--spacing-sm) var(--spacing-md);
+    background: var(--surface-variant);
+    border: 1px solid var(--divider);
+    border-radius: 6px;
+    color: var(--text-primary);
+    cursor: pointer;
+    font-size: var(--font-size-sm);
+    transition: background-color 0.2s;
+  }
+
+  .clear-filter-btn:hover {
+    background-color: var(--divider);
+  }
+
+  /* Mobile responsive calcium filter */
+  @media (max-width: 30rem) {
+    .calcium-filter-btn {
+      right: var(--spacing-md);
+      padding: 0.4rem;
+      font-size: var(--font-size-xs);
+    }
+
+    .data-search {
+      padding-right: 5.5rem;
+    }
+
+    .calcium-dropdown-content {
+      min-width: 200px;
+      right: -20px;
+    }
+
+    .filter-section {
+      padding: var(--spacing-md);
+    }
+
+    .range-inputs input {
+      width: 50px;
     }
   }
 </style>
