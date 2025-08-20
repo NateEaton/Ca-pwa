@@ -28,6 +28,8 @@
   let sortBy = "calcium";
   let sortOrder = "desc";
   let filteredFoods = [];
+  let isBulkOperationInProgress = false;
+  let typeSortRotation = 0; // 0, 1, 2 for three-way type rotation
   
   // Delete confirmation modal state
   let showDeleteModal = false;
@@ -50,8 +52,35 @@
     return "Unknown";
   }
 
+  // Get sort priority for type-based sorting with three-way rotation
+  function getTypeSortPriority(food) {
+    const type = getFoodTypeForSort(food);
+    
+    if (selectedFilter === "available") {
+      // Available view: Custom / Favorite / Database rotation
+      const priorities = [
+        { Custom: 0, Favorite: 1, Database: 2 },  // Custom first
+        { Favorite: 0, Database: 1, Custom: 2 },  // Favorite first  
+        { Database: 0, Custom: 1, Favorite: 2 }   // Database first
+      ];
+      return priorities[typeSortRotation][type] || 999;
+    } else if (selectedFilter === "database") {
+      // Database view: Favorite / Hidden / Database rotation
+      const priorities = [
+        { Favorite: 0, Hidden: 1, Database: 2 },  // Favorite first
+        { Hidden: 0, Database: 1, Favorite: 2 },  // Hidden first
+        { Database: 0, Favorite: 1, Hidden: 2 }   // Database (shown) first
+      ];
+      return priorities[typeSortRotation][type] || 999;
+    }
+    
+    return 0; // User filter doesn't need rotation (all custom)
+  }
+
   // Filter and sort foods
   $: {
+    // Explicitly depend on typeSortRotation to trigger re-sort
+    typeSortRotation;
     let foods = [];
     
     // Apply filter
@@ -72,7 +101,7 @@
       const results = SearchService.searchFoods(searchQuery, foods, {
         mode: 'database',
         favorites: $calciumState.favorites,
-        hiddenFoods: $calciumState.hiddenFoods,
+        hiddenFoods: selectedFilter === "database" ? new Set() : $calciumState.hiddenFoods, // Don't filter hidden foods in database mode
         maxResults: 100 // Higher limit for database browsing
       });
       foods = results.map(result => result.food);
@@ -90,9 +119,15 @@
           comparison = a.calcium - b.calcium;
           break;
         case "type":
-          const aType = getFoodTypeForSort(a);
-          const bType = getFoodTypeForSort(b);
-          comparison = aType.localeCompare(bType);
+          const aPriority = getTypeSortPriority(a);
+          const bPriority = getTypeSortPriority(b);
+          comparison = aPriority - bPriority;
+          // Secondary sort by name for foods of the same type (always ascending)
+          if (comparison === 0) {
+            comparison = a.name.localeCompare(b.name);
+          }
+          // For type sort, ignore sortOrder for the secondary name sorting
+          return comparison;
           break;
       }
       
@@ -101,6 +136,34 @@
     
     filteredFoods = foods;
   }
+
+  // Bulk selection reactive logic
+  $: eligibleFoodsForBulk = filteredFoods.filter(food => 
+    !food.isCustom && // Only database foods can be hidden
+    !$calciumState.favorites.has(food.id) // Skip favorites
+  );
+  
+  $: hiddenEligibleFoods = eligibleFoodsForBulk.filter(food => 
+    $calciumState.hiddenFoods.has(food.id)
+  );
+  
+  $: allNonFavoritesHidden = eligibleFoodsForBulk.length > 0 && 
+    hiddenEligibleFoods.length === eligibleFoodsForBulk.length;
+  
+  $: someNonFavoritesHidden = hiddenEligibleFoods.length > 0;
+  
+  $: favoriteCount = filteredFoods.filter(food => 
+    !food.isCustom && $calciumState.favorites.has(food.id)
+  ).length;
+  
+  $: bulkActionText = allNonFavoritesHidden 
+    ? `Unhide all ${eligibleFoodsForBulk.length} foods`
+    : `Hide all ${eligibleFoodsForBulk.length} foods`;
+  
+  $: showBulkActions = selectedFilter === "database" && 
+    searchQuery.trim() && 
+    filteredFoods.length > 0 && 
+    eligibleFoodsForBulk.length > 0;
 
 
   function handleFilterClick(filter) {
@@ -115,11 +178,19 @@
 
   function handleSortClick(sort) {
     if (sortBy === sort) {
-      // Toggle sort order
-      sortOrder = sortOrder === "asc" ? "desc" : "asc";
+      if (sort === "type") {
+        // Three-way rotation for type sorting
+        typeSortRotation = (typeSortRotation + 1) % 3;
+      } else {
+        // Regular toggle for other sorts
+        sortOrder = sortOrder === "asc" ? "desc" : "asc";
+      }
     } else {
       // Change sort field
       sortBy = sort;
+      if (sort === "type") {
+        typeSortRotation = 0; // Reset to first rotation when switching to type
+      }
       sortOrder = sort === "name" ? "asc" : "desc";
     }
   }
@@ -210,6 +281,45 @@
     searchQuery = "";
   }
 
+  async function handleBulkToggle() {
+    if (isBulkOperationInProgress || !calciumService) return;
+    
+    isBulkOperationInProgress = true;
+    
+    try {
+      // Capture the current state before making any changes
+      const currentEligibleFoods = [...eligibleFoodsForBulk];
+      const currentHiddenState = new Set($calciumState.hiddenFoods);
+      const targetHidden = !allNonFavoritesHidden;
+      
+      
+      // Process all eligible foods - don't filter, just set them all to the target state
+      const batchSize = 10;
+      for (let i = 0; i < currentEligibleFoods.length; i += batchSize) {
+        const batch = currentEligibleFoods.slice(i, i + batchSize);
+        
+        // Process each food in the batch
+        for (const food of batch) {
+          const isCurrentlyHidden = currentHiddenState.has(food.id);
+          
+          // Only toggle if the current state doesn't match the target state
+          if (isCurrentlyHidden !== targetHidden) {
+            await calciumService.toggleHiddenFood(food.id);
+          }
+        }
+        
+        // Small delay between batches to keep UI responsive
+        if (i + batchSize < currentEligibleFoods.length) {
+          await new Promise(resolve => setTimeout(resolve, 10));
+        }
+      }
+    } catch (error) {
+      console.error("Error during bulk operation:", error);
+    } finally {
+      isBulkOperationInProgress = false;
+    }
+  }
+
 </script>
 
 <svelte:head>
@@ -234,6 +344,36 @@
         </button>
       {/if}
     </div>
+
+
+    <!-- Bulk Actions (only shown for search results in database mode) -->
+    {#if showBulkActions}
+      <div class="bulk-actions">
+        <div class="bulk-select-container">
+          <input
+            type="checkbox"
+            id="bulk-select"
+            class="bulk-checkbox"
+            checked={allNonFavoritesHidden}
+            indeterminate={someNonFavoritesHidden && !allNonFavoritesHidden}
+            on:change={handleBulkToggle}
+            disabled={isBulkOperationInProgress}
+            aria-describedby="bulk-description"
+          />
+          <label 
+            for="bulk-select" 
+            class="bulk-label"
+          >
+            {isBulkOperationInProgress ? "Processing..." : bulkActionText}
+          </label>
+          {#if favoriteCount > 0}
+            <span class="bulk-skip-note" id="bulk-description">
+              (skipping {favoriteCount} favorite{favoriteCount === 1 ? '' : 's'})
+            </span>
+          {/if}
+        </div>
+      </div>
+    {/if}
 
     <!-- Filter Controls -->
     <div class="data-filter-controls">
@@ -839,6 +979,69 @@
     .data-sort-controls .sort-option .material-icons {
       font-size: var(--icon-size-sm) !important;
       margin: 0;
+    }
+  }
+
+  /* Bulk Actions */
+  .bulk-actions {
+    background-color: var(--surface-variant);
+    border: 1px solid var(--divider);
+    border-radius: 8px;
+    padding: var(--spacing-md);
+    margin-bottom: var(--spacing-lg);
+  }
+
+  .bulk-select-container {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+  }
+
+  .bulk-checkbox {
+    margin: 0;
+    cursor: pointer;
+    accent-color: var(--primary-color);
+  }
+
+  .bulk-checkbox:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
+
+  .bulk-label {
+    font-size: var(--font-size-base);
+    font-weight: 500;
+    color: var(--text-primary);
+    cursor: pointer;
+    margin: 0;
+  }
+
+  .bulk-skip-note {
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+    font-style: italic;
+  }
+
+  /* Bulk actions mobile responsive */
+  @media (max-width: 30rem) {
+    .bulk-actions {
+      padding: var(--spacing-sm);
+      margin-bottom: var(--spacing-md);
+    }
+
+    .bulk-select-container {
+      flex-wrap: wrap;
+      gap: var(--spacing-xs);
+    }
+
+    .bulk-label {
+      font-size: var(--font-size-sm);
+    }
+
+    .bulk-skip-note {
+      font-size: var(--font-size-xs);
+      width: 100%;
+      margin-top: var(--spacing-xs);
     }
   }
 </style>
