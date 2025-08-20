@@ -1,0 +1,51 @@
+fdcId,identifier,identifierType,foodType,foodDescription,value,foodWeight,valueUnit,foodMeasure,measureValue
+2710812,99997820,Food Code,Survey (FNDDS),"Vegetables as ingredient in stews",21.0,100,g,"100 g",21.0
+2710813,99998130,Food Code,Survey (FNDDS),"Sauce as ingredient in hamburgers",18.0,100,g,"100 g",18.0
+2710809,99997805,Food Code,Survey (FNDDS),"Mirepoix, cooked, as ingredient",34.0,100,g,"100 g",34.0
+2710810,99997810,Food Code,Survey (FNDDS),"Vegetables as ingredient in curry",21.0,100,g,"100 g",21.0
+2710811,99997815,Food Code,Survey (FNDDS),"Vegetables as ingredient in soups",17.0,100,g,"100 g",17.0
+2710814,99998210,Food Code,Survey (FNDDS),"Industrial oil as ingredient in food",0.000,100,g,"100 g",0.000
+2710807,99997802,Food Code,Survey (FNDDS),"Tomatoes as ingredient in omelet",14.0,100,g,"100 g",14.0
+2710808,99997804,Food Code,Survey (FNDDS),"Other vegetables as ingredient in omelet",8.00,100,g,"100 g",8.00
+2710806,99997800,Food Code,Survey (FNDDS),"Dark green vegetables as ingredient in omelet",65.0,100,g,"100 g",65.0
+2710802,99997540,Food Code,Survey (FNDDS),"Eggplant, cooked, as ingredient",10.0,100,g,"100 g",10.0
+2710801,99997535,Food Code,Survey (FNDDS),"Cauliflower, cooked, as ingredient",23.0,100,g,"100 g",23.0
+2710805,99997555,Food Code,Survey (FNDDS),"Celery, cooked, as ingredient",49.0,100,g,"100 g",49.0
+2710800,99997530,Food Code,Survey (FNDDS),"Cabbage, cooked, as ingredient",44.0,100,g,"100 g",44.0
+2710804,99997550,Food Code,Survey (FNDDS),"Summer squash, cooked, as ingredient",22.0,100,g,"100 g",22.0
+2710803,99997545,Food Code,Survey (FNDDS),"Green beans, cooked, as ingredient",42.0,100,g,"100 g",42.0
+2710794,99997340,Food Code,Survey (FNDDS),"Sweet potato, cooked, as ingredient",23.0,100,g,"100 g",23.0
+2710792,99997220,Food Code,Survey (FNDDS),"Broccoli, cooked, as ingredient",48.0,100,g,"100 g",48.0
+2710796,99997510,Food Code,Survey (FNDDS),"Onions, cooked, as ingredient",27.0,100,g,"100 g",27.0
+2710793,99997310,Food Code,Survey (FNDDS),"Carrots, cooked, as ingredient",31.0,100,g,"100 g",31.0
+2710798,99997520,Food Code,Survey (FNDDS),"Green pepper, cooked, as ingredient",8.00,100,g,"100 g",8.00
+2710795,99997410,Food Code,Survey (FNDDS),"Tomatoes, cooked, as ingredient",12.0,100,g,"100 g",12.0
+2710799,99997525,Food Code,Survey (FNDDS),"Red pepper, cooked, as ingredient",6.00,100,g,"100 g",6.00
+2710797,99997515,Food Code,Survey (FNDDS),"Mushrooms, cooked, as ingredient",6.00,100,g,"100 g",6.00
+2710786,99995130,Food Code,Survey (FNDDS),"Wheat bread as ingredient in sandwiches",161,100,g,"100 g",161
+2710789,99995625,Food Code,Survey (FNDDS),"Rice, brown, cooked, as ingredient",5.00,100,g,"100 g",5.00
+2710790,99997100,Food Code,Survey (FNDDS),"Potato, cooked, as ingredient",7.00,100,g,"100 g",7.00
+2710788,99995620,Food Code,Survey (FNDDS),"Rice, white, cooked, as ingredient",4.00,100,g,"100 g",4.00
+2710791,99997210,Food Code,Survey (FNDDS),"Spinach, cooked, as ingredient",79.0,100,g,"100 g",79.0
+2710785,99995000,Food Code,Survey (FNDDS),"Breading or batter as ingredient in food",49.0,100,g,"100 g",49.0
+2710787,99995135,Food Code,Survey (FNDDS),"Wheat bun as ingredient in sandwiches",161,100,g,"100 g",161
+2710784,99992610,Food Code,Survey (FNDDS),"Fish fillet, fried as ingredient in sandwiches",22.0,100,g,"100 g",22.0
+2710782,99992405,Food Code,Survey (FNDDS),"Chicken as ingredient in recipes",8.00,100,g,"100 g",8.00
+2710781,99992230,Food Code,Survey (FNDDS),"Breakfast meat as ingredient in omelet",15.0,100,g,"100 g",15.0
+2710779,99991410,Food Code,Survey (FNDDS),"Cheese and Queso as ingredient",665,100,g,"100 g",665
+2710777,95342000,Food Code,Survey (FNDDS),"Fruit juice, acai blend",19.0,248,g,"Quantity not specified",47.1
+2710777,95342000,Food Code,Survey (FNDDS),"Fruit juice, acai blend",19.0,31,g,"1 fl oz (NFS)",5.89
+2710777,95342000,Food Code,Survey (FNDDS),"Fruit juice, acai blend",19.0,31,g,"1 fl oz (no ice)",5.89
+2710777,95342000,Food Code,Survey (FNDDS),"Fruit juice, acai blend",19.0,23,g,"1 fl oz (with ice)",4.37
+2710783,99992600,Food Code,Survey (FNDDS),"Fish, cooked, as ingredient",15.0,100,g,"100 g",15.0
+2710780,99992100,Food Code,Survey (FNDDS),"Beef as ingredient in recipes",20.0,100,g,"100 g",20.0
+2710778,99991400,Food Code,Survey (FNDDS),"Cheese as ingredient in sandwiches",900,100,g,"100 g",900
+2710776,95330500,Food Code,Survey (FNDDS),"Fluid replacement, 5% glucose in water",3.00,120,g,"1 bottle (4 oz)",3.60
+2710776,95330500,Food Code,Survey (FNDDS),"Fluid replacement, 5% glucose in water",3.00,120,g,"Quantity not specified",3.60
+2710776,95330500,Food Code,Survey (FNDDS),"Fluid replacement, 5% glucose in water",3.00,30,g,"1 fl oz",0.900
+2710776,95330500,Food Code,Survey (FNDDS),"Fluid replacement, 5% glucose in water",3.00,240,g,"1 cup",7.20
+2710775,95330100,Food Code,Survey (FNDDS),"Fluid replacement, electrolyte solution",10.0,31,g,"1 fl oz (NFS)",3.10
+2710775,95330100,Food Code,Survey (FNDDS),"Fluid replacement, electrolyte solution",10.0,248,g,"Quantity not specified",24.8
+2710775,95330100,Food Code,Survey (FNDDS),"Fluid replacement, electrolyte solution",10.0,31,g,"1 fl oz (no ice)",3.10
+2710775,95330100,Food Code,Survey (FNDDS),"Fluid replacement, electrolyte solution",10.0,23,g,"1 fl oz (with ice)",2.30
+2710771,95321000,Food Code,Survey (FNDDS),"Sports drink, NFS",1.00,248,g,"1 cup",2.48

@@ -59,8 +59,14 @@ safariConsole*.txt
 /_notes/
 /_tasks/
 
-# Source data files to be added later
-/source_data/
+# Source data - exclude large datasets and generated files
+source_data/.env
+source_data/curated-*.json
+source_data/merged-*.json
+source_data/nutrientsearchresults_1087_Branded.csv
+source_data/nutrientsearchresults_1087_SR\ Legacy.csv
+source_data/nutrientsearchresults_1087_Survey\ \(FNDDS\).csv
+source_data/sr_legacy_foundation_download.csv
 
 # Misc dev files
 /tmp/

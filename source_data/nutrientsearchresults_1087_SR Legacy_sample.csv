@@ -1,0 +1,51 @@
+fdcId,identifier,identifierType,foodType,foodDescription,value,foodWeight,valueUnit,foodMeasure,measureValue
+175304,17169,NDB #,SR Legacy,"Game meat, goat, cooked, roasted",17.0,85,g,"3 oz",14.4
+175304,17169,NDB #,SR Legacy,"Game meat, goat, cooked, roasted",17.0,340,g,"1 piece, cooked (yield from 1 lb raw meat, boneless)",57.8
+175303,17168,NDB #,SR Legacy,"Game meat, goat, raw",13.0,28.35000000000000142108547152020037174224853515625,g,"1 oz",3.69
+175303,17168,NDB #,SR Legacy,"Game meat, goat, raw",13.0,453.6000000000000227373675443232059478759765625,g,"1 lb",59.0
+175298,17159,NDB #,SR Legacy,"Game meat, boar, wild, cooked, roasted",16.0,85,g,"3 oz",13.6
+175298,17159,NDB #,SR Legacy,"Game meat, boar, wild, cooked, roasted",16.0,340,g,"1 piece, cooked (yield from 1 lb raw meat, boneless)",54.4
+175296,17152,NDB #,SR Legacy,"Game meat, beefalo, composite of cuts, raw",18.0,28.35000000000000142108547152020037174224853515625,g,"1 oz",5.10
+175296,17152,NDB #,SR Legacy,"Game meat, beefalo, composite of cuts, raw",18.0,453.6000000000000227373675443232059478759765625,g,"1 lb",81.6
+175295,17151,NDB #,SR Legacy,"Game meat, beaver, cooked, roasted",22.0,313,g,"1 piece, cooked (yield from 1 lb raw meat, boneless)",68.9
+175295,17151,NDB #,SR Legacy,"Game meat, beaver, cooked, roasted",22.0,85,g,"3 oz",18.7
+175302,17167,NDB #,SR Legacy,"Game meat, elk, cooked, roasted",5.00,85,g,"3 oz",4.25
+175302,17167,NDB #,SR Legacy,"Game meat, elk, cooked, roasted",5.00,340,g,"1 piece, cooked (yield from 1 lb raw meat, boneless)",17.0
+175300,17161,NDB #,SR Legacy,"Game meat, buffalo, water, cooked, roasted",15.0,85,g,"3 oz",12.8
+175300,17161,NDB #,SR Legacy,"Game meat, buffalo, water, cooked, roasted",15.0,340,g,"1 piece, cooked (yield from 1 lb raw meat, boneless)",51.0
+175301,17166,NDB #,SR Legacy,"Game meat, elk, raw",4.00,453.6000000000000227373675443232059478759765625,g,"1 lb",18.1
+175301,17166,NDB #,SR Legacy,"Game meat, elk, raw",4.00,28.35000000000000142108547152020037174224853515625,g,"1 oz",1.13
+175299,17160,NDB #,SR Legacy,"Game meat, buffalo, water, raw",12.0,28.35000000000000142108547152020037174224853515625,g,"1 oz",3.40
+175299,17160,NDB #,SR Legacy,"Game meat, buffalo, water, raw",12.0,453.6000000000000227373675443232059478759765625,g,"1 lb",54.4
+175297,17158,NDB #,SR Legacy,"Game meat, boar, wild, raw",12.0,28.35000000000000142108547152020037174224853515625,g,"1 oz",3.40
+175297,17158,NDB #,SR Legacy,"Game meat, boar, wild, raw",12.0,453.6000000000000227373675443232059478759765625,g,"1 lb",54.4
+175290,17142,NDB #,SR Legacy,"Veal, ground, raw",12.0,85,g,"3 oz",10.2
+175290,17142,NDB #,SR Legacy,"Veal, ground, raw",12.0,28.35000000000000142108547152020037174224853515625,g,"1 oz",3.40
+175290,17142,NDB #,SR Legacy,"Veal, ground, raw",12.0,113,g,"4 oz",13.6
+175292,17144,NDB #,SR Legacy,"Game meat, antelope, raw",3.00,28.35000000000000142108547152020037174224853515625,g,"1 oz",0.850
+175292,17144,NDB #,SR Legacy,"Game meat, antelope, raw",3.00,453.6000000000000227373675443232059478759765625,g,"1 lb",13.6
+175291,17143,NDB #,SR Legacy,"Veal, ground, cooked, broiled",17.0,85,g,"3 oz",14.4
+175291,17143,NDB #,SR Legacy,"Veal, ground, cooked, broiled",17.0,299,g,"1 unit, cooked (yield from 1 lb raw meat)",50.8
+175294,17150,NDB #,SR Legacy,"Game meat, beaver, raw",15.0,113,g,"4 oz",17.0
+175294,17150,NDB #,SR Legacy,"Game meat, beaver, raw",15.0,453.6000000000000227373675443232059478759765625,g,"1 lb",68.0
+175289,17141,NDB #,SR Legacy,"Veal, cubed for stew (leg and shoulder), separable lean only, cooked, braised",29.0,85,g,"3 oz",24.6
+175289,17141,NDB #,SR Legacy,"Veal, cubed for stew (leg and shoulder), separable lean only, cooked, braised",29.0,263,g,"1 unit, cooked (yield from 1 lb raw meat)",76.3
+175293,17149,NDB #,SR Legacy,"Bison, ground, grass-fed, raw",11.0,28.35000000000000142108547152020037174224853515625,g,"1 oz",3.12
+175293,17149,NDB #,SR Legacy,"Bison, ground, grass-fed, raw",11.0,85,g,"1 patty (cooked from 4 oz raw)",9.35
+175282,17125,NDB #,SR Legacy,"Veal, shoulder, arm, separable lean only, raw",22.0,28.35000000000000142108547152020037174224853515625,g,"1 oz",6.24
+175282,17125,NDB #,SR Legacy,"Veal, shoulder, arm, separable lean only, raw",22.0,289,g,"1 steak, excluding refuse (yield from 1 raw steak, with refuse, weighing 385 g)",63.6
+175283,17126,NDB #,SR Legacy,"Veal, shoulder, arm, separable lean only, cooked, braised",30.0,160,g,"1 steak, excluding refuse (yield from 1 raw steak, with refuse, weighing 385 g)",48.0
+175283,17126,NDB #,SR Legacy,"Veal, shoulder, arm, separable lean only, cooked, braised",30.0,85,g,"3 oz",25.5
+175287,17135,NDB #,SR Legacy,"Veal, sirloin, separable lean and fat, cooked, braised",17.0,205,g,"1 piece, cooked, excluding refuse (yield from 1 lb raw meat with refuse)",34.8
+175287,17135,NDB #,SR Legacy,"Veal, sirloin, separable lean and fat, cooked, braised",17.0,85,g,"3 oz",14.4
+175284,17127,NDB #,SR Legacy,"Veal, shoulder, arm, separable lean only, cooked, roasted",27.0,272,g,"1 piece, cooked, excluding refuse (yield from 1 lb raw meat with refuse)",73.4
+175284,17127,NDB #,SR Legacy,"Veal, shoulder, arm, separable lean only, cooked, roasted",27.0,85,g,"3 oz",23.0
+175288,17136,NDB #,SR Legacy,"Veal, sirloin, separable lean and fat, cooked, roasted",13.0,269,g,"1 piece, cooked, excluding refuse (yield from 1 lb raw meat with refuse)",35.0
+175288,17136,NDB #,SR Legacy,"Veal, sirloin, separable lean and fat, cooked, roasted",13.0,85,g,"3 oz",11.0
+175285,17133,NDB #,SR Legacy,"Veal, shoulder, blade, separable lean only, cooked, roasted",28.0,236,g,"1 piece, cooked, excluding refuse (yield from 1 lb raw meat with refuse)",66.1
+175285,17133,NDB #,SR Legacy,"Veal, shoulder, blade, separable lean only, cooked, roasted",28.0,85,g,"3 oz",23.8
+175281,17124,NDB #,SR Legacy,"Veal, shoulder, arm, separable lean and fat, cooked, roasted",26.0,283,g,"1 piece, cooked, excluding refuse (yield from 1 lb raw meat with refuse)",73.6
+175281,17124,NDB #,SR Legacy,"Veal, shoulder, arm, separable lean and fat, cooked, roasted",26.0,85,g,"3 oz",22.1
+175286,17134,NDB #,SR Legacy,"Veal, sirloin, separable lean and fat, raw",11.0,453.6000000000000227373675443232059478759765625,g,"1 lb",49.9
+175286,17134,NDB #,SR Legacy,"Veal, sirloin, separable lean and fat, raw",11.0,28.35000000000000142108547152020037174224853515625,g,"1 oz",3.12
+175278,17117,NDB #,SR Legacy,"Veal, shoulder, whole (arm and blade), separable lean and fat, cooked, braised",35.0,191,g,"1 piece, cooked, excluding refuse (yield from 1 lb raw meat with refuse)",66.8
