@@ -55,11 +55,17 @@ safariConsole*.txt
 
 # For now, transient notes that are useful locally but not necessarily 
 # a permenant part of project or something to push to Github
+# Same for tasks
 /_notes/
-/tmp/
-#/_tasks/
+/_tasks/
+
+# Source data files to be added later
+/source_data/
 
 # Misc dev files
+/tmp/
+/backup/
+/backup*/
 .repomixignore
 *repomix*
 clean.sh
