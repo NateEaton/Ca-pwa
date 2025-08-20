@@ -35,8 +35,6 @@ source_data/.env
 .vscode/ 
 *.swp
 .history/
-.prettierrc
-mind-pwa.code-workspace
 CLAUDE.md
 .claude
 
@@ -79,8 +77,3 @@ worker/.env*
 /backup*/
 .repomixignore
 *repomix*
-clean.sh
-*alcium*.json
-sample*
-*.xml
-*.json
