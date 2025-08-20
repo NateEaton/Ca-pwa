@@ -24026,7 +24026,10 @@ const SEARCH_STOPWORDS = [
 ];
 
 // Helper function to search foods
+// @deprecated Use SearchService.searchFoods() instead for enhanced search capabilities
 export function searchFoods(query, customFoods = [], favorites = new Set(), hiddenFoods = new Set()) {
+  console.warn('searchFoods() is deprecated. Use SearchService.searchFoods() instead for enhanced search capabilities.');
+  
   if (!query || query.length < 2) return [];
 
   const keywords = query

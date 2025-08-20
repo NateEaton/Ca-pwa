@@ -119,6 +119,7 @@
     ).reduce((sum, dayFoods) => sum + dayFoods.length, 0);
     const customFoodsCount = (backupData.customFoods || []).length;
     const favoritesCount = (backupData.favorites || []).length;
+    const hiddenFoodsCount = (backupData.hiddenFoods || []).length;
     const createdAt = backupData.metadata?.createdAt
       ? new Date(backupData.metadata.createdAt).toLocaleDateString()
       : "Unknown";
@@ -137,6 +138,7 @@
 • ${totalDays} journal days with ${totalFoodEntries} food entries<br>
 • ${customFoodsCount} custom food definitions<br>
 • ${favoritesCount} favorite foods<br>
+• ${hiddenFoodsCount} hidden foods<br>
 • Date range: ${dateRange}`;
   }
 

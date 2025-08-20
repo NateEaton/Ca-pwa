@@ -20,6 +20,7 @@
   import { onMount, onDestroy } from "svelte";
   import { calciumState, showToast, calciumService } from "$lib/stores/calcium";
   import { DEFAULT_FOOD_DATABASE } from "$lib/data/foodDatabase";
+  import { SearchService } from "$lib/services/SearchService";
   import { goto } from "$app/navigation";
 
   let searchQuery = "";
@@ -66,11 +67,15 @@
       foods = [...$calciumState.customFoods];
     }
     
-    // Apply search
+    // Apply enhanced search
     if (searchQuery.trim()) {
-      foods = foods.filter(food => 
-        food.name.toLowerCase().includes(searchQuery.toLowerCase().trim())
-      );
+      const results = SearchService.searchFoods(searchQuery, foods, {
+        mode: 'database',
+        favorites: $calciumState.favorites,
+        hiddenFoods: $calciumState.hiddenFoods,
+        maxResults: 100 // Higher limit for database browsing
+      });
+      foods = results.map(result => result.food);
     }
     
     // Apply sort
@@ -201,6 +206,10 @@
     }
   }
 
+  function clearSearch() {
+    searchQuery = "";
+  }
+
 </script>
 
 <svelte:head>
@@ -219,6 +228,11 @@
         bind:value={searchQuery}
       />
       <span class="material-icons search-icon">search</span>
+      {#if searchQuery}
+        <button class="clear-search-btn" on:click={clearSearch}>
+          <span class="material-icons">close</span>
+        </button>
+      {/if}
     </div>
 
     <!-- Filter Controls -->
@@ -409,7 +423,7 @@
 
   .data-search {
     width: 100%;
-    padding: var(--spacing-md) var(--spacing-lg) var(--spacing-md) 3rem; /* Space for search icon only */
+    padding: var(--spacing-md) 3rem var(--spacing-md) 3rem; /* Space for search icon on left and clear button on right */
     border: 1px solid var(--divider);
     border-radius: var(--spacing-sm);
     font-size: var(--input-font-min); /* Prevent iOS zoom */
@@ -430,6 +444,32 @@
     transform: translateY(-50%);
     color: var(--text-secondary);
     font-size: var(--icon-size-lg);
+  }
+
+  .clear-search-btn {
+    position: absolute;
+    right: var(--spacing-sm);
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 0.25rem;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+  }
+
+  .clear-search-btn:hover {
+    background-color: var(--surface-variant);
+    color: var(--text-primary);
+  }
+
+  .clear-search-btn .material-icons {
+    font-size: 18px;
   }
 
 

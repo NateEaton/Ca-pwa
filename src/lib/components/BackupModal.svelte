@@ -77,6 +77,9 @@
     const favoritesCount = backupData.favorites
       ? backupData.favorites.length
       : 0;
+    const hiddenFoodsCount = backupData.hiddenFoods
+      ? backupData.hiddenFoods.length
+      : 0;
 
     let dateRange = "No journal entries";
     if (dates.length > 0) {
@@ -91,6 +94,7 @@
 • ${totalDays} journal days with ${totalFoodEntries} food entries<br>
 • ${customFoodsCount} custom food definitions<br>
 • ${favoritesCount} favorite foods<br>
+• ${hiddenFoodsCount} hidden foods<br>
 • Date range: ${dateRange}`;
   }
 

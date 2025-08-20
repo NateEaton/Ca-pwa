@@ -19,7 +19,8 @@
 <script>
   import { createEventDispatcher } from "svelte";
   import { calciumState, calciumService } from "$lib/stores/calcium";
-  import { searchFoods, DEFAULT_FOOD_DATABASE } from "$lib/data/foodDatabase";
+  import { DEFAULT_FOOD_DATABASE } from "$lib/data/foodDatabase";
+  import { SearchService } from "$lib/services/SearchService";
   import UnitConverter from "$lib/services/UnitConverter.js";
   import ConfirmDialog from "./ConfirmDialog.svelte";
 
@@ -162,7 +163,17 @@
     // Debounce search
     searchTimeout = setTimeout(() => {
       if (foodName.trim().length >= 2) {
-        searchResults = searchFoods(foodName.trim(), $calciumState.customFoods, $calciumState.favorites, $calciumState.hiddenFoods);
+        const allFoods = [...DEFAULT_FOOD_DATABASE, ...$calciumState.customFoods];
+        
+        const results = SearchService.searchFoods(foodName.trim(), allFoods, {
+          mode: 'add_food',
+          favorites: $calciumState.favorites,
+          hiddenFoods: $calciumState.hiddenFoods,
+          customFoods: $calciumState.customFoods,
+          maxResults: 15
+        });
+        
+        searchResults = results.map(result => result.food);
         showSearchResults = searchResults.length > 0;
       } else {
         searchResults = [];
