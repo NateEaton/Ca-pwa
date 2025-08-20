@@ -55,6 +55,12 @@ export default defineConfig(({ mode }) => {
           // REMOVED wasm from globPatterns
           globPatterns: ["**/*.{js,css,html,ico,png,svg}"],
           additionalManifestEntries: [{ url: "index.html", revision: null }],
+          // Force cache refresh on navigation errors
+          navigateFallback: null,
+          skipWaiting: true,
+          clientsClaim: true,
+          // Use build ID for cache versioning
+          cacheId: `calcium-cache-${createBuildId()}`,
         },
         includeAssets: ["favicon.ico", "index.html"],
         manifest: {

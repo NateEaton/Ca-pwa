@@ -32,6 +32,22 @@ else
     echo "🔨 Building My Calcium PWA for '$ENVIRONMENT' environment..."
 fi
 
+# --- Build ID Generation ---
+echo "🔢 Generating build ID..."
+BUILD_ID=$(node -e "
+const { execSync } = require('child_process');
+const timestamp = new Date().toISOString().replace(/[-T:.]/g, '').slice(0, 14);
+try {
+  const gitHash = execSync('git rev-parse --short HEAD', { encoding: 'utf8' }).trim();
+  const status = execSync('git status --porcelain', { encoding: 'utf8' }).trim();
+  const isDirty = status.length > 0;
+  console.log(\`\${gitHash}\${isDirty ? '-dirty' : ''}-\${timestamp}\`);
+} catch (error) {
+  console.log(timestamp);
+}
+")
+echo "📋 Build ID: $BUILD_ID"
+
 # --- Build Process ---
 echo "📦 Installing dependencies..."
 npm install
@@ -93,12 +109,14 @@ if [ $? -eq 0 ]; then
             cp -r "${BUILD_OUTPUT_DIR:?}"/* "$DEPLOY_DIR/" # Use :? for safety
             
             echo "🚀 Deployment to $DEPLOY_DIR completed successfully!"
+            echo "📋 Deployed Build ID: $BUILD_ID"
             echo "📊 Build size:"
             du -sh "$DEPLOY_DIR"
         else
             echo "⚠️ Deployment directory not configured or does not exist."
             echo "Please set PROD_DEPLOY_DIR or DEV_DEPLOY_DIR in your .env file."
             echo "📦 Built files are available in $BUILD_OUTPUT_DIR/"
+            echo "📋 Build ID: $BUILD_ID"
         fi
     fi
 else

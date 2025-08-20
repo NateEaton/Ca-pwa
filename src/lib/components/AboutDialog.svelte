@@ -98,7 +98,8 @@
             <h4>Features</h4>
             <ul class="features-list">
               <li>
-                Track calcium from curated list of foods from official sources
+                Track calcium intake based on a curated list of foods from
+                official sources
               </li>
               <li>Add custom foods with your own calcium values</li>
               <li>Set personalized daily calcium goals</li>
