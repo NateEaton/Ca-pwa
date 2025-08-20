@@ -98,10 +98,10 @@
       </p>
       <p>
         <strong>Database Page:</strong> Browse all foods. Use filters and
-        sorting to explore the data. Here you can also manage your favorites and
-        delete custom foods. Tap the
-        <span class="material-icons inline-icon">info</span> icon in the header for
-        details on the data source.
+        sorting to explore the data. Here you can also manage your favorites, control
+        which database foods appear in search when journaling and delete custom foods. 
+        Tap the <span class="material-icons inline-icon">info</span> icon in the header
+        for details on the data source.
       </p>
       <p>
         <strong>Report Page:</strong> Generate a printable summary of your history

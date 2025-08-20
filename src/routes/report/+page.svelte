@@ -20,6 +20,7 @@
   import { onMount, onDestroy } from "svelte";
   import { goto } from "$app/navigation";
   import { calciumState, calciumService } from "$lib/stores/calcium";
+  import { DATABASE_METADATA } from "$lib/data/foodDatabase";
 
   let reportData = null;
   let isLoading = true;
@@ -503,7 +504,7 @@
           This report is intended for sharing with healthcare professionals.
         </p>
         <p>
-          Data is self-reported and based on USDA food composition database.
+          Data is self-reported and based on data curated from the following data sources: {DATABASE_METADATA.name}.
         </p>
       </div>
     {:else}
