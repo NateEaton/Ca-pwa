@@ -68,6 +68,11 @@ source_data/nutrientsearchresults_1087_SR\ Legacy.csv
 source_data/nutrientsearchresults_1087_Survey\ \(FNDDS\).csv
 source_data/sr_legacy_foundation_download.csv
 
+# Cloudflare Workers secrets
+worker/wrangler.toml
+worker/.env*
+!worker/.env.example
+
 # Misc dev files
 /tmp/
 /backup/

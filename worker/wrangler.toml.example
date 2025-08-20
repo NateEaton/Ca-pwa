@@ -3,6 +3,8 @@ main = "src/index.ts"
 compatibility_date = "2024-08-11"
 
 # KV namespace for storing encrypted sync docs
+# Create your KV namespace: wrangler kv:namespace create "SYNC_KV"
+# Then replace the ID below with your actual namespace ID
 [[kv_namespaces]]
 binding = "SYNC_KV"
-id = "2d96d1b05d6a45fdaaef8cb0a6bef65a"  
+id = "your_kv_namespace_id_here"
