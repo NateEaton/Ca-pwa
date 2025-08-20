@@ -112,7 +112,7 @@
         mode: 'database',
         favorites: $calciumState.favorites,
         hiddenFoods: selectedFilter === "database" ? new Set() : $calciumState.hiddenFoods, // Don't filter hidden foods in database mode
-        maxResults: 100 // Higher limit for database browsing
+// No maxResults - show all matching foods for complete bulk operations
       });
       foods = results.map(result => result.food);
     }
@@ -179,6 +179,43 @@
     (searchQuery.trim() || calciumFilter.type !== 'all') && 
     filteredFoods.length > 0 && 
     eligibleFoodsForBulk.length > 0;
+
+  // Item count display logic
+  $: {
+    let totalCount = 0;
+    if (selectedFilter === "available") {
+      const visibleDatabaseFoods = [...DEFAULT_FOOD_DATABASE].filter(food => !$calciumState.hiddenFoods.has(food.id));
+      totalCount = visibleDatabaseFoods.length + $calciumState.customFoods.length;
+    } else if (selectedFilter === "database") {
+      totalCount = DEFAULT_FOOD_DATABASE.length;
+    } else if (selectedFilter === "user") {
+      totalCount = $calciumState.customFoods.length;
+    }
+  }
+
+  $: itemCountText = (() => {
+    const hasActiveFilters = searchQuery.trim() || calciumFilter.type !== 'all';
+    let totalCount = 0;
+    let filterLabel = "";
+    
+    if (selectedFilter === "available") {
+      const visibleDatabaseFoods = [...DEFAULT_FOOD_DATABASE].filter(food => !$calciumState.hiddenFoods.has(food.id));
+      totalCount = visibleDatabaseFoods.length + $calciumState.customFoods.length;
+      filterLabel = "available";
+    } else if (selectedFilter === "database") {
+      totalCount = DEFAULT_FOOD_DATABASE.length;
+      filterLabel = "database";
+    } else if (selectedFilter === "user") {
+      totalCount = $calciumState.customFoods.length;
+      filterLabel = "custom";
+    }
+    
+    if (hasActiveFilters) {
+      return `${filteredFoods.length} of ${totalCount} ${filterLabel} foods`;
+    } else {
+      return `${totalCount} ${filterLabel} foods`;
+    }
+  })();
 
 
   function handleFilterClick(filter) {
@@ -308,10 +345,6 @@
   }
 
 
-  function clearCalciumFilter() {
-    calciumFilter = { type: 'all', preset: null, min: null, max: null };
-    showCalciumDropdown = false;
-  }
 
   function getCalciumFilterText() {
     if (calciumFilter.type === 'all') return 'Ca';
@@ -323,7 +356,7 @@
   function passesCalciumFilter(food) {
     if (calciumFilter.type === 'all') return true;
     
-    const calcium = food.calcium;
+    const calcium = Math.round(food.calcium);
     
     if (calciumFilter.type === 'preset') {
       switch (calciumFilter.preset) {
@@ -525,17 +558,16 @@
                 <span>mg</span>
               </div>
             </div>
-            
-            {#if calciumFilter.type !== 'all'}
-              <button class="clear-filter-btn" on:click={clearCalciumFilter}>
-                Clear Filter
-              </button>
-            {/if}
           </div>
         </div>
       </div>
         {/if}
       </div>
+    </div>
+
+    <!-- Item Count Display -->
+    <div class="item-count-display">
+      <span class="item-count-text">{itemCountText}</span>
     </div>
 
     <!-- Bulk Actions (only shown for search results in database mode) -->
@@ -1184,6 +1216,21 @@
     }
   }
 
+  /* Item Count Display */
+  .item-count-display {
+    padding: var(--spacing-sm) var(--spacing-md);
+    background-color: var(--surface-variant);
+    border-radius: 6px;
+    margin-bottom: var(--spacing-md);
+    border: 1px solid var(--divider);
+  }
+
+  .item-count-text {
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+    font-weight: 500;
+  }
+
   /* Bulk Actions */
   .bulk-actions {
     background-color: var(--surface-variant);
@@ -1358,21 +1405,6 @@
     color: var(--text-secondary);
   }
 
-  .clear-filter-btn {
-    margin-top: var(--spacing-md);
-    padding: var(--spacing-sm) var(--spacing-md);
-    background: var(--surface-variant);
-    border: 1px solid var(--divider);
-    border-radius: 6px;
-    color: var(--text-primary);
-    cursor: pointer;
-    font-size: var(--font-size-sm);
-    transition: background-color 0.2s;
-  }
-
-  .clear-filter-btn:hover {
-    background-color: var(--divider);
-  }
 
   /* Mobile responsive calcium filter */
   @media (max-width: 30rem) {

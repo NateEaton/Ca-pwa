@@ -170,7 +170,7 @@
           favorites: $calciumState.favorites,
           hiddenFoods: $calciumState.hiddenFoods,
           customFoods: $calciumState.customFoods,
-          maxResults: 15
+          maxResults: 20
         });
         
         searchResults = results.map(result => result.food);
