@@ -703,7 +703,7 @@
             <div class="food-measure">{food.measure}</div>
           </div>
           <div class="food-calcium">
-            <div class="calcium-amount">{Math.round(food.calcium)}mg</div>
+            <div class="calcium-amount" title="{food.calcium}mg">{Math.round(food.calcium)}mg</div>
             <div class="food-type">
               {food.isCustom ? "User" : "Database"}
             </div>
