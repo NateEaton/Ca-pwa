@@ -1,3 +1,26 @@
+/*
+ * My Calcium Tracker PWA
+ * Copyright (C) 2025 Nathan A. Eaton Jr.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <https://www.gnu.org/licenses/>.
+ */
+
+/**
+ * @fileoverview USDA food database with calcium content data.
+ * Contains 3400+ foods from USDA FoodData Central with calcium measurements.
+ */
+
 // Database metadata for source tracking and abstraction
 export const DATABASE_METADATA = {
   source: "USDA-FDC",
@@ -24003,7 +24026,10 @@ const SEARCH_STOPWORDS = [
 ];
 
 // Helper function to search foods
-export function searchFoods(query, customFoods = [], favorites = new Set()) {
+// @deprecated Use SearchService.searchFoods() instead for enhanced search capabilities
+export function searchFoods(query, customFoods = [], favorites = new Set(), hiddenFoods = new Set()) {
+  console.warn('searchFoods() is deprecated. Use SearchService.searchFoods() instead for enhanced search capabilities.');
+  
   if (!query || query.length < 2) return [];
 
   const keywords = query
@@ -24042,6 +24068,11 @@ export function searchFoods(query, customFoods = [], favorites = new Set()) {
 
       // Must match at least one keyword
       if (!hasMatch) return null;
+
+      // Exclude hidden foods (custom foods can't be hidden, so only check database foods)
+      if (!food.isCustom && hiddenFoods.has(food.id)) {
+        return null;
+      }
 
       // Prioritize favorites first (highest priority)
       if (favorites.has(food.id)) {

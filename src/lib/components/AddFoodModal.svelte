@@ -1,12 +1,34 @@
+<!--
+ * My Calcium Tracker PWA
+ * Copyright (C) 2025 Nathan A. Eaton Jr.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <https://www.gnu.org/licenses/>.
+-->
+
 <script>
   import { createEventDispatcher } from "svelte";
   import { calciumState, calciumService } from "$lib/stores/calcium";
-  import { searchFoods, DEFAULT_FOOD_DATABASE } from "$lib/data/foodDatabase";
+  import { DEFAULT_FOOD_DATABASE } from "$lib/data/foodDatabase";
+  import { SearchService } from "$lib/services/SearchService";
   import UnitConverter from "$lib/services/UnitConverter.js";
   import ConfirmDialog from "./ConfirmDialog.svelte";
 
+  /** Whether the modal is visible */
   export let show = false;
+  /** The food being edited (null for add mode) */
   export let editingFood = null;
+  /** The index of the food being edited (-1 for add mode) */
   export let editingIndex = -1;
 
   const dispatch = createEventDispatcher();
@@ -30,7 +52,7 @@
   let isSelectedFromSearch = false;
   let usingPreference = false;
   let hasResetToOriginal = false;
-  
+
   // Unit conversion
   const unitConverter = new UnitConverter();
   let parsedFoodMeasure = null;
@@ -50,28 +72,32 @@
       calcium = editingFood.calcium.toString();
       servingQuantity = editingFood.servingQuantity;
       servingUnit = editingFood.servingUnit;
-      
+
       // Store original calcium per unit for recalculation in edit mode
       currentFoodData = {
         name: editingFood.name,
-        calcium: parseFloat((editingFood.calcium / editingFood.servingQuantity).toFixed(2)), // calcium per unit
+        calcium: parseFloat(
+          (editingFood.calcium / editingFood.servingQuantity).toFixed(2)
+        ), // calcium per unit
         measure: `1 ${editingFood.servingUnit}`,
-        isCustom: editingFood.isCustom || false
+        isCustom: editingFood.isCustom || false,
       };
-      
+
       // If not a custom food, try to find the corresponding database food to get the ID
       if (!editingFood.isCustom) {
-        const databaseFood = DEFAULT_FOOD_DATABASE.find(food => food.name === editingFood.name);
+        const databaseFood = DEFAULT_FOOD_DATABASE.find(
+          (food) => food.name === editingFood.name
+        );
         if (databaseFood) {
           currentFoodData.id = databaseFood.id;
         }
       }
-      
+
       // Set up parsed measure for unit conversion
       parsedFoodMeasure = {
         originalQuantity: 1,
         detectedUnit: editingFood.servingUnit,
-        unitType: 'generic'
+        unitType: "generic",
       };
     } else {
       // Add mode - reset everything
@@ -88,7 +114,7 @@
     searchResults = [];
     showSearchResults = false;
     hasResetToOriginal = false;
-    
+
     if (!editingFood) {
       parsedFoodMeasure = null;
       unitSuggestions = [];
@@ -141,7 +167,20 @@
     // Debounce search
     searchTimeout = setTimeout(() => {
       if (foodName.trim().length >= 2) {
-        searchResults = searchFoods(foodName.trim(), $calciumState.customFoods, $calciumState.favorites);
+        const allFoods = [
+          ...DEFAULT_FOOD_DATABASE,
+          ...$calciumState.customFoods,
+        ];
+
+        const results = SearchService.searchFoods(foodName.trim(), allFoods, {
+          mode: "add_food",
+          favorites: $calciumState.favorites,
+          hiddenFoods: $calciumState.hiddenFoods,
+          customFoods: $calciumState.customFoods,
+          maxResults: 20,
+        });
+
+        searchResults = results.map((result) => result.food);
         showSearchResults = searchResults.length > 0;
       } else {
         searchResults = [];
@@ -163,30 +202,30 @@
 
     // Parse food measure using UnitConverter for better parsing
     parsedFoodMeasure = unitConverter.parseUSDAMeasure(food.measure);
-    
+
     // Check for saved serving preferences for database foods
     usingPreference = false;
-    
+
     if (!food.isCustom && food.id && calciumService) {
       const savedPreference = calciumService.getServingPreference(food.id);
       if (savedPreference) {
         servingQuantity = savedPreference.preferredQuantity;
         servingUnit = savedPreference.preferredUnit;
         usingPreference = true;
-        
+
         // Recalculate calcium for preferred serving
         updateCalcium();
       }
     }
-    
+
     if (!usingPreference) {
       // Use default serving size from parsed measure
       servingQuantity = parsedFoodMeasure.originalQuantity;
       // Use cleaned unit for better display (handles descriptive and compound units)
-      servingUnit = parsedFoodMeasure.cleanedUnit || parsedFoodMeasure.detectedUnit;
+      servingUnit =
+        parsedFoodMeasure.cleanedUnit || parsedFoodMeasure.detectedUnit;
     }
-    
-    // FIXED: Generate unit suggestions with current serving details
+
     updateUnitSuggestions();
 
     searchResults = [];
@@ -196,9 +235,15 @@
   function updateCalcium() {
     if (currentFoodData && servingQuantity && parsedFoodMeasure) {
       // For descriptive measures or unknown unit types, use simple proportional calculation
-      if (parsedFoodMeasure.isDescriptive || parsedFoodMeasure.unitType === 'unknown') {
+      if (
+        parsedFoodMeasure.isDescriptive ||
+        parsedFoodMeasure.unitType === "unknown"
+      ) {
         const newCalcium = parseFloat(
-          ((currentFoodData.calcium * servingQuantity) / parsedFoodMeasure.originalQuantity).toFixed(2)
+          (
+            (currentFoodData.calcium * servingQuantity) /
+            parsedFoodMeasure.originalQuantity
+          ).toFixed(2)
         );
         calcium = newCalcium.toString();
         return;
@@ -209,7 +254,10 @@
         if (parsedFoodMeasure.isCompound) {
           // For compound units, user quantity changes are simple proportional
           const newCalcium = parseFloat(
-            ((currentFoodData.calcium * servingQuantity) / parsedFoodMeasure.originalQuantity).toFixed(2)
+            (
+              (currentFoodData.calcium * servingQuantity) /
+              parsedFoodMeasure.originalQuantity
+            ).toFixed(2)
           );
           calcium = newCalcium.toString();
         } else {
@@ -226,19 +274,24 @@
       } catch (error) {
         // Fallback to simple calculation if unit conversion fails
         const newCalcium = parseFloat(
-          ((currentFoodData.calcium * servingQuantity) / parsedFoodMeasure.originalQuantity).toFixed(2)
+          (
+            (currentFoodData.calcium * servingQuantity) /
+            parsedFoodMeasure.originalQuantity
+          ).toFixed(2)
         );
         calcium = newCalcium.toString();
       }
     }
 
-    // FIXED: Update unit suggestions dynamically when serving quantity changes
     updateUnitSuggestions();
   }
 
-  // NEW FUNCTION: Update unit suggestions based on current serving quantity
   function updateUnitSuggestions() {
-    if (parsedFoodMeasure && parsedFoodMeasure.unitType !== 'unknown' && servingQuantity) {
+    if (
+      parsedFoodMeasure &&
+      parsedFoodMeasure.unitType !== "unknown" &&
+      servingQuantity
+    ) {
       unitSuggestions = unitConverter.detectBestAlternativeUnits(
         servingUnit, // Use current serving unit, not original detected unit
         servingQuantity // Use current quantity, not original quantity
@@ -273,9 +326,8 @@
 
   async function handleDeleteConfirm() {
     try {
-      
       if (!calciumService) {
-        throw new Error('CalciumService not initialized');
+        throw new Error("CalciumService not initialized");
       }
 
       await calciumService.removeFood(editingIndex);
@@ -283,7 +335,7 @@
       closeModal();
       dispatch("foodDeleted");
     } catch (error) {
-      console.error('Error deleting food:', error);
+      console.error("Error deleting food:", error);
     }
   }
 
@@ -293,14 +345,16 @@
 
   async function toggleCurrentFoodFavorite() {
     if (isCustomMode || !currentFoodData || currentFoodData.isCustom) return;
-    
+
     // Validate that we have a valid food ID
-    if (!currentFoodData.id || typeof currentFoodData.id !== 'number') {
-      console.error('Cannot toggle favorite - invalid food ID:', currentFoodData);
+    if (!currentFoodData.id || typeof currentFoodData.id !== "number") {
+      console.error(
+        "Cannot toggle favorite - invalid food ID:",
+        currentFoodData
+      );
       return;
     }
-    
-    
+
     if (calciumService) {
       await calciumService.toggleFavorite(currentFoodData.id);
     }
@@ -308,16 +362,17 @@
 
   function resetToOriginalServing() {
     if (!parsedFoodMeasure || !currentFoodData) return;
-    
+
     // Reset to original database values
     servingQuantity = parsedFoodMeasure.originalQuantity;
     // Use cleaned unit for better display (handles descriptive and compound units)
-    servingUnit = parsedFoodMeasure.cleanedUnit || parsedFoodMeasure.detectedUnit;
+    servingUnit =
+      parsedFoodMeasure.cleanedUnit || parsedFoodMeasure.detectedUnit;
     usingPreference = false;
     hasResetToOriginal = true;
-    
+
     // Recalculate calcium with original serving
-    updateCalcium(); // This will also update suggestions via updateUnitSuggestions()
+    updateCalcium();
   }
 
   async function handleSubmit() {
@@ -328,7 +383,6 @@
       errorMessage = "Food name is required";
       return;
     }
-
 
     const calciumValue = parseFloat(calcium);
     if (!calciumValue || calciumValue <= 0 || calciumValue > 10000) {
@@ -350,9 +404,8 @@
     errorMessage = "";
 
     try {
-      
       if (!calciumService) {
-        throw new Error('CalciumService not initialized');
+        throw new Error("CalciumService not initialized");
       }
 
       const foodData = {
@@ -373,7 +426,7 @@
           await calciumService.saveCustomFood({
             name: foodName.trim(),
             calcium: calciumValue,
-            measure: `${servingQuantity} ${servingUnit.trim()}`
+            measure: `${servingQuantity} ${servingUnit.trim()}`,
           });
           // console.log('Custom food save completed');
         } else if (isSelectedFromSearch) {
@@ -381,21 +434,40 @@
         } else {
           // console.log('Not in custom mode, skipping custom food save');
         }
-        
+
         // Handle serving preference for database foods
-        if (!isCustomMode && currentFoodData && !currentFoodData.isCustom && currentFoodData.id) {
-          const defaultQuantity = parsedFoodMeasure ? parsedFoodMeasure.originalQuantity : 1;
-          const defaultUnit = parsedFoodMeasure ? parsedFoodMeasure.detectedUnit : 'serving';
-          
-          if (hasResetToOriginal || (servingQuantity === defaultQuantity && servingUnit === defaultUnit)) {
+        if (
+          !isCustomMode &&
+          currentFoodData &&
+          !currentFoodData.isCustom &&
+          currentFoodData.id
+        ) {
+          const defaultQuantity = parsedFoodMeasure
+            ? parsedFoodMeasure.originalQuantity
+            : 1;
+          const defaultUnit = parsedFoodMeasure
+            ? parsedFoodMeasure.detectedUnit
+            : "serving";
+
+          if (
+            hasResetToOriginal ||
+            (servingQuantity === defaultQuantity && servingUnit === defaultUnit)
+          ) {
             // User reset to original or values match default - delete any existing preference
             await calciumService.deleteServingPreference(currentFoodData.id);
-          } else if (servingQuantity !== defaultQuantity || servingUnit !== defaultUnit) {
+          } else if (
+            servingQuantity !== defaultQuantity ||
+            servingUnit !== defaultUnit
+          ) {
             // Save preference if user changed the serving size/unit
-            await calciumService.saveServingPreference(currentFoodData.id, servingQuantity, servingUnit);
+            await calciumService.saveServingPreference(
+              currentFoodData.id,
+              servingQuantity,
+              servingUnit
+            );
           }
         }
-        
+
         await calciumService.addFood(foodData);
         dispatch("foodAdded");
       }
@@ -423,7 +495,13 @@
 </script>
 
 {#if show}
-  <div class="modal-backdrop" on:click={closeModal} on:keydown={handleBackdropKeydown} role="button" tabindex="0">
+  <div
+    class="modal-backdrop"
+    on:click={closeModal}
+    on:keydown={handleBackdropKeydown}
+    role="button"
+    tabindex="0"
+  >
     <!-- svelte-ignore a11y-no-noninteractive-element-interactions -->
     <div
       class="modal-content"
@@ -481,15 +559,19 @@
           <div class="form-label-row">
             <label class="form-label" for="foodName">Food Name</label>
             {#if !isCustomMode && currentFoodData && !currentFoodData.isCustom}
-              <button 
+              <button
                 class="favorite-modal-btn"
                 class:favorite={$calciumState.favorites.has(currentFoodData.id)}
                 on:click={toggleCurrentFoodFavorite}
-                title={$calciumState.favorites.has(currentFoodData.id) ? "Remove from favorites" : "Add to favorites"}
+                title={$calciumState.favorites.has(currentFoodData.id)
+                  ? "Remove from favorites"
+                  : "Add to favorites"}
                 type="button"
               >
                 <span class="material-icons">
-                  {$calciumState.favorites.has(currentFoodData.id) ? "star" : "star_border"}
+                  {$calciumState.favorites.has(currentFoodData.id)
+                    ? "star"
+                    : "star_border"}
                 </span>
               </button>
             {/if}
@@ -510,7 +592,14 @@
           {#if showSearchResults && !isCustomMode}
             <div class="search-results">
               {#each searchResults as food}
-                <div class="search-item" class:custom-food={food.isCustom} on:click={() => selectFood(food)} on:keydown={(e) => handleSelectFoodKeydown(e, food)} role="button" tabindex="0">
+                <div
+                  class="search-item"
+                  class:custom-food={food.isCustom}
+                  on:click={() => selectFood(food)}
+                  on:keydown={(e) => handleSelectFoodKeydown(e, food)}
+                  role="button"
+                  tabindex="0"
+                >
                   <div class="search-item-content">
                     <div class="search-item-name">{food.name}</div>
                     <div class="search-item-details">
@@ -538,7 +627,8 @@
             placeholder="0"
             min="0.01"
             step="0.01"
-            disabled={isSubmitting || (!isCustomMode && !editingFood && !isSelectedFromSearch)}
+            disabled={isSubmitting ||
+              (!isCustomMode && !editingFood && !isSelectedFromSearch)}
           />
         </div>
 
@@ -546,7 +636,7 @@
           <div class="form-label-row">
             <label class="form-label" for="servingQuantity">Serving Size</label>
             {#if usingPreference && !isCustomMode && !editingFood}
-              <button 
+              <button
                 class="reset-serving-btn"
                 on:click={resetToOriginalServing}
                 title="Reset to original database serving size"
@@ -563,11 +653,15 @@
                 type="number"
                 class="form-input"
                 bind:value={servingQuantity}
-                on:input={() => { hasResetToOriginal = false; updateCalcium(); }}
+                on:input={() => {
+                  hasResetToOriginal = false;
+                  updateCalcium();
+                }}
                 placeholder="1"
                 min="0.01"
                 step="0.01"
-                disabled={isSubmitting || (!isCustomMode && !editingFood && !isSelectedFromSearch)}
+                disabled={isSubmitting ||
+                  (!isCustomMode && !editingFood && !isSelectedFromSearch)}
               />
             </div>
             <div class="serving-unit">
@@ -575,14 +669,17 @@
                 type="text"
                 class="form-input serving-unit-input"
                 bind:value={servingUnit}
-                on:input={() => { hasResetToOriginal = false; }}
+                on:input={() => {
+                  hasResetToOriginal = false;
+                }}
                 placeholder={isCustomMode ? "cups, oz, etc." : "cups"}
                 readonly={!isCustomMode}
-                disabled={isSubmitting || (!isCustomMode && !editingFood && !isSelectedFromSearch)}
+                disabled={isSubmitting ||
+                  (!isCustomMode && !editingFood && !isSelectedFromSearch)}
               />
             </div>
           </div>
-          
+
           {#if showUnitSuggestions && unitSuggestions.length > 0}
             <div class="unit-suggestions">
               <div class="unit-suggestions-label">
@@ -591,14 +688,15 @@
               </div>
               <div class="unit-suggestions-list">
                 {#each unitSuggestions.slice(0, 3) as suggestion}
-                  <button 
+                  <button
                     type="button"
                     class="unit-suggestion"
                     class:practical={suggestion.practical}
                     on:click={() => selectUnitSuggestion(suggestion)}
                     disabled={isSubmitting}
                   >
-                    {unitConverter.formatQuantity(suggestion.quantity)} {suggestion.display}
+                    {unitConverter.formatQuantity(suggestion.quantity)}
+                    {suggestion.display}
                   </button>
                 {/each}
               </div>
@@ -622,7 +720,12 @@
           >
             Cancel
           </button>
-          <button type="submit" class="btn btn-primary" disabled={isSubmitting || (!isCustomMode && !editingFood && !isSelectedFromSearch)}>
+          <button
+            type="submit"
+            class="btn btn-primary"
+            disabled={isSubmitting ||
+              (!isCustomMode && !editingFood && !isSelectedFromSearch)}
+          >
             {#if isSubmitting}
               <span class="material-icons spin">hourglass_empty</span>
             {/if}
@@ -637,7 +740,7 @@
 <ConfirmDialog
   bind:show={showDeleteConfirm}
   title="Delete Food"
-  message={editingFood?.name || ''}
+  message={editingFood?.name || ""}
   confirmText="Delete"
   cancelText="Cancel"
   type="danger"
@@ -880,7 +983,7 @@
     align-items: center;
     justify-content: space-between;
   }
-  
+
   .search-item.custom-food {
     border-left: 3px solid var(--warning-color);
   }
@@ -1097,7 +1200,8 @@
   }
 
   /* Mobile responsive */
-  @media (max-width: 30rem) { /* 480px equivalent */
+  @media (max-width: 30rem) {
+    /* 480px equivalent */
     .modal-backdrop {
       align-items: center;
       padding: var(--spacing-lg);

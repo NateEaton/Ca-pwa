@@ -1,0 +1,10 @@
+name = "calcium-sync-worker"
+main = "src/index.ts"
+compatibility_date = "2024-08-11"
+
+# KV namespace for storing encrypted sync docs
+# Create your KV namespace: wrangler kv:namespace create "SYNC_KV"
+# Then replace the ID below with your actual namespace ID
+[[kv_namespaces]]
+binding = "SYNC_KV"
+id = "your_kv_namespace_id_here"

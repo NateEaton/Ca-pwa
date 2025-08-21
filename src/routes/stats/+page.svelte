@@ -1,5 +1,23 @@
+<!--
+ * My Calcium Tracker PWA
+ * Copyright (C) 2025 Nathan A. Eaton Jr.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <https://www.gnu.org/licenses/>.
+-->
+
 <script>
-  import { onMount, onDestroy } from "svelte";
+  import { onMount, onDestroy, afterUpdate } from "svelte";
   import { calciumState, calciumService } from "$lib/stores/calcium";
   import { goto } from "$app/navigation";
   import { formatDate, isToday, getTodayString } from "$lib/utils/dateUtils";
@@ -24,6 +42,7 @@
   let chartCanvas;
   let chartLabels;
   let chartScrollWrapper;
+  let hasScrolled = false;
 
   // Touch handling
   let touchStartX = 0;
@@ -130,18 +149,20 @@
     lastReferenceDate = null;
   }
 
-
   async function switchView(viewType) {
     const currentReferenceDate = lastReferenceDate || getCurrentPeriodDate();
     currentView = viewType;
     clearDetailMode();
+
+    hasScrolled = false;
 
     syncViewOffsets(currentReferenceDate);
     lastReferenceDate = currentReferenceDate;
 
     try {
       await loadDataForView();
-      updateViewButtons();
+      //updateViewButtons();
+      requestAnimationFrame(renderChart);
     } catch (error) {
       console.error("Error switching view:", error);
     }
@@ -354,9 +375,9 @@
       unit: "mg",
       averageValue: Math.round(
         data
-          .filter((d) => !d.isFuture && d.value > 0)
+          .filter((d) => !d.isFuture) // Remove: && d.value > 0
           .reduce((sum, d) => sum + d.value, 0) /
-          Math.max(1, data.filter((d) => !d.isFuture && d.value > 0).length)
+          Math.max(1, data.filter((d) => !d.isFuture).length) // Remove: && d.value > 0
       ),
       maxValue: Math.max(...data.map((d) => d.value)),
       minValue: Math.min(
@@ -425,9 +446,9 @@
       unit: "mg",
       averageValue: Math.round(
         data
-          .filter((d) => !d.isFuture && d.value > 0)
+          .filter((d) => !d.isFuture) // Remove: && d.value > 0
           .reduce((sum, d) => sum + d.value, 0) /
-          Math.max(1, data.filter((d) => !d.isFuture && d.value > 0).length)
+          Math.max(1, data.filter((d) => !d.isFuture).length) // Remove: && d.value > 0
       ),
       maxValue: Math.max(...data.map((d) => d.value)),
       minValue: Math.min(
@@ -504,9 +525,9 @@
       unit: "mg",
       averageValue: Math.round(
         data
-          .filter((d) => !d.isFuture && d.value > 0)
+          .filter((d) => !d.isFuture) // Remove: && d.value > 0
           .reduce((sum, d) => sum + d.value, 0) /
-          Math.max(1, data.filter((d) => !d.isFuture && d.value > 0).length)
+          Math.max(1, data.filter((d) => !d.isFuture).length) // Remove: && d.value > 0
       ),
       maxValue: Math.max(...data.map((d) => d.value)),
       minValue: Math.min(
@@ -691,7 +712,6 @@
   }
 
   function updateViewButtons() {
-    // This will be handled by reactive classes in template
   }
 
   // Reactive statement for goal achievement
@@ -705,13 +725,21 @@
         : Math.round((dayTotal / $calciumState.settings.dailyGoal) * 100);
     }
 
-    const validDays = currentData.data.filter(
-      (item) => !item.isFuture && item.value > 0
+    const allNonFutureDays = currentData.data.filter(
+      (item) => !item.isFuture // Remove: && item.value > 0
     );
-    if (validDays.length === 0) return 0;
+    if (allNonFutureDays.length === 0) return 0;
 
-    const goalsAchieved = validDays.filter((item) => item.goalMet).length;
-    return Math.round((goalsAchieved / validDays.length) * 100);
+    // Calculate average and express as percentage of goal
+    const totalValue = allNonFutureDays.reduce(
+      (sum, item) => sum + item.value,
+      0
+    );
+    const averageValue = totalValue / allNonFutureDays.length;
+    const percentageOfGoal =
+      (averageValue / $calciumState.settings.dailyGoal) * 100;
+
+    return Math.round(percentageOfGoal);
   })();
 
   // Reactive statement for tracking info
@@ -765,14 +793,15 @@
   }
 
   $: if (currentData) {
-    renderChart();
-    // Auto-scroll for monthly view
-    if (currentView === "monthly" && chartScrollWrapper) {
-      setTimeout(() => {
-        scrollToCurrentDay();
-      }, 50);
-    }
+    requestAnimationFrame(renderChart);
   }
+
+  afterUpdate(() => {
+    if (currentView === "monthly" && chartScrollWrapper && !hasScrolled) {
+      scrollToCurrentDay();
+      hasScrolled = true;
+    }
+  });
 
   function renderChart() {
     if (!currentData || !currentData.data.length || !chartCanvas) return;
@@ -940,7 +969,6 @@
 </svelte:head>
 
 <div class="stats-page">
-
   <div class="stats-content">
     <!-- Time Period Controls -->
     <div class="stats-view-controls">
@@ -1524,7 +1552,6 @@
     display: none;
   }
 
-  /* --- View-Specific Grid Adjustments --- */
   .chart-canvas.daily-view,
   .chart-labels.daily-view {
     --bar-gap: 1px;

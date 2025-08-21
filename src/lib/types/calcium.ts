@@ -1,4 +1,20 @@
-// src/lib/types/calcium.ts
+/*
+ * My Calcium Tracker PWA
+ * Copyright (C) 2025 Nathan A. Eaton Jr.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <https://www.gnu.org/licenses/>.
+ */
 
 export interface FoodEntry {
   name: string;
@@ -36,6 +52,7 @@ export interface BackupData {
   preferences: CalciumSettings;
   customFoods: CustomFood[];
   favorites?: (number | string)[]; // Support both legacy (string) and new (number) formats
+  hiddenFoods?: (number | string)[]; // Support both legacy (string) and new (number) formats
   servingPreferences?: UserServingPreference[];
   journalEntries: Record<string, FoodEntry[]>;
 }
@@ -45,6 +62,7 @@ export interface CalciumState {
   foods: FoodEntry[];
   customFoods: CustomFood[];
   favorites: Set<number>;
+  hiddenFoods: Set<number>;
   servingPreferences: Map<number, UserServingPreference>;
   settings: CalciumSettings;
   isLoading: boolean;

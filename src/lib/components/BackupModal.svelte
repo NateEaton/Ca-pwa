@@ -1,6 +1,25 @@
+<!--
+ * My Calcium Tracker PWA
+ * Copyright (C) 2025 Nathan A. Eaton Jr.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <https://www.gnu.org/licenses/>.
+-->
+
 <script>
   import { calciumState, calciumService } from "$lib/stores/calcium";
 
+  /** Whether the backup modal is visible */
   export let show = false;
 
   let isGenerating = false;
@@ -58,6 +77,9 @@
     const favoritesCount = backupData.favorites
       ? backupData.favorites.length
       : 0;
+    const hiddenFoodsCount = backupData.hiddenFoods
+      ? backupData.hiddenFoods.length
+      : 0;
 
     let dateRange = "No journal entries";
     if (dates.length > 0) {
@@ -72,6 +94,7 @@
 • ${totalDays} journal days with ${totalFoodEntries} food entries<br>
 • ${customFoodsCount} custom food definitions<br>
 • ${favoritesCount} favorite foods<br>
+• ${hiddenFoodsCount} hidden foods<br>
 • Date range: ${dateRange}`;
   }
 

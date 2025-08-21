@@ -35,8 +35,6 @@ source_data/.env
 .vscode/ 
 *.swp
 .history/
-.prettierrc
-mind-pwa.code-workspace
 CLAUDE.md
 .claude
 
@@ -55,15 +53,27 @@ safariConsole*.txt
 
 # For now, transient notes that are useful locally but not necessarily 
 # a permenant part of project or something to push to Github
+# Same for tasks
 /_notes/
-/tmp/
-#/_tasks/
+/_tasks/
+
+# Source data - exclude large datasets and generated files
+source_data/.env
+source_data/curated-*.json
+source_data/merged-*.json
+source_data/nutrientsearchresults_1087_Branded.csv
+source_data/nutrientsearchresults_1087_SR\ Legacy.csv
+source_data/nutrientsearchresults_1087_Survey\ \(FNDDS\).csv
+source_data/sr_legacy_foundation_download.csv
+
+# Cloudflare Workers secrets
+worker/wrangler.toml
+worker/.env*
+!worker/.env.example
 
 # Misc dev files
+/tmp/
+/backup/
+/backup*/
 .repomixignore
 *repomix*
-clean.sh
-*alcium*.json
-sample*
-*.xml
-*.json

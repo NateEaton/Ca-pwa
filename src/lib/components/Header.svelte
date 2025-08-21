@@ -1,17 +1,40 @@
+<!--
+ * My Calcium Tracker PWA
+ * Copyright (C) 2025 Nathan A. Eaton Jr.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <https://www.gnu.org/licenses/>.
+-->
+
 <script>
-  import { goto } from '$app/navigation';
-  import { page } from '$app/stores';
-  import { base } from '$app/paths';
-  import { showToast } from '$lib/stores/calcium';
-  
+  import { goto, preloadData } from "$app/navigation";
+  import { page } from "$app/stores";
+  import { base } from "$app/paths";
+  import { showToast } from "$lib/stores/calcium";
+  import { FEATURES } from "$lib/utils/featureFlags";
+  import { syncIcon, syncState, setSyncStatus } from "$lib/stores/sync";
+  import { SyncService } from "$lib/services/SyncService";
+
   export let pageTitle = "Tracking";
   export let showInfoIcon = false;
   export let onInfoClick = null;
-  
+  export let onAboutClick = () => {};
+
   let showSlideoutMenu = false;
-  
+  const syncService = FEATURES.SYNC_ENABLED ? SyncService.getInstance() : null;
+
   // Determine current page for highlighting
-  $: currentPath = $page.route?.id || '/';
+  $: currentPath = $page.route?.id || "/";
 
   function toggleMenu() {
     showSlideoutMenu = !showSlideoutMenu;
@@ -23,14 +46,30 @@
 
   function handleMenuItemClick(path) {
     closeMenu();
-    
-    // Show "Future feature" toast for Profile only
-    if (path === '/profile') {
-      showToast('Future feature', 'info');
-      return;
-    }
-    
+
     goto(base + path);
+  }
+
+  let preloadTimeout;
+
+  async function handleMenuItemHover(path) {
+    // Skip preload on touch devices to avoid unnecessary requests
+    if ('ontouchstart' in window) return;
+    
+    // Clear any existing timeout to debounce rapid hovering
+    clearTimeout(preloadTimeout);
+    
+    preloadTimeout = setTimeout(async () => {
+      try {
+        // Only preload if not already on that page
+        if (currentPath !== path) {
+          await preloadData(base + path);
+        }
+      } catch (error) {
+        // Silently handle preload errors to avoid disrupting UX
+        console.debug('Preload failed for:', path, error);
+      }
+    }, 100); // 100ms delay to avoid excessive preloading
   }
 
   function handleKeydown(event) {
@@ -51,6 +90,24 @@
       onInfoClick();
     }
   }
+
+  async function triggerManualSync() {
+    if (!FEATURES.SYNC_ENABLED || !syncService) {
+      return;
+    }
+
+    if (!$syncState.isEnabled || $syncState.status === "syncing") {
+      // Do nothing if sync isn't set up or is already in progress
+      return;
+    }
+    try {
+      await syncService.performBidirectionalSync();
+      // Success toast is removed for a silent experience
+    } catch (error) {
+      console.log("A manual sync operation failed.");
+      // Error toast is handled by the service
+    }
+  }
 </script>
 
 <svelte:window on:keydown={handleKeydown} />
@@ -65,8 +122,29 @@
 
     <div class="header-right">
       {#if showInfoIcon}
-        <button class="info-btn" on:click={handleInfoClick} aria-label="Show database information">
+        <button
+          class="info-btn"
+          on:click={handleInfoClick}
+          aria-label="Show database information"
+        >
           <span class="material-icons">info</span>
+        </button>
+      {/if}
+
+      {#if FEATURES.SYNC_ENABLED}
+        <button
+          class="sync-icon-btn"
+          on:click={triggerManualSync}
+          title="Sync Status: {$syncState.status}"
+          aria-label="Trigger manual sync"
+          disabled={$syncState.status === "syncing"}
+        >
+          <span
+            class="material-icons {$syncIcon.spinning ? 'spinning' : ''}"
+            style="color: {$syncIcon.color}"
+          >
+            {$syncIcon.icon}
+          </span>
         </button>
       {/if}
     </div>
@@ -79,44 +157,86 @@
     <div class="menu-backdrop" on:click={handleBackdropClick}>
       <div class="slide-out-menu">
         <div class="menu-header">
-          <h2>My Calcium</h2>
+          <div class="menu-header-content">
+            <h2>My Calcium</h2>
+          </div>
         </div>
-        
+
         <div class="menu-main">
-          <button class="menu-item" class:current={currentPath === '/'} on:click={() => handleMenuItemClick('/')}>
+          <button
+            class="menu-item"
+            class:current={currentPath === "/"}
+            on:click={() => handleMenuItemClick("/")}
+            on:mouseenter={() => handleMenuItemHover("/")}
+          >
             <span class="material-icons">home</span>
             <span>Tracking</span>
           </button>
-          <button class="menu-item" class:current={currentPath === '/stats'} on:click={() => handleMenuItemClick('/stats')}>
+          <button
+            class="menu-item"
+            class:current={currentPath === "/stats"}
+            on:click={() => handleMenuItemClick("/stats")}
+            on:mouseenter={() => handleMenuItemHover("/stats")}
+          >
             <span class="material-icons">analytics</span>
             <span>Statistics</span>
           </button>
-          <button class="menu-item" class:current={currentPath === '/data'} on:click={() => handleMenuItemClick('/data')}>
+          <button
+            class="menu-item"
+            class:current={currentPath === "/data"}
+            on:click={() => handleMenuItemClick("/data")}
+            on:mouseenter={() => handleMenuItemHover("/data")}
+          >
             <span class="material-icons">table_chart</span>
             <span>Database</span>
           </button>
-          <button class="menu-item" class:current={currentPath === '/report'} on:click={() => handleMenuItemClick('/report')}>
+          <button
+            class="menu-item"
+            class:current={currentPath === "/report"}
+            on:click={() => handleMenuItemClick("/report")}
+            on:mouseenter={() => handleMenuItemHover("/report")}
+          >
             <span class="material-icons">assessment</span>
             <span>Report</span>
           </button>
         </div>
-        
+
         <div class="menu-bottom">
           <div class="menu-divider"></div>
-          <button class="menu-item" class:current={currentPath === '/settings'} on:click={() => handleMenuItemClick('/settings')}>
+          <button
+            class="menu-item"
+            class:current={currentPath === "/settings"}
+            on:click={() => handleMenuItemClick("/settings")}
+            on:mouseenter={() => handleMenuItemHover("/settings")}
+          >
             <span class="material-icons">settings</span>
             <span>Settings</span>
           </button>
-          <button class="menu-item" class:current={currentPath === '/profile'} on:click={() => handleMenuItemClick('/profile')}>
-            <span class="material-icons">person</span>
-            <span>Profile</span>
+
+          <button
+            class="menu-item"
+            class:current={currentPath === "/guide"}
+            on:click={() => handleMenuItemClick("/guide")}
+            on:mouseenter={() => handleMenuItemHover("/guide")}
+          >
+            <span class="material-icons">help_outline</span>
+            <span>User Guide</span>
+          </button>
+          <button
+            class="menu-item"
+            on:click={() => {
+              closeMenu();
+              onAboutClick();
+            }}
+          >
+            <span class="material-icons">info_outline</span>
+            <span>About</span>
           </button>
         </div>
       </div>
     </div>
   {/if}
 </header>
-
 
 <style>
   .header {
@@ -233,14 +353,26 @@
     padding: var(--spacing-lg);
     flex-shrink: 0;
     min-height: var(--header-height);
-    display: flex;
+  }
+
+  .menu-header-content {
+    display: grid;
+    grid-template-columns: 1fr;
     align-items: center;
+    max-width: 30rem;
+    margin: 0 auto;
+    min-height: var(--touch-target-min);
   }
 
   .menu-header h2 {
     font-size: var(--font-size-xl);
     font-weight: 600;
     margin: 0;
+    text-align: left;
+    grid-column: 1;
+    min-height: var(--touch-target-min);
+    display: flex;
+    align-items: center;
   }
 
   .menu-main {
@@ -283,16 +415,16 @@
   .menu-item:hover {
     background-color: var(--surface-variant);
   }
-  
+
   .menu-item.current {
     background-color: var(--primary-alpha-10);
     color: var(--primary-color);
   }
-  
+
   .menu-item.current .material-icons {
     color: var(--primary-color);
   }
-  
+
   .menu-item.current:hover {
     background-color: var(--primary-alpha-10);
     opacity: 0.8;
@@ -307,12 +439,60 @@
     color: var(--text-secondary);
   }
 
+  .sync-icon-btn {
+    background: none;
+    border: none;
+    color: white; /* Change from var(--text-primary) to white */
+    cursor: pointer;
+    padding: var(--spacing-sm);
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s;
+    min-width: var(--touch-target-min);
+    min-height: var(--touch-target-min);
+  }
+
+  .sync-icon-btn:hover:not(:disabled) {
+    background-color: var(
+      --hover-overlay
+    ); /* Change from var(--surface-variant) */
+  }
+
+  .sync-icon-btn .material-icons {
+    font-size: 20px;
+    transition: color 0.2s;
+  }
+
+  .spinning {
+    animation: spin 1s linear infinite;
+  }
+
+  @keyframes spin {
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  .sync-icon-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
   /* Mobile responsive */
-  @media (max-width: 30rem) { /* 480px equivalent */
+  @media (max-width: 30rem) {
+    /* 480px equivalent */
     .header {
       padding: var(--spacing-md) var(--spacing-lg);
     }
 
+    .menu-header {
+      padding: var(--spacing-md) var(--spacing-lg);
+    }
 
     .menu-backdrop {
       left: 0;

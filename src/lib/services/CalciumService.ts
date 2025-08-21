@@ -1,71 +1,90 @@
+/*
+ * My Calcium Tracker PWA
+ * Copyright (C) 2025 Nathan A. Eaton Jr.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <https://www.gnu.org/licenses/>.
+ */
+
 import { get } from 'svelte/store';
 import { calciumState, showToast } from '$lib/stores/calcium';
 import type { FoodEntry, CustomFood, CalciumSettings, UserServingPreference } from '$lib/types/calcium';
 import { DEFAULT_FOOD_DATABASE } from '$lib/data/foodDatabase';
+import { SyncService } from '$lib/services/SyncService';
+import { SyncTrigger } from '$lib/utils/syncTrigger';
+import { getBuildInfo } from '$lib/utils/buildInfo';
 
+/**
+ * Main service class for managing calcium tracking data including foods, settings, and IndexedDB operations.
+ * Handles CRUD operations, data migration, favorites, and backup/restore functionality.
+ */
 export class CalciumService {
   private db: IDBDatabase | null = null;
 
+  /**
+   * Initializes the service by setting up IndexedDB, running migrations, and loading all data.
+   */
   async initialize(): Promise<void> {
     await this.initializeIndexedDB();
     await this.migrateCustomFoodsIfNeeded();
     await this.migrateFavoritesToIDsIfNeeded();
+
     await this.loadSettings();
     await this.loadDailyFoods();
     await this.loadCustomFoods();
     await this.loadFavorites();
+    await this.loadHiddenFoods();
     await this.loadServingPreferences();
-    
-    // Apply initial sort after loading
     await this.applySortToFoods();
-    
+
     calciumState.update(state => ({ ...state, isLoading: false }));
   }
 
   private async initializeIndexedDB(): Promise<void> {
     return new Promise((resolve, reject) => {
-      const request = indexedDB.open('CalciumTracker', 6);
-      
-      request.onerror = () => {
-        console.error('IndexedDB error:', request.error);
-        reject(request.error);
-      };
-      
+      const request = indexedDB.open('CalciumTracker', 7);
+
+      request.onerror = () => reject(request.error);
       request.onsuccess = () => {
         this.db = request.result;
         resolve();
       };
-      
+
       request.onupgradeneeded = (event) => {
         const db = (event.target as IDBOpenDBRequest).result;
         const oldVersion = event.oldVersion;
-        
+
         if (!db.objectStoreNames.contains('customFoods')) {
-          const store = db.createObjectStore('customFoods', {
-            keyPath: 'id',
-            autoIncrement: true
-          });
+          const store = db.createObjectStore('customFoods', { keyPath: 'id', autoIncrement: true });
           store.createIndex('name', 'name', { unique: false });
           store.createIndex('dateAdded', 'dateAdded', { unique: false });
         }
-
         if (!db.objectStoreNames.contains('migrations')) {
           db.createObjectStore('migrations', { keyPath: 'name' });
         }
-
         if (!db.objectStoreNames.contains('favorites')) {
           db.createObjectStore('favorites', { keyPath: 'foodId' });
         }
-
         if (!db.objectStoreNames.contains('servingPreferences')) {
           db.createObjectStore('servingPreferences', { keyPath: 'foodId' });
         }
-
-        // Add journalEntries object store in version 6
         if (oldVersion < 6 && !db.objectStoreNames.contains('journalEntries')) {
           const journalStore = db.createObjectStore('journalEntries', { keyPath: 'date' });
           journalStore.createIndex('lastModified', 'lastModified', { unique: false });
           journalStore.createIndex('syncStatus', 'syncStatus', { unique: false });
+        }
+        if (oldVersion < 7 && !db.objectStoreNames.contains('hiddenFoods')) {
+          db.createObjectStore('hiddenFoods', { keyPath: 'foodId' });
         }
       };
     });
@@ -79,10 +98,9 @@ export class CalciumService {
 
     try {
       const legacyCustomFoods = this.getLegacyCustomFoods();
-      
+
       if (legacyCustomFoods.length > 0) {
-        // console.log(`Migrating ${legacyCustomFoods.length} custom foods to IndexedDB...`);
-        
+
         for (const food of legacyCustomFoods) {
           await this.saveCustomFoodToIndexedDB({
             name: food.name,
@@ -107,7 +125,6 @@ export class CalciumService {
     if (migrationStatus) return;
 
     try {
-      // Get existing name-based favorites
       const transaction = this.db.transaction(['favorites'], 'readonly');
       const store = transaction.objectStore('favorites');
       const request = store.getAll();
@@ -118,9 +135,8 @@ export class CalciumService {
       });
 
       if (legacyFavorites.length > 0) {
-        // Convert names to IDs
         const favoriteFoodIds: number[] = [];
-        
+
         for (const favRecord of legacyFavorites) {
           const foodName = favRecord.foodName;
           const databaseFood = DEFAULT_FOOD_DATABASE.find(food => food.name === foodName);
@@ -129,25 +145,22 @@ export class CalciumService {
           }
         }
 
-        // Clear old favorites store and create new ID-based records
         if (favoriteFoodIds.length > 0) {
           const writeTransaction = this.db.transaction(['favorites'], 'readwrite');
           const writeStore = writeTransaction.objectStore('favorites');
-          
-          // Clear old name-based favorites
+
           await new Promise<void>((resolve, reject) => {
             const clearRequest = writeStore.clear();
             clearRequest.onsuccess = () => resolve();
             clearRequest.onerror = () => reject(clearRequest.error);
           });
 
-          // Add new ID-based favorites
           for (const foodId of favoriteFoodIds) {
             const favoriteData = {
               foodId,
               dateAdded: new Date().toISOString()
             };
-            
+
             await new Promise<void>((resolve, reject) => {
               const addRequest = writeStore.put(favoriteData);
               addRequest.onsuccess = () => resolve();
@@ -167,14 +180,14 @@ export class CalciumService {
   private getLegacyCustomFoods(): any[] {
     try {
       const keys = ['calcium_custom_foods', 'customFoods', 'custom_foods'];
-      
+
       for (const key of keys) {
         const stored = localStorage.getItem(key);
         if (stored) {
           return JSON.parse(stored);
         }
       }
-      
+
       return [];
     } catch (error) {
       console.error('Error reading legacy custom foods:', error);
@@ -213,13 +226,12 @@ export class CalciumService {
     });
   }
 
-  // FIXED: Sort the main foods array instead of using derived store
   private async applySortToFoods(): Promise<void> {
     const state = get(calciumState);
-    
+
     const sortedFoods = [...state.foods].sort((a, b) => {
       let comparison = 0;
-      
+
       switch (state.settings.sortBy) {
         case 'time':
           comparison = new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime();
@@ -231,7 +243,7 @@ export class CalciumService {
           comparison = a.calcium - b.calcium;
           break;
       }
-      
+
       return state.settings.sortOrder === 'asc' ? comparison : -comparison;
     });
 
@@ -241,21 +253,23 @@ export class CalciumService {
     }));
   }
 
-  // NEW: Public method to change sort settings
+  /**
+   * Updates the sort settings for food entries and re-sorts the current food list.
+   * @param sortBy The field to sort by
+   * @param sortOrder Optional sort order; if not provided, toggles current order
+   */
   async updateSort(sortBy: 'time' | 'name' | 'calcium', sortOrder?: 'asc' | 'desc'): Promise<void> {
     const state = get(calciumState);
-    
-    // If clicking same sort field, toggle order
+
     let newSortOrder = sortOrder;
     if (!newSortOrder) {
       if (state.settings.sortBy === sortBy) {
         newSortOrder = state.settings.sortOrder === 'asc' ? 'desc' : 'asc';
       } else {
-        newSortOrder = 'desc'; // Default to desc for new fields
+        newSortOrder = 'desc';
       }
     }
 
-    // Update settings
     calciumState.update(state => ({
       ...state,
       settings: {
@@ -265,20 +279,21 @@ export class CalciumService {
       }
     }));
 
-    // Apply sort to foods array
     await this.applySortToFoods();
-    
-    // Save settings
+
     await this.saveSettings();
   }
 
+  /**
+   * Adds a new food entry to the current day's food list.
+   * @param food The food entry data (timestamp will be added automatically)
+   */
   async addFood(food: Omit<FoodEntry, 'timestamp'>): Promise<void> {
     const newFood: FoodEntry = {
       ...food,
       timestamp: new Date().toISOString()
     };
 
-    // Add to array and re-sort
     calciumState.update(state => ({
       ...state,
       foods: [...state.foods, newFood]
@@ -286,12 +301,17 @@ export class CalciumService {
 
     await this.applySortToFoods();
     await this.saveDailyFoods();
+    SyncTrigger.triggerDataSync();
   }
 
-  // FIXED: Now uses correct index from sorted array
+  /**
+   * Removes a food entry at the specified index from the current day's food list.
+   * @param index The index of the food entry to remove
+   * @throws Error if index is invalid
+   */
   async removeFood(index: number): Promise<void> {
     const state = get(calciumState);
-    
+
     if (index < 0 || index >= state.foods.length) {
       throw new Error('Invalid food index for removal');
     }
@@ -304,12 +324,18 @@ export class CalciumService {
     }));
 
     await this.saveDailyFoods();
+    SyncTrigger.triggerDataSync();
   }
 
-  // FIXED: Now uses correct index from sorted array
+  /**
+   * Updates a food entry at the specified index while preserving the original timestamp.
+   * @param index The index of the food entry to update
+   * @param updatedFood The updated food data
+   * @throws Error if index is invalid
+   */
   async updateFood(index: number, updatedFood: Omit<FoodEntry, 'timestamp'>): Promise<void> {
     const state = get(calciumState);
-    
+
     if (index < 0 || index >= state.foods.length) {
       throw new Error('Invalid food index for update');
     }
@@ -318,19 +344,23 @@ export class CalciumService {
       const foods = [...state.foods];
       foods[index] = {
         ...updatedFood,
-        timestamp: foods[index].timestamp // Keep original timestamp
+        timestamp: foods[index].timestamp
       };
       return { ...state, foods };
     });
 
-    // Re-sort after update in case sort field changed
     await this.applySortToFoods();
     await this.saveDailyFoods();
+    SyncTrigger.triggerDataSync();
   }
 
+  /**
+   * Changes the current date, saving current foods and loading foods for the new date.
+   * @param newDate The new date string in YYYY-MM-DD format
+   */
   async changeDate(newDate: string): Promise<void> {
     await this.saveDailyFoods();
-    
+
     calciumState.update(state => ({
       ...state,
       currentDate: newDate,
@@ -338,14 +368,22 @@ export class CalciumService {
     }));
 
     await this.loadDailyFoods();
-    await this.applySortToFoods(); // Apply sort to newly loaded foods
+    await this.applySortToFoods();
   }
 
+  /**
+   * Gets the current settings.
+   * @returns Promise resolving to the current settings
+   */
   async getSettings(): Promise<CalciumSettings> {
     const state = get(calciumState);
     return state.settings;
   }
 
+  /**
+   * Updates the settings with new values.
+   * @param newSettings Partial settings object with values to update
+   */
   async updateSettings(newSettings: Partial<CalciumSettings>): Promise<void> {
     calciumState.update(state => ({
       ...state,
@@ -353,63 +391,79 @@ export class CalciumService {
     }));
 
     await this.saveSettings();
+    SyncTrigger.triggerDataSync();
   }
 
+  /**
+   * Saves a new custom food to IndexedDB.
+   * @param foodData The custom food data
+   * @returns Promise resolving to the saved custom food or null if failed
+   */
   async saveCustomFood(foodData: { name: string; calcium: number; measure: string }): Promise<CustomFood | null> {
-    // console.log('Saving custom food:', foodData);
     const result = await this.saveCustomFoodToIndexedDB(foodData);
-    // console.log('Custom food saved:', result);
+    SyncTrigger.triggerDataSync();
     return result;
   }
 
-  private async saveCustomFoodToIndexedDB(foodData: { name: string; calcium: number; measure: string }): Promise<CustomFood | null> {
-    if (!this.db) {
-      console.error('No database connection for saving custom food');
-      return null;
-    }
-
-    // console.log('Creating custom food object:', foodData);
-    const customFood: Omit<CustomFood, 'id'> = {
-      ...foodData,
-      isCustom: true,
-      dateAdded: new Date().toISOString()
-    };
+  private async saveCustomFoodToIndexedDB(foodData: any): Promise<CustomFood | null> {
+    if (!this.db) return null;
 
     return new Promise((resolve, reject) => {
-      try {
-        const transaction = this.db!.transaction(['customFoods'], 'readwrite');
-        const store = transaction.objectStore('customFoods');
-        const request = store.add(customFood);
+      const transaction = this.db!.transaction(['customFoods'], 'readwrite');
+      const store = transaction.objectStore('customFoods');
+      let request: IDBRequest;
 
-        request.onsuccess = () => {
-          const savedFood: CustomFood = { ...customFood, id: request.result as number };
-          // console.log('Successfully saved custom food to IndexedDB:', savedFood);
-          
-          calciumState.update(state => ({
-            ...state,
-            customFoods: [...state.customFoods, savedFood]
-          }));
-          
-          resolve(savedFood);
+      if (foodData.id) {
+        const dbObject = {
+          name: foodData.name,
+          calcium: foodData.calcium,
+          measure: foodData.measure,
+          isCustom: true,
+          dateAdded: foodData.dateAdded || new Date().toISOString(),
+          id: foodData.id
         };
+        request = store.put(dbObject);
 
-        request.onerror = () => {
-          console.error('Error saving custom food to IndexedDB:', request.error);
-          showToast('Failed to save custom food', 'error');
-          reject(request.error);
+      } else {
+        const newFoodObject = {
+          name: foodData.name,
+          calcium: foodData.calcium,
+          measure: foodData.measure,
+          isCustom: true,
+          dateAdded: new Date().toISOString()
         };
-
-        transaction.onerror = () => {
-          console.error('Transaction error saving custom food:', transaction.error);
-          reject(transaction.error);
-        };
-      } catch (error) {
-        console.error('Exception in saveCustomFoodToIndexedDB:', error);
-        reject(error);
+        request = store.add(newFoodObject);
       }
+
+      request.onsuccess = () => {
+        const newId = request.result as number;
+        const savedFood: CustomFood = {
+            name: foodData.name,
+            calcium: foodData.calcium,
+            measure: foodData.measure,
+            isCustom: true,
+            dateAdded: foodData.dateAdded || new Date().toISOString(),
+            id: newId
+        };
+
+        calciumState.update(state => {
+          const newCustomFoods = [...state.customFoods.filter(f => f.id !== savedFood.id), savedFood];
+          return { ...state, customFoods: newCustomFoods };
+        });
+        resolve(savedFood);
+      };
+
+      request.onerror = (event) => {
+        console.error('Error in saveCustomFoodToIndexedDB:', (event.target as IDBRequest).error);
+        reject((event.target as IDBRequest).error);
+      };
     });
   }
 
+  /**
+   * Deletes a custom food from IndexedDB.
+   * @param id The ID of the custom food to delete
+   */
   async deleteCustomFood(id: number): Promise<void> {
     if (!this.db) return;
 
@@ -424,6 +478,7 @@ export class CalciumService {
           customFoods: state.customFoods.filter(food => food.id !== id)
         }));
         resolve();
+        SyncTrigger.triggerDataSync();
       };
 
       request.onerror = () => {
@@ -452,13 +507,13 @@ export class CalciumService {
 
   private async saveSettings(): Promise<void> {
     const state = get(calciumState);
-    
+
     localStorage.setItem('calcium_goal', state.settings.dailyGoal.toString());
-    
+
     if (state.settings.theme) {
       localStorage.setItem('calcium_theme', state.settings.theme);
     }
-    
+
     const sortSettings = {
       sortBy: state.settings.sortBy,
       sortOrder: state.settings.sortOrder
@@ -468,7 +523,7 @@ export class CalciumService {
 
   private async loadDailyFoods(): Promise<void> {
     const state = get(calciumState);
-    
+
     try {
       const foods = await this.loadFoodsForDate(state.currentDate);
       calciumState.update(state => ({ ...state, foods }));
@@ -480,7 +535,7 @@ export class CalciumService {
 
   private async saveDailyFoods(): Promise<void> {
     const state = get(calciumState);
-    
+
     try {
       await this.saveFoodsForDate(state.currentDate, state.foods);
     } catch (error) {
@@ -502,7 +557,7 @@ export class CalciumService {
           ...food,
           isCustom: true
         }));
-        
+
         calciumState.update(state => ({ ...state, customFoods }));
         resolve();
       };
@@ -514,119 +569,99 @@ export class CalciumService {
     });
   }
 
+  /**
+   * Generates a complete backup of all user data including settings, foods, and sync metadata.
+   * @returns Promise resolving to the backup data object
+   */
   async generateBackup(): Promise<any> {
     const state = get(calciumState);
-    
-    // Get journal entries from IndexedDB
-    const journalEntries: Record<string, FoodEntry[]> = {};
-    const allJournalEntries = await this.getAllJournalEntries();
-    
-    // Convert IndexedDB format to backup format (maintain compatibility)
-    allJournalEntries.forEach(entry => {
-      journalEntries[entry.date] = entry.foods;
-    });
+    const syncService = SyncService.getInstance();
+    const syncSettings = syncService.getSettings();
 
-    // Get custom foods directly from IndexedDB to ensure we have the latest
+    const buildInfo = getBuildInfo();
+
+    const journalEntries = await this.getAllJournalData();
     const customFoods = await this.getAllCustomFoods();
-    
-    // Get favorites as array for backup
-    const favorites = Array.from(state.favorites);
-    
-    // Get serving preferences as array for backup
-    const servingPreferences = Array.from(state.servingPreferences.values());
 
     return {
       metadata: {
-        version: '2.1.0', // Increment to indicate IndexedDB backend
+        version: '2.1.0',
         createdAt: new Date().toISOString(),
-        appVersion: 'Svelte Calcium Tracker'
+        appVersion: buildInfo.appVersion,
+        buildId: buildInfo.buildId,
+        buildTime: buildInfo.buildTime,
+        syncGenerationId: syncSettings ? syncSettings.syncGenerationId : null
       },
       preferences: state.settings,
       customFoods: customFoods,
-      favorites: favorites,
-      servingPreferences: servingPreferences,
-      journalEntries // Maintains existing backup format compatibility
+      favorites: Array.from(state.favorites),
+      hiddenFoods: Array.from(state.hiddenFoods),
+      servingPreferences: Array.from(state.servingPreferences.values()),
+      journalEntries
     };
   }
 
-  async restoreFromBackup(backupData: any): Promise<void> {
+  /**
+   * Restores all data from a backup, optionally preserving sync settings.
+   * @param backupData The backup data to restore
+   * @param options Restore options including whether to preserve sync settings
+   */
+  async restoreFromBackup(backupData: any, options: { preserveSync: boolean } = { preserveSync: false }): Promise<void> {
     try {
-      // Clear existing data
-      await this.clearAllData();
+      const syncService = SyncService.getInstance();
+
+      if (options.preserveSync) {
+        await this.clearApplicationData();
+        await syncService.regenerateSyncId();
+      } else {
+        await this.clearAllData();
+      }
       
-      // Small delay to ensure transactions are completed
       await new Promise(resolve => setTimeout(resolve, 100));
-      
-      // Restore preferences/settings
+
       if (backupData.preferences) {
-        calciumState.update(state => ({
-          ...state,
-          settings: backupData.preferences
-        }));
+        calciumState.update(state => ({ ...state, settings: backupData.preferences }));
         await this.saveSettings();
       }
-      
-      // Restore custom foods to IndexedDB
       if (backupData.customFoods && Array.isArray(backupData.customFoods)) {
         for (const customFood of backupData.customFoods) {
-          try {
-            await this.saveCustomFoodToIndexedDB(customFood);
-          } catch (error) {
-            console.warn('Failed to restore custom food:', customFood.name, error);
-          }
+          await this.saveCustomFoodToIndexedDB(customFood);
         }
       }
-      
-      // Restore favorites
       if (backupData.favorites && Array.isArray(backupData.favorites)) {
-        try {
-          await this.restoreFavorites(backupData.favorites);
-        } catch (error) {
-          console.warn('Failed to restore favorites:', error);
-        }
+        await this.restoreFavorites(backupData.favorites);
       }
-      
-      // Restore serving preferences
+      if (backupData.hiddenFoods && Array.isArray(backupData.hiddenFoods)) {
+        await this.restoreHiddenFoods(backupData.hiddenFoods);
+      }
       if (backupData.servingPreferences && Array.isArray(backupData.servingPreferences)) {
-        try {
-          await this.restoreServingPreferences(backupData.servingPreferences);
-        } catch (error) {
-          console.warn('Failed to restore serving preferences:', error);
-        }
+        await this.restoreServingPreferences(backupData.servingPreferences);
       }
-      
-      // Restore journal entries to IndexedDB
       if (backupData.journalEntries) {
         for (const [dateString, foods] of Object.entries(backupData.journalEntries)) {
           if (Array.isArray(foods)) {
-            try {
-              await this.saveFoodsForDate(dateString, foods);
-            } catch (error) {
-              console.warn('Failed to restore journal entry for date:', dateString, error);
-            }
+            await this.saveFoodsForDate(dateString, foods as FoodEntry[]);
           }
         }
       }
       
-      // Small delay before reloading
       await new Promise(resolve => setTimeout(resolve, 200));
-      
-      // Reload data into stores
+
       await this.loadSettings();
       await this.loadCustomFoods();
       await this.loadFavorites();
+      await this.loadHiddenFoods();
       await this.loadServingPreferences();
       await this.loadDailyFoods();
       await this.applySortToFoods();
-      
+
     } catch (error) {
       console.error('Error restoring backup:', error);
       throw error;
     }
   }
 
-  private async clearAllData(): Promise<void> {
-    // Clear localStorage journal entries
+private async clearAllData(): Promise<void> {
     const keysToRemove: string[] = [];
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
@@ -636,50 +671,34 @@ export class CalciumService {
     }
     keysToRemove.forEach(key => localStorage.removeItem(key));
     
-    // Clear IndexedDB stores one by one to avoid transaction issues
+    await this.clearApplicationData();
+  }
+
+  /**
+   * Clears all application data from IndexedDB while preserving sync settings.
+   */
+  async clearApplicationData(): Promise<void> {
     if (!this.db) {
       console.warn('Database connection not available for clearing IndexedDB data');
       return;
     }
-
-    const clearStore = async (storeName: string) => {
-      return new Promise<void>((resolve, reject) => {
-        try {
+    const storesToClear = ['journalEntries', 'customFoods', 'favorites', 'hiddenFoods', 'servingPreferences'];
+    for (const storeName of storesToClear) {
+      try {
+        await new Promise<void>((resolve, reject) => {
           const transaction = this.db!.transaction([storeName], 'readwrite');
-          const store = transaction.objectStore(storeName);
-          const request = store.clear();
-          
+          const request = transaction.objectStore(storeName).clear();
           request.onsuccess = () => resolve();
           request.onerror = () => reject(request.error);
-          transaction.onerror = () => reject(transaction.error);
-          transaction.onabort = () => reject(new Error(`Transaction aborted for ${storeName}`));
-        } catch (error) {
-          reject(error);
-        }
-      });
-    };
-
-    try {
-      // Clear each store with a small delay between operations
-      await clearStore('journalEntries');
-      await new Promise(resolve => setTimeout(resolve, 50));
-      
-      await clearStore('customFoods');
-      await new Promise(resolve => setTimeout(resolve, 50));
-      
-      await clearStore('favorites');
-      await new Promise(resolve => setTimeout(resolve, 50));
-      
-      await clearStore('servingPreferences');
-    } catch (error) {
-      console.error('Error clearing IndexedDB data:', error);
-      // Don't throw here - we want to continue with the restore process
+        });
+      } catch (error) {
+        console.error(`Error clearing IndexedDB store ${storeName}:`, error);
+      }
     }
   }
 
   private async getAllCustomFoods(): Promise<CustomFood[]> {
     if (!this.db) {
-      // console.log('No database connection for custom foods');
       return [];
     }
 
@@ -693,7 +712,6 @@ export class CalciumService {
           ...food,
           isCustom: true
         }));
-        // console.log('Found custom foods for backup:', customFoods.length, customFoods);
         resolve(customFoods);
       };
 
@@ -704,6 +722,12 @@ export class CalciumService {
     });
   }
 
+  /**
+   * Saves a user's preferred serving size for a specific food.
+   * @param foodId The ID of the food
+   * @param quantity The preferred quantity
+   * @param unit The preferred unit
+   */
   async saveServingPreference(foodId: number, quantity: number, unit: string): Promise<void> {
     if (!this.db) return;
 
@@ -720,13 +744,13 @@ export class CalciumService {
       const request = store.put(preference);
 
       request.onsuccess = () => {
-        // Update the local state
         calciumState.update(state => {
           const newPreferences = new Map(state.servingPreferences);
           newPreferences.set(foodId, preference);
           return { ...state, servingPreferences: newPreferences };
         });
         resolve();
+        SyncTrigger.triggerDataSync();
       };
 
       request.onerror = () => {
@@ -736,11 +760,20 @@ export class CalciumService {
     });
   }
 
+  /**
+   * Gets the user's saved serving preference for a specific food.
+   * @param foodId The ID of the food
+   * @returns The serving preference or null if none exists
+   */
   getServingPreference(foodId: number): UserServingPreference | null {
     const state = get(calciumState);
     return state.servingPreferences.get(foodId) || null;
   }
 
+  /**
+   * Deletes a user's serving preference for a specific food.
+   * @param foodId The ID of the food
+   */
   async deleteServingPreference(foodId: number): Promise<void> {
     if (!this.db) return;
 
@@ -750,13 +783,13 @@ export class CalciumService {
       const request = store.delete(foodId);
 
       request.onsuccess = () => {
-        // Update the local state
         calciumState.update(state => {
           const newPreferences = new Map(state.servingPreferences);
           newPreferences.delete(foodId);
           return { ...state, servingPreferences: newPreferences };
         });
         resolve();
+        SyncTrigger.triggerDataSync();
       };
 
       request.onerror = () => {
@@ -768,6 +801,11 @@ export class CalciumService {
 
   /**
    * Get all journal entries from localStorage for reporting (DEPRECATED - use getAllJournalData)
+   */
+  /**
+   * Gets all journal entries from localStorage (deprecated - use getAllJournalData).
+   * @returns Promise resolving to a record of date strings to food entry arrays
+   * @deprecated Use getAllJournalData instead
    */
   async getAllEntries(): Promise<Record<string, FoodEntry[]>> {
     const journalData: Record<string, FoodEntry[]> = {};
@@ -793,9 +831,13 @@ export class CalciumService {
   /**
    * Get all journal data from IndexedDB in the format expected by stats page
    */
+  /**
+   * Gets all journal data from IndexedDB in the format expected by stats page.
+   * @returns Promise resolving to a record of date strings to food entry arrays
+   */
   async getAllJournalData(): Promise<Record<string, FoodEntry[]>> {
     const journalData: Record<string, FoodEntry[]> = {};
-    
+
     try {
       const allEntries = await this.getAllJournalEntries();
       allEntries.forEach(entry => {
@@ -812,6 +854,11 @@ export class CalciumService {
 
   /**
    * Load foods for a specific date from IndexedDB
+   */
+  /**
+   * Loads food entries for a specific date from IndexedDB.
+   * @param dateString The date string in YYYY-MM-DD format
+   * @returns Promise resolving to array of food entries
    */
   async loadFoodsForDate(dateString: string): Promise<FoodEntry[]> {
     if (!this.db) {
@@ -831,6 +878,11 @@ export class CalciumService {
   /**
    * Save foods for a specific date to IndexedDB
    */
+  /**
+   * Saves food entries for a specific date to IndexedDB.
+   * @param dateString The date string in YYYY-MM-DD format
+   * @param foods Array of food entries to save
+   */
   async saveFoodsForDate(dateString: string, foods: FoodEntry[]): Promise<void> {
     if (!this.db) {
       console.error('Database not initialized');
@@ -839,7 +891,7 @@ export class CalciumService {
 
     try {
       const totalCalcium = foods.reduce((sum, food) => sum + food.calcium, 0);
-      
+
       const journalEntry = {
         date: dateString,
         foods: foods,
@@ -847,14 +899,13 @@ export class CalciumService {
         syncStatus: 'pending',
         totalCalcium: totalCalcium
       };
-      
+
       await new Promise<void>((resolve, reject) => {
         const transaction = this.db!.transaction(['journalEntries'], 'readwrite');
         const store = transaction.objectStore('journalEntries');
         const request = store.put(journalEntry);
 
         request.onsuccess = () => {
-          console.log(`Saved ${foods.length} foods for ${dateString} (${totalCalcium}mg total)`);
           resolve();
         };
 
@@ -871,6 +922,10 @@ export class CalciumService {
 
   /**
    * Get all journal entries from IndexedDB
+   */
+  /**
+   * Gets all journal entries from IndexedDB with metadata.
+   * @returns Promise resolving to array of journal entry objects
    */
   async getAllJournalEntries(): Promise<any[]> {
     if (!this.db) {
@@ -899,13 +954,17 @@ export class CalciumService {
   /**
    * Get date range for journal entries
    */
-  async getJournalDateRange(): Promise<{firstDate: string | null, lastDate: string | null}> {
+  /**
+   * Gets the date range of all journal entries.
+   * @returns Promise resolving to object with first and last dates or null if no entries
+   */
+  async getJournalDateRange(): Promise<{ firstDate: string | null, lastDate: string | null }> {
     try {
       const entries = await this.getAllJournalEntries();
       if (entries.length === 0) {
         return { firstDate: null, lastDate: null };
       }
-      
+
       const dates = entries.map(entry => entry.date).sort();
       return {
         firstDate: dates[0],
@@ -933,10 +992,14 @@ export class CalciumService {
     });
   }
 
+  /**
+   * Toggles the favorite status of a food by its ID.
+   * @param foodId The ID of the food to toggle
+   * @throws Error if foodId is invalid
+   */
   async toggleFavorite(foodId: number): Promise<void> {
     if (!this.db) return;
-    
-    // Validate foodId
+
     if (!foodId || typeof foodId !== 'number' || foodId <= 0) {
       console.error('Invalid foodId for toggleFavorite:', foodId);
       showToast('Cannot favorite this food', 'error');
@@ -945,8 +1008,7 @@ export class CalciumService {
 
     const state = get(calciumState);
     const favorites = new Set(state.favorites);
-    
-    // Find food name for toast message
+
     const food = DEFAULT_FOOD_DATABASE.find(f => f.id === foodId);
     const foodName = food ? food.name : `Food ID ${foodId}`;
 
@@ -955,13 +1017,13 @@ export class CalciumService {
       const store = transaction.objectStore('favorites');
 
       if (favorites.has(foodId)) {
-        // Remove from favorites
         const request = store.delete(foodId);
-        
+
         request.onsuccess = () => {
           favorites.delete(foodId);
           calciumState.update(state => ({ ...state, favorites }));
           resolve();
+          SyncTrigger.triggerDataSync();
         };
 
         request.onerror = () => {
@@ -970,18 +1032,18 @@ export class CalciumService {
           reject(request.error);
         };
       } else {
-        // Add to favorites
         const favoriteData = {
           foodId,
           dateAdded: new Date().toISOString()
         };
-        
+
         const request = store.put(favoriteData);
 
         request.onsuccess = () => {
           favorites.add(foodId);
           calciumState.update(state => ({ ...state, favorites }));
           resolve();
+          SyncTrigger.triggerDataSync();
         };
 
         request.onerror = () => {
@@ -1004,18 +1066,109 @@ export class CalciumService {
       request.onsuccess = () => {
         const favoriteRecords = request.result || [];
         const favorites = new Set(favoriteRecords.map((record: any) => record.foodId));
-        
+
         calciumState.update(state => ({ ...state, favorites }));
         resolve();
       };
 
       request.onerror = () => {
         console.error('Error loading favorites:', request.error);
-        // Initialize with empty set on error
         calciumState.update(state => ({ ...state, favorites: new Set() }));
         resolve();
       };
     });
+  }
+
+  private async loadHiddenFoods(): Promise<void> {
+    if (!this.db) return;
+
+    return new Promise((resolve) => {
+      const transaction = this.db!.transaction(['hiddenFoods'], 'readonly');
+      const store = transaction.objectStore('hiddenFoods');
+      const request = store.getAll();
+
+      request.onsuccess = () => {
+        const hiddenRecords = request.result || [];
+        const hiddenFoods = new Set(hiddenRecords.map((record: any) => record.foodId));
+
+        calciumState.update(state => ({ ...state, hiddenFoods }));
+        resolve();
+      };
+
+      request.onerror = () => {
+        console.error('Error loading hidden foods:', request.error);
+        calciumState.update(state => ({ ...state, hiddenFoods: new Set() }));
+        resolve();
+      };
+    });
+  }
+
+  /**
+   * Toggles the hidden status of a food by its ID.
+   * @param foodId The ID of the food to toggle
+   * @throws Error if foodId is invalid
+   */
+  async toggleHiddenFood(foodId: number): Promise<void> {
+    if (!this.db) return;
+
+    if (!foodId || typeof foodId !== 'number' || foodId <= 0) {
+      console.error('Invalid foodId for toggleHiddenFood:', foodId);
+      showToast('Cannot hide this food', 'error');
+      return;
+    }
+
+    const state = get(calciumState);
+    const hiddenFoods = new Set(state.hiddenFoods);
+
+    return new Promise((resolve, reject) => {
+      const transaction = this.db!.transaction(['hiddenFoods'], 'readwrite');
+      const store = transaction.objectStore('hiddenFoods');
+
+      if (hiddenFoods.has(foodId)) {
+        const request = store.delete(foodId);
+
+        request.onsuccess = () => {
+          hiddenFoods.delete(foodId);
+          calciumState.update(state => ({ ...state, hiddenFoods }));
+          resolve();
+        };
+
+        request.onerror = () => {
+          console.error('Error removing hidden food:', request.error);
+          showToast('Failed to unhide food', 'error');
+          reject(request.error);
+        };
+      } else {
+        const hiddenData = {
+          foodId,
+          dateHidden: new Date().toISOString()
+        };
+
+        const request = store.put(hiddenData);
+
+        request.onsuccess = () => {
+          hiddenFoods.add(foodId);
+          calciumState.update(state => ({ ...state, hiddenFoods }));
+          resolve();
+        };
+
+        request.onerror = () => {
+          console.error('Error adding hidden food:', request.error);
+          showToast('Failed to hide food', 'error');
+          reject(request.error);
+        };
+      }
+    });
+  }
+
+  /**
+   * Checks if a food is hidden.
+   * @param foodId The ID of the food to check
+   * @returns True if the food is hidden, false otherwise
+   */
+  isHidden(foodId: number): boolean {
+    const state = get(calciumState);
+    return state.hiddenFoods.has(foodId);
   }
 
   private async loadServingPreferences(): Promise<void> {
@@ -1029,18 +1182,17 @@ export class CalciumService {
       request.onsuccess = () => {
         const preferenceRecords = request.result || [];
         const servingPreferences = new Map();
-        
+
         for (const record of preferenceRecords) {
           servingPreferences.set(record.foodId, record);
         }
-        
+
         calciumState.update(state => ({ ...state, servingPreferences }));
         resolve();
       };
 
       request.onerror = () => {
         console.error('Error loading serving preferences:', request.error);
-        // Initialize with empty map on error
         calciumState.update(state => ({ ...state, servingPreferences: new Map() }));
         resolve();
       };
@@ -1054,15 +1206,12 @@ export class CalciumService {
       const transaction = this.db!.transaction(['favorites'], 'readwrite');
       const store = transaction.objectStore('favorites');
 
-      // Convert legacy name-based favorites to ID-based
       const foodIds: number[] = [];
-      
+
       for (const favorite of favoritesArray) {
         if (typeof favorite === 'number') {
-          // New format: already an ID
           foodIds.push(favorite);
         } else if (typeof favorite === 'string') {
-          // Legacy format: convert name to ID
           const databaseFood = DEFAULT_FOOD_DATABASE.find(food => food.name === favorite);
           if (databaseFood) {
             foodIds.push(databaseFood.id);
@@ -1083,10 +1232,9 @@ export class CalciumService {
       const checkComplete = () => {
         completedCount++;
         if (completedCount === expectedCount) {
-          // Update the state after all favorites are restored
           const favorites = new Set(foodIds);
           calciumState.update(state => ({ ...state, favorites }));
-          
+
           resolve();
         }
       };
@@ -1096,12 +1244,68 @@ export class CalciumService {
           foodId,
           dateAdded: new Date().toISOString()
         };
-        
+
         const request = store.put(favoriteData);
         request.onsuccess = checkComplete;
         request.onerror = () => {
           console.error(`Error restoring favorite: ${foodId}`, request.error);
-          checkComplete(); // Continue even if one fails
+          checkComplete();
+        };
+      }
+    });
+  }
+
+  private async restoreHiddenFoods(hiddenFoodsArray: (number | string)[]): Promise<void> {
+    if (!this.db) return;
+    
+    return new Promise((resolve, reject) => {
+      const transaction = this.db!.transaction(['hiddenFoods'], 'readwrite');
+      const store = transaction.objectStore('hiddenFoods');
+      const foodIds: number[] = [];
+      
+      for (const hiddenFood of hiddenFoodsArray) {
+        if (typeof hiddenFood === 'number') {
+          foodIds.push(hiddenFood);
+        } else if (typeof hiddenFood === 'string') {
+          const databaseFood = DEFAULT_FOOD_DATABASE.find(food => food.name === hiddenFood);
+          if (databaseFood) {
+            foodIds.push(databaseFood.id);
+          } else {
+            console.warn(`Could not find food ID for legacy hidden food: ${hiddenFood}`);
+          }
+        }
+      }
+      
+      let completedCount = 0;
+      const expectedCount = foodIds.length;
+      
+      if (expectedCount === 0) {
+        const hiddenFoods = new Set<number>();
+        calciumState.update(state => ({ ...state, hiddenFoods }));
+        resolve();
+        return;
+      }
+      
+      const checkComplete = () => {
+        completedCount++;
+        if (completedCount === expectedCount) {
+          const hiddenFoods = new Set(foodIds);
+          calciumState.update(state => ({ ...state, hiddenFoods }));
+          resolve();
+        }
+      };
+      
+      for (const foodId of foodIds) {
+        const hiddenData = {
+          foodId,
+          dateHidden: new Date().toISOString()
+        };
+        
+        const request = store.put(hiddenData);
+        request.onsuccess = checkComplete;
+        request.onerror = () => {
+          console.error(`Error restoring hidden food: ${foodId}`, request.error);
+          checkComplete();
         };
       }
     });
@@ -1125,7 +1329,6 @@ export class CalciumService {
       const checkComplete = () => {
         completedCount++;
         if (completedCount === expectedCount) {
-          // Update the state after all preferences are restored
           const servingPreferences = new Map();
           for (const pref of preferencesArray) {
             servingPreferences.set(pref.foodId, pref);
@@ -1140,10 +1343,99 @@ export class CalciumService {
         request.onsuccess = checkComplete;
         request.onerror = () => {
           console.error(`Error restoring serving preference for food ${preference.foodId}`, request.error);
-          checkComplete(); // Continue even if one fails
+          checkComplete();
         };
       }
     });
+  }
+
+  /**
+   * Applies data from a sync operation without clearing existing data.
+   * This is the non-destructive counterpart to restoreFromBackup.
+   */
+  /**
+   * Applies data from a sync operation without clearing existing data.
+   * This is the non-destructive counterpart to restoreFromBackup.
+   * @param syncData The sync data to apply
+   */
+  async applySyncData(syncData: any): Promise<void> {
+    try {
+
+      if (syncData.preferences) {
+        calciumState.update(state => ({
+          ...state,
+          settings: syncData.preferences
+        }));
+        await this.saveSettings();
+      }
+
+      if (syncData.customFoods && Array.isArray(syncData.customFoods)) {
+        for (const customFood of syncData.customFoods) {
+          try {
+            await this.saveCustomFoodToIndexedDB(customFood);
+          } catch (error) {
+            console.warn('Failed to apply synced custom food:', customFood.name, error);
+          }
+        }
+      }
+
+      if (syncData.favorites && Array.isArray(syncData.favorites)) {
+        try {
+          await this.restoreFavorites(syncData.favorites);
+        } catch (error) {
+          console.warn('Failed to apply synced favorites:', error);
+        }
+      }
+
+      if (syncData.hiddenFoods && Array.isArray(syncData.hiddenFoods)) {
+        try {
+          await this.restoreHiddenFoods(syncData.hiddenFoods);
+        } catch (error) {
+          console.warn('Failed to apply synced hidden foods:', error);
+        }
+      }
+
+      if (syncData.servingPreferences && Array.isArray(syncData.servingPreferences)) {
+        try {
+          await this.restoreServingPreferences(syncData.servingPreferences);
+        } catch (error) {
+          console.warn('Failed to apply synced serving preferences:', error);
+        }
+      }
+
+      if (syncData.journalEntries) {
+        for (const [dateString, foods] of Object.entries(syncData.journalEntries)) {
+          if (Array.isArray(foods)) {
+            try {
+              await this.saveFoodsForDate(dateString, foods as FoodEntry[]);
+            } catch (error) {
+              console.warn('Failed to apply synced journal entry for date:', dateString, error);
+            }
+          }
+        }
+      }
+
+      await new Promise(resolve => setTimeout(resolve, 200));
+
+      await this.loadSettings();
+      await this.loadCustomFoods();
+      await this.loadFavorites();
+      await this.loadHiddenFoods();
+      await this.loadServingPreferences();
+      await this.loadDailyFoods();
+      await this.applySortToFoods();
+
+    } catch (error) {
+      console.error('Error applying sync data:', error);
+      throw error;
+    }
+  }
+
+  async regenerateSyncId(): Promise<void> {
+    if (!this.settings) return;
+    const newId = CryptoUtils.generateUUID();
+    this.settings.syncGenerationId = newId;
+    await this.saveSettings();
   }
 
 }

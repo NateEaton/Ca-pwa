@@ -1,19 +1,39 @@
+<!--
+ * My Calcium Tracker PWA
+ * Copyright (C) 2025 Nathan A. Eaton Jr.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <https://www.gnu.org/licenses/>.
+-->
+
 <script>
   import { calciumState, showToast, calciumService } from "$lib/stores/calcium";
   import { onMount } from "svelte";
-  import AboutDialog from "$lib/components/AboutDialog.svelte";
+  import { FEATURES } from "$lib/utils/featureFlags";
   import BackupModal from "$lib/components/BackupModal.svelte";
   import RestoreModal from "$lib/components/RestoreModal.svelte";
+  import SyncSettingsModal from "$lib/components/SyncSettingsModal.svelte";
+
   let dailyGoal = 1000;
   let selectedTheme = "auto";
   let isLoading = true;
-  let showAboutDialog = false;
   let showBackupModal = false;
   let showRestoreModal = false;
+  let showSyncModal = false;
 
   // Update UI when state changes (like after restore) but not during user input
   let isUserEditing = false;
-  
+
   // Only update from state when user is not actively editing
   $: if (!isUserEditing && $calciumState.settings?.dailyGoal !== undefined) {
     dailyGoal = $calciumState.settings.dailyGoal;
@@ -38,9 +58,9 @@
 
   async function saveDailyGoal() {
     isUserEditing = false; // Allow state updates again
-    
+
     if (!calciumService) return;
-    
+
     // Validate goal range
     if (dailyGoal < 100 || dailyGoal > 5000) {
       showToast("Goal must be between 100-5000mg", "error");
@@ -58,8 +78,13 @@
 
   function applyTheme(theme) {
     if (theme === "auto") {
-      const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-      document.documentElement.setAttribute("data-theme", prefersDark ? "dark" : "light");
+      const prefersDark = window.matchMedia(
+        "(prefers-color-scheme: dark)"
+      ).matches;
+      document.documentElement.setAttribute(
+        "data-theme",
+        prefersDark ? "dark" : "light"
+      );
     } else {
       document.documentElement.setAttribute("data-theme", theme);
     }
@@ -78,16 +103,16 @@
     }
   }
 
-  function openAboutDialog() {
-    showAboutDialog = true;
-  }
-
   function openBackupModal() {
     showBackupModal = true;
   }
 
   function openRestoreModal() {
     showRestoreModal = true;
+  }
+
+  function openSyncModal() {
+    showSyncModal = true;
   }
 </script>
 
@@ -107,18 +132,19 @@
     <!-- Goal Settings Section -->
     <div class="settings-section">
       <h3 class="section-title">Goal</h3>
-      
+
       <div class="setting-item inline">
+        <span class="material-icons setting-icon">flag</span>
         <div class="setting-info">
           <span class="setting-title">Daily Calcium Target</span>
           <span class="setting-subtitle">Your daily calcium goal in mg</span>
         </div>
         <div class="setting-control">
-          <input 
-            type="number" 
+          <input
+            type="number"
             bind:value={dailyGoal}
-            min="100" 
-            max="5000" 
+            min="100"
+            max="5000"
             step="50"
             class="goal-input"
             on:focus={startEditing}
@@ -133,14 +159,19 @@
     <!-- Appearance Section -->
     <div class="settings-section">
       <h3 class="section-title">Appearance</h3>
-      
+
       <div class="setting-item inline">
+        <span class="material-icons setting-icon">palette</span>
         <div class="setting-info">
           <span class="setting-title">Theme</span>
           <span class="setting-subtitle">Choose your preferred appearance</span>
         </div>
         <div class="setting-control">
-          <select bind:value={selectedTheme} on:change={saveTheme} class="theme-select">
+          <select
+            bind:value={selectedTheme}
+            on:change={saveTheme}
+            class="theme-select"
+          >
             <option value="auto">Auto</option>
             <option value="light">Light</option>
             <option value="dark">Dark</option>
@@ -152,7 +183,20 @@
     <!-- Data Section -->
     <div class="settings-section">
       <h3 class="section-title">Data</h3>
-      
+
+      {#if FEATURES.SYNC_ENABLED}
+        <button class="setting-nav-item" on:click={openSyncModal}>
+          <span class="material-icons setting-icon">sync</span>
+          <div class="setting-info">
+            <span class="setting-title">Sync</span>
+            <span class="setting-subtitle"
+              >Manage device pairing and sync status</span
+            >
+          </div>
+          <span class="material-icons nav-chevron">chevron_right</span>
+        </button>
+      {/if}
+
       <button class="setting-nav-item" on:click={openBackupModal}>
         <span class="material-icons setting-icon">backup</span>
         <div class="setting-info">
@@ -161,7 +205,7 @@
         </div>
         <span class="material-icons nav-chevron">chevron_right</span>
       </button>
-      
+
       <button class="setting-nav-item" on:click={openRestoreModal}>
         <span class="material-icons setting-icon">restore</span>
         <div class="setting-info">
@@ -171,27 +215,15 @@
         <span class="material-icons nav-chevron">chevron_right</span>
       </button>
     </div>
-
-    <!-- App Section -->
-    <div class="settings-section">
-      <h3 class="section-title">App</h3>
-      
-      <button class="setting-nav-item" on:click={openAboutDialog}>
-        <span class="material-icons setting-icon">info</span>
-        <div class="setting-info">
-          <span class="setting-title">About</span>
-          <span class="setting-subtitle">Version and app information</span>
-        </div>
-        <span class="material-icons nav-chevron">chevron_right</span>
-      </button>
-    </div>
   {/if}
 </div>
 
 <!-- Modal Components -->
-<AboutDialog bind:show={showAboutDialog} />
 <BackupModal bind:show={showBackupModal} />
 <RestoreModal bind:show={showRestoreModal} />
+{#if FEATURES.SYNC_ENABLED}
+  <SyncSettingsModal bind:show={showSyncModal} />
+{/if}
 
 <style>
   .settings-container {
@@ -229,8 +261,12 @@
   }
 
   @keyframes spin {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
   }
 
   .settings-section {
@@ -257,6 +293,11 @@
     background: var(--surface-variant);
     border-radius: var(--spacing-sm);
     min-height: var(--touch-target-min);
+    gap: var(--spacing-sm);
+  }
+
+  .setting-item.inline .setting-icon {
+    margin-right: var(--spacing-sm);
   }
 
   .setting-info {
