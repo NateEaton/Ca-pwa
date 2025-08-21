@@ -51,8 +51,21 @@
       });
   }
 
+  // In SyncSettingsModal.svelte - Updated generateSyncUrl function
+
   async function generateSyncUrl() {
     try {
+      // Check for screenshot mode with safe defaults
+      const screenshotMode = import.meta.env.VITE_SCREENSHOT_MODE === "true";
+      const exampleUrl = import.meta.env.VITE_EXAMPLE_SYNC_URL;
+
+      // Use screenshot mode only if both flag is true AND example URL is provided
+      if (screenshotMode && exampleUrl) {
+        syncUrl = exampleUrl;
+        return;
+      }
+
+      // Normal production logic
       const settings = syncService.getSettings();
       if (settings) {
         const baseUrl = window.location.origin + window.location.pathname;
