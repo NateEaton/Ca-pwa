@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>My Calcium - A Simple Calcium Tracker</title>
+    <style>
+      :root {
+        --primary-color: #3b82f6;
+        --secondary-color: #f3f4f6;
+        --text-primary: #1f2937;
+        --text-secondary: #4b5563;
+        --background-color: #ffffff;
+      }
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          Helvetica, Arial, sans-serif;
+        margin: 0;
+        background-color: var(--background-color);
+        color: var(--text-primary);
+        line-height: 1.6;
+      }
+      .container {
+        max-width: 960px;
+        margin: 0 auto;
+        padding: 20px;
+      }
+      header {
+        text-align: center;
+        padding: 40px 20px;
+      }
+      header h1 {
+        font-size: 3em;
+        margin: 0;
+      }
+      header p {
+        font-size: 1.2em;
+        color: var(--text-secondary);
+        margin-top: 10px;
+      }
+      .badges {
+        margin-top: 20px;
+      }
+      .badge {
+        display: inline-block;
+        background: #000;
+        color: #fff;
+        padding: 10px 20px;
+        border-radius: 5px;
+        text-decoration: none;
+        margin: 5px;
+        font-weight: bold;
+      }
+      .demo-button {
+        display: inline-block;
+        background-color: var(--primary-color);
+        color: white;
+        padding: 15px 30px;
+        margin-top: 20px;
+        border-radius: 8px;
+        text-decoration: none;
+        font-size: 1.1em;
+        font-weight: 500;
+        transition: background-color 0.3s;
+      }
+      .demo-button:hover {
+        background-color: #2563eb;
+      }
+      .screenshots {
+        text-align: center;
+        padding: 40px 0;
+        background-color: var(--secondary-color);
+      }
+      .screenshots h2 {
+        margin-bottom: 30px;
+        font-size: 2em;
+      }
+      .screenshots-grid {
+        display: flex;
+        justify-content: center;
+        gap: 20px;
+        flex-wrap: wrap;
+      }
+      .screenshots-grid img {
+        max-width: 200px;
+        border-radius: 15px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      }
+      section {
+        padding: 40px 20px;
+      }
+      section h2 {
+        text-align: center;
+        font-size: 2em;
+        margin-bottom: 30px;
+      }
+      .features-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 30px;
+        margin-top: 20px;
+      }
+      .feature {
+        background: var(--secondary-color);
+        padding: 25px;
+        border-radius: 8px;
+        text-align: center;
+      }
+      .feature h3 {
+        margin-top: 0;
+        color: var(--primary-color);
+      }
+      .privacy-section {
+        background: var(--text-primary);
+        color: #fff;
+      }
+      .privacy-section h2 {
+        color: #fff;
+      }
+      .privacy-section p {
+        max-width: 700px;
+        margin: 0 auto;
+        text-align: center;
+        font-size: 1.1em;
+      }
+      footer {
+        text-align: center;
+        padding: 20px;
+        background: var(--secondary-color);
+        color: var(--text-secondary);
+        font-size: 0.9em;
+      }
+      footer a {
+        color: var(--primary-color);
+        text-decoration: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <header>
+        <h1>My Calcium</h1>
+        <p>A simple, private, and effective way to track your daily calcium intake.</p>
+        <div class="badges">
+            <span class="badge">No Ads</span>
+            <span class="badge">No Trackers</span>
+            <span class="badge">100% Free</span>
+        </div>
+        <a href="https://your-github-username.github.io/my-calcium-pwa/app" class="demo-button">Launch Live Demo</a>
+      </header>
+    </div>
+
+    <div class="screenshots">
+        <div class="container">
+            <h2>Modern. Fast. Intuitive.</h2>
+            <div class="screenshots-grid">
+                <!-- TODO: Replace these placeholders with actual screenshots -->
+                <img src="https://via.placeholder.com/200x400.png/3b82f6/ffffff?text=Main+Screen" alt="Main tracking screen">
+                <img src="https://via.placeholder.com/200x400.png/3b82f6/ffffff?text=Add+Food" alt="Add food search modal">
+                <img src="https://via.placeholder.com/200x400.png/3b82f6/ffffff?text=Stats+Page" alt="Statistics page with charts">
+                <img src="https://via.placeholder.com/200x400.png/3b82f6/ffffff?text=Settings" alt="Settings and Sync page">
+            </div>
+        </div>
+    </div>
+
+    <main class="container">
+      <section class="features">
+        <h2>Everything You Need</h2>
+        <div class="features-grid">
+          <div class="feature">
+            <h3>Comprehensive Database</h3>
+            <p>
+              Quickly search thousands of food items from the USDA food database to log your entries.
+            </p>
+          </div>
+          <div class="feature">
+            <h3>Cross-Device Sync</h3>
+            <p>
+              Use the app on your phone and tablet with seamless, end-to-end encrypted data synchronization.
+            </p>
+          </div>
+          <div class="feature">
+            <h3>Custom Foods & Favorites</h3>
+            <p>
+              Add your own custom foods and mark any item as a favorite for even faster tracking.
+            </p>
+          </div>
+          <div class="feature">
+            <h3>Insightful Statistics</h3>
+            <p>
+              Visualize your intake with daily, weekly, monthly, and yearly charts to see your progress at a glance.
+            </p>
+          </div>
+          <div class="feature">
+            <h3>Works Offline</h3>
+            <p>
+              As a full Progressive Web App, My Calcium works perfectly even without an internet connection.
+            </p>
+          </div>
+          <div class="feature">
+            <h3>Data Export & Reports</h3>
+            <p>
+              Generate printable reports to share with a healthcare provider and create full backups of your data.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section class="privacy-section">
+        <h2>Privacy First. Always.</h2>
+        <p>
+            Your health data is yours. My Calcium is a "local-first" app, meaning all data is stored directly on your device. The optional sync feature uses end-to-end encryption, so not even the server can read your data. No analytics, no tracking, no accounts needed.
+        </p>
+      </section>
+
+       <section class="tech-stuff">
+        <h2>Open & Transparent</h2>
+        <p style="text-align: center;">
+          My Calcium is free and open-source software built with modern, privacy-respecting technology. <br>
+          Check out the <a href="https://github.com/your-github-username/my-calcium-pwa" target="_blank" rel="noopener">source code on GitHub</a>.
+        </p>
+      </section>
+    </main>
+
+    <footer>
+      <div class="container">
+        <p>
+          Built by Nathan A. Eaton Jr. &copy; 2025 | Licensed under GPLv3.
+        </p>
+      </div>
+    </footer>
+  </body>
+</html>

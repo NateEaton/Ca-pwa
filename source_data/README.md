@@ -1,5 +1,7 @@
 # Calcium Database Source Data
 
+> **⚠️ DRAFT DOCUMENTATION** - This documentation is currently being finalized and may contain incomplete or outdated information.
+
 This folder contains the data processing pipeline used to curate the calcium-rich foods database for the My Calcium Tracker PWA.
 
 ## Overview
