@@ -2,9 +2,7 @@
 /**
  * Merge existing JS DB with curated JSON from CSV
  * Keeps custom foods, updates USDA foods, and adds new ones.
- * Can operate in two modes:
- * - Default (full): Merges all fields from a detailed JSON file.
- * - Minimal: Use --minimal flag to merge only core fields from an abridged JSON.
+ * **Crucially, it preserves existing IDs to maintain user data stability.**
  */
 
 const fs = require("fs-extra");
@@ -54,11 +52,14 @@ async function mergeDatabases(existingJsPath, curatedJsonPath, outputPath, isMin
 
   const merged = [];
   const seen = new Set();
+  
+  // **NEW:** Find the highest existing ID to start new IDs from.
+  let maxId = Math.max(0, ...existingDb.map(f => f.id || 0));
 
-  // Process foods from the existing database
+  // Process foods from the existing database, preserving their IDs
   for (const oldFood of existingDb) {
     if (oldFood.isCustom) {
-      merged.push(oldFood);
+      merged.push(oldFood); // Custom foods are always kept as-is
       seen.add(normalizeName(oldFood.name));
       continue;
     }
@@ -73,33 +74,19 @@ async function mergeDatabases(existingJsPath, curatedJsonPath, outputPath, isMin
       let updatedFood;
 
       if (isMinimal) {
-        // MINIMAL MERGE: Only update core fields that exist in minimal output
-        updatedFood = {
-          ...oldFood,
-          calcium: match.calcium,
-          measure: match.measure,
-          isCustom: false,
-        };
-        // Ensure fields not in minimal schema are removed
+        updatedFood = { ...oldFood, calcium: match.calcium, measure: match.measure, isCustom: false };
         delete updatedFood.calciumPer100g;
         delete updatedFood.defaultServing;
         delete updatedFood.fdcId;
         delete updatedFood.foodType;
         delete updatedFood.collapsedFrom;
-
       } else {
-        // FULL MERGE: Perform detailed update with all fields
         let serving = match.defaultServing;
         if (serving && serving.unit && serving.unit.toLowerCase() === "g" && oldFood.measure && match.calciumPer100g > 0) {
           const parsed = parseMeasure(oldFood.measure);
           const gw = (oldFood.calcium / match.calciumPer100g) * 100;
-          serving = {
-            amount: parsed.amount,
-            unit: parsed.unit,
-            gramWeight: Math.round(gw),
-          };
+          serving = { amount: parsed.amount, unit: parsed.unit, gramWeight: Math.round(gw) };
         }
-
         updatedFood = {
           ...oldFood,
           calcium: match.calcium,
@@ -115,7 +102,7 @@ async function mergeDatabases(existingJsPath, curatedJsonPath, outputPath, isMin
       merged.push(updatedFood);
       seen.add(normalizeName(oldFood.name));
     } else {
-      // If no match, keep the old food (it might have been filtered out)
+      // If no match, it means the food was filtered out from the new curation. Keep the old one.
       merged.push(oldFood);
       seen.add(normalizeName(oldFood.name));
     }
@@ -125,20 +112,20 @@ async function mergeDatabases(existingJsPath, curatedJsonPath, outputPath, isMin
   for (const newFood of curatedDb) {
     const key = normalizeName(newFood.name);
     if (!seen.has(key)) {
+      // **NEW:** Assign a new, unique ID that doesn't conflict with existing ones.
+      newFood.id = ++maxId;
       merged.push(newFood);
       seen.add(key);
     }
   }
 
-  // **FIX:** Re-assign sequential IDs to ensure uniqueness across the entire dataset.
-  merged.forEach((food, index) => {
-    food.id = index + 1;
-  });
+  // **CHANGED:** Remove the old re-indexing loop and instead sort by ID for consistency.
+  merged.sort((a, b) => a.id - b.id);
 
   await fs.writeJson(outputPath, merged, { spaces: 2 });
   console.log(`✅ Merged database saved to ${outputPath}`);
   console.log(`   Mode: ${isMinimal ? 'Minimal' : 'Full'}`);
-  console.log(`   Re-indexed all records with unique IDs.`);
+  console.log(`   Preserved existing IDs and assigned new sequential IDs starting from ${maxId + 1}.`);
   console.log(`   Total foods: ${merged.length}`);
   console.log(`   Custom foods: ${merged.filter((f) => f.isCustom).length}`);
   console.log(`   USDA foods: ${merged.filter((f) => !f.isCustom).length}`);
