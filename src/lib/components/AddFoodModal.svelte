@@ -17,9 +17,9 @@
 -->
 
 <script>
-  import { createEventDispatcher } from "svelte";
+  import { createEventDispatcher, onMount } from "svelte";
   import { calciumState, calciumService } from "$lib/stores/calcium";
-  import { DEFAULT_FOOD_DATABASE } from "$lib/data/foodDatabase";
+  import { loadFoodDatabase } from "$lib/data/foodDatabase";
   import { SearchService } from "$lib/services/SearchService";
   import UnitConverter from "$lib/services/UnitConverter.js";
   import ConfirmDialog from "./ConfirmDialog.svelte";
@@ -40,6 +40,8 @@
   let showSearchResults = false;
   let searchTimeout;
   let showDeleteConfirm = false;
+  let foodDatabase = [];
+  let isDatabaseLoading = true;
 
   // Form fields
   let foodName = "";
@@ -58,6 +60,17 @@
   let parsedFoodMeasure = null;
   let unitSuggestions = [];
   let showUnitSuggestions = false;
+
+  // Load food database on component mount
+  onMount(async () => {
+    try {
+      foodDatabase = await loadFoodDatabase();
+      isDatabaseLoading = false;
+    } catch (error) {
+      console.error('Error loading food database:', error);
+      isDatabaseLoading = false;
+    }
+  });
 
   // Reset form when modal opens or editing changes
   $: if (show) {
@@ -85,7 +98,7 @@
 
       // If not a custom food, try to find the corresponding database food to get the ID
       if (!editingFood.isCustom) {
-        const databaseFood = DEFAULT_FOOD_DATABASE.find(
+        const databaseFood = foodDatabase.find(
           (food) => food.name === editingFood.name
         );
         if (databaseFood) {
@@ -168,7 +181,7 @@
     searchTimeout = setTimeout(() => {
       if (foodName.trim().length >= 2) {
         const allFoods = [
-          ...DEFAULT_FOOD_DATABASE,
+          ...foodDatabase,
           ...$calciumState.customFoods,
         ];
 
@@ -555,6 +568,12 @@
       </div>
 
       <form class="modal-body" on:submit|preventDefault={handleSubmit}>
+        {#if isDatabaseLoading}
+          <div class="loading-state">
+            <div class="loading-spinner"></div>
+            <p>Loading food database...</p>
+          </div>
+        {:else}
         <div class="form-group">
           <div class="form-label-row">
             <label class="form-label" for="foodName">Food Name</label>
@@ -732,6 +751,7 @@
             {editingFood ? "Update" : "Add"}
           </button>
         </div>
+        {/if}
       </form>
     </div>
   </div>
@@ -1237,5 +1257,30 @@
       width: 100%;
       text-align: center;
     }
+  }
+
+  /* Loading state styles */
+  .loading-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: var(--spacing-xl);
+    color: var(--text-secondary);
+  }
+
+  .loading-spinner {
+    width: 2rem;
+    height: 2rem;
+    border: 2px solid var(--divider);
+    border-top: 2px solid var(--primary);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: var(--spacing-md);
+  }
+
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
   }
 </style>

@@ -19,7 +19,7 @@
 <script>
   import { onMount, onDestroy } from "svelte";
   import { calciumState, showToast, calciumService } from "$lib/stores/calcium";
-  import { DEFAULT_FOOD_DATABASE } from "$lib/data/foodDatabase";
+  import { loadFoodDatabase } from "$lib/data/foodDatabase";
   import { SearchService } from "$lib/services/SearchService";
   import { goto } from "$app/navigation";
 
@@ -30,6 +30,8 @@
   let filteredFoods = [];
   let isBulkOperationInProgress = false;
   let typeSortRotation = 0; // 0, 1, 2 for three-way type rotation
+  let foodDatabase = [];
+  let isDatabaseLoading = true;
   
   // Calcium filter state
   let calciumFilter = {
@@ -86,6 +88,17 @@
     return 0; // User filter doesn't need rotation (all custom)
   }
 
+  // Load food database on component mount
+  onMount(async () => {
+    try {
+      foodDatabase = await loadFoodDatabase();
+      isDatabaseLoading = false;
+    } catch (error) {
+      console.error('Error loading food database:', error);
+      isDatabaseLoading = false;
+    }
+  });
+
   // Filter and sort foods
   $: {
     // Explicitly depend on typeSortRotation and calciumFilter to trigger re-sort
@@ -96,11 +109,11 @@
     // Apply filter
     if (selectedFilter === "available") {
       // Show all addable foods: database foods (excluding hidden ones) + custom foods + favorites
-      const visibleDatabaseFoods = [...DEFAULT_FOOD_DATABASE].filter(food => !$calciumState.hiddenFoods.has(food.id));
+      const visibleDatabaseFoods = [...foodDatabase].filter(food => !$calciumState.hiddenFoods.has(food.id));
       foods = [...visibleDatabaseFoods, ...$calciumState.customFoods];
     } else if (selectedFilter === "database") {
       // Show all database foods for management (including hidden and favorites)
-      foods = [...DEFAULT_FOOD_DATABASE];
+      foods = [...foodDatabase];
     } else if (selectedFilter === "user") {
       // Show only custom foods
       foods = [...$calciumState.customFoods];
@@ -184,10 +197,10 @@
   $: {
     let totalCount = 0;
     if (selectedFilter === "available") {
-      const visibleDatabaseFoods = [...DEFAULT_FOOD_DATABASE].filter(food => !$calciumState.hiddenFoods.has(food.id));
+      const visibleDatabaseFoods = [...foodDatabase].filter(food => !$calciumState.hiddenFoods.has(food.id));
       totalCount = visibleDatabaseFoods.length + $calciumState.customFoods.length;
     } else if (selectedFilter === "database") {
-      totalCount = DEFAULT_FOOD_DATABASE.length;
+      totalCount = foodDatabase.length;
     } else if (selectedFilter === "user") {
       totalCount = $calciumState.customFoods.length;
     }
@@ -199,11 +212,11 @@
     let filterLabel = "";
     
     if (selectedFilter === "available") {
-      const visibleDatabaseFoods = [...DEFAULT_FOOD_DATABASE].filter(food => !$calciumState.hiddenFoods.has(food.id));
+      const visibleDatabaseFoods = [...foodDatabase].filter(food => !$calciumState.hiddenFoods.has(food.id));
       totalCount = visibleDatabaseFoods.length + $calciumState.customFoods.length;
       filterLabel = "available";
     } else if (selectedFilter === "database") {
-      totalCount = DEFAULT_FOOD_DATABASE.length;
+      totalCount = foodDatabase.length;
       filterLabel = "database";
     } else if (selectedFilter === "user") {
       totalCount = $calciumState.customFoods.length;
@@ -432,6 +445,12 @@
 <div class="data-page">
 
   <div class="content">
+    {#if isDatabaseLoading}
+      <div class="loading-state">
+        <div class="loading-spinner"></div>
+        <p>Loading food database...</p>
+      </div>
+    {:else}
     <!-- Search and Calcium Filter Row -->
     <div class="search-row">
       <div class="search-container">
@@ -739,6 +758,7 @@
         </div>
       {/each}
     </div>
+    {/if}
   </div>
 
 </div>
@@ -1430,5 +1450,31 @@
     .range-inputs input {
       width: 50px;
     }
+  }
+
+  /* Loading state styles */
+  .loading-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: var(--spacing-xl);
+    color: var(--text-secondary);
+    min-height: 200px;
+  }
+
+  .loading-spinner {
+    width: 2rem;
+    height: 2rem;
+    border: 2px solid var(--divider);
+    border-top: 2px solid var(--primary);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: var(--spacing-md);
+  }
+
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
   }
 </style>

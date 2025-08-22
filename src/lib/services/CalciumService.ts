@@ -19,7 +19,7 @@
 import { get } from 'svelte/store';
 import { calciumState, showToast } from '$lib/stores/calcium';
 import type { FoodEntry, CustomFood, CalciumSettings, UserServingPreference } from '$lib/types/calcium';
-import { DEFAULT_FOOD_DATABASE } from '$lib/data/foodDatabase';
+import { loadFoodDatabase } from '$lib/data/foodDatabase';
 import { SyncService } from '$lib/services/SyncService';
 import { SyncTrigger } from '$lib/utils/syncTrigger';
 import { getBuildInfo } from '$lib/utils/buildInfo';
@@ -30,6 +30,7 @@ import { getBuildInfo } from '$lib/utils/buildInfo';
  */
 export class CalciumService {
   private db: IDBDatabase | null = null;
+  private foodDatabase: any[] = [];
 
   /**
    * Initializes the service by setting up IndexedDB, running migrations, and loading all data.
@@ -38,6 +39,9 @@ export class CalciumService {
     await this.initializeIndexedDB();
     await this.migrateCustomFoodsIfNeeded();
     await this.migrateFavoritesToIDsIfNeeded();
+
+    // Load food database
+    this.foodDatabase = await loadFoodDatabase();
 
     await this.loadSettings();
     await this.loadDailyFoods();
@@ -139,7 +143,7 @@ export class CalciumService {
 
         for (const favRecord of legacyFavorites) {
           const foodName = favRecord.foodName;
-          const databaseFood = DEFAULT_FOOD_DATABASE.find(food => food.name === foodName);
+          const databaseFood = this.foodDatabase.find(food => food.name === foodName);
           if (databaseFood) {
             favoriteFoodIds.push(databaseFood.id);
           }
@@ -1009,7 +1013,7 @@ private async clearAllData(): Promise<void> {
     const state = get(calciumState);
     const favorites = new Set(state.favorites);
 
-    const food = DEFAULT_FOOD_DATABASE.find(f => f.id === foodId);
+    const food = this.foodDatabase.find(f => f.id === foodId);
     const foodName = food ? food.name : `Food ID ${foodId}`;
 
     return new Promise((resolve, reject) => {
@@ -1212,7 +1216,7 @@ private async clearAllData(): Promise<void> {
         if (typeof favorite === 'number') {
           foodIds.push(favorite);
         } else if (typeof favorite === 'string') {
-          const databaseFood = DEFAULT_FOOD_DATABASE.find(food => food.name === favorite);
+          const databaseFood = this.foodDatabase.find(food => food.name === favorite);
           if (databaseFood) {
             foodIds.push(databaseFood.id);
           } else {
@@ -1267,7 +1271,7 @@ private async clearAllData(): Promise<void> {
         if (typeof hiddenFood === 'number') {
           foodIds.push(hiddenFood);
         } else if (typeof hiddenFood === 'string') {
-          const databaseFood = DEFAULT_FOOD_DATABASE.find(food => food.name === hiddenFood);
+          const databaseFood = this.foodDatabase.find(food => food.name === hiddenFood);
           if (databaseFood) {
             foodIds.push(databaseFood.id);
           } else {
