@@ -42,6 +42,7 @@
   let chartCanvas;
   let chartLabels;
   let chartScrollWrapper;
+  let goalLineContainer;
   let hasScrolled = false;
 
   // Touch handling
@@ -905,6 +906,11 @@
   }
 
   function createGoalLine(maxValue) {
+    if (!goalLineContainer) return;
+    
+    // Clear any existing goal line
+    goalLineContainer.innerHTML = "";
+    
     const goalLine = document.createElement("div");
     goalLine.className = "goal-line";
     const goalPercent = ($calciumState.settings.dailyGoal / maxValue) * 100;
@@ -912,7 +918,7 @@
     goalLine.style.position = "absolute";
     goalLine.style.width = "100%";
     goalLine.style.left = "0";
-    chartCanvas.appendChild(goalLine);
+    goalLineContainer.appendChild(goalLine);
   }
 
   function scrollToCurrentDay() {
@@ -1114,13 +1120,18 @@
 
       <!-- Chart Container -->
       <div class="chart-container">
-        <div
-          class="chart-scroll-wrapper"
-          bind:this={chartScrollWrapper}
-          on:scroll={syncLabelsScroll}
-        >
-          <div class="chart-canvas {currentView}-view" bind:this={chartCanvas}>
-            <!-- Chart will be rendered here -->
+        <div class="chart-area">
+          <div
+            class="chart-scroll-wrapper"
+            bind:this={chartScrollWrapper}
+            on:scroll={syncLabelsScroll}
+          >
+            <div class="chart-canvas {currentView}-view" bind:this={chartCanvas}>
+              <!-- Chart will be rendered here -->
+            </div>
+          </div>
+          <div class="goal-line-container" bind:this={goalLineContainer}>
+            <!-- Goal line will be rendered here -->
           </div>
         </div>
         <div class="chart-labels-wrapper">
@@ -1505,9 +1516,25 @@
     overflow: hidden;
   }
 
+  .chart-area {
+    position: relative;
+    height: 16.25rem; /* 260px - same as chart-scroll-wrapper */
+  }
+
+  .goal-line-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    pointer-events: none;
+    padding: var(--spacing-lg) 0;
+    z-index: 10;
+  }
+
   .chart-scroll-wrapper {
     position: relative;
-    height: 16.25rem; /* 260px */
+    height: 100%;
     overflow-x: auto;
     overflow-y: hidden;
     padding: var(--spacing-lg) 0;
