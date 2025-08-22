@@ -1,51 +1,51 @@
 fdcId,identifier,identifierType,foodType,foodDescription,value,foodWeight,valueUnit,foodMeasure,measureValue
-175304,17169,NDB #,SR Legacy,"Game meat, goat, cooked, roasted",17,85,g,3 oz,14.4
-175304,17169,NDB #,SR Legacy,"Game meat, goat, cooked, roasted",17,340,g,"1 piece, cooked (yield from 1 lb raw meat, boneless)",57.8
-175303,17168,NDB #,SR Legacy,"Game meat, goat, raw",13,28.35,g,1 oz,3.69
-175303,17168,NDB #,SR Legacy,"Game meat, goat, raw",13,453.6,g,1 lb,59
-175298,17159,NDB #,SR Legacy,"Game meat, boar, wild, cooked, roasted",16,85,g,3 oz,13.6
-175298,17159,NDB #,SR Legacy,"Game meat, boar, wild, cooked, roasted",16,340,g,"1 piece, cooked (yield from 1 lb raw meat, boneless)",54.4
-175296,17152,NDB #,SR Legacy,"Game meat, beefalo, composite of cuts, raw",18,28.35,g,1 oz,5.1
-175296,17152,NDB #,SR Legacy,"Game meat, beefalo, composite of cuts, raw",18,453.6,g,1 lb,81.6
-175295,17151,NDB #,SR Legacy,"Game meat, beaver, cooked, roasted",22,313,g,"1 piece, cooked (yield from 1 lb raw meat, boneless)",68.9
-175295,17151,NDB #,SR Legacy,"Game meat, beaver, cooked, roasted",22,85,g,3 oz,18.7
-175302,17167,NDB #,SR Legacy,"Game meat, elk, cooked, roasted",5,85,g,3 oz,4.25
-175302,17167,NDB #,SR Legacy,"Game meat, elk, cooked, roasted",5,340,g,"1 piece, cooked (yield from 1 lb raw meat, boneless)",17
-175300,17161,NDB #,SR Legacy,"Game meat, buffalo, water, cooked, roasted",15,85,g,3 oz,12.8
-175300,17161,NDB #,SR Legacy,"Game meat, buffalo, water, cooked, roasted",15,340,g,"1 piece, cooked (yield from 1 lb raw meat, boneless)",51
-175301,17166,NDB #,SR Legacy,"Game meat, elk, raw",4,453.6,g,1 lb,18.1
-175301,17166,NDB #,SR Legacy,"Game meat, elk, raw",4,28.35,g,1 oz,1.13
-175299,17160,NDB #,SR Legacy,"Game meat, buffalo, water, raw",12,28.35,g,1 oz,3.4
-175299,17160,NDB #,SR Legacy,"Game meat, buffalo, water, raw",12,453.6,g,1 lb,54.4
-175297,17158,NDB #,SR Legacy,"Game meat, boar, wild, raw",12,28.35,g,1 oz,3.4
-175297,17158,NDB #,SR Legacy,"Game meat, boar, wild, raw",12,453.6,g,1 lb,54.4
-175290,17142,NDB #,SR Legacy,"Veal, ground, raw",12,85,g,3 oz,10.2
-175290,17142,NDB #,SR Legacy,"Veal, ground, raw",12,28.35,g,1 oz,3.4
-175290,17142,NDB #,SR Legacy,"Veal, ground, raw",12,113,g,4 oz,13.6
-175292,17144,NDB #,SR Legacy,"Game meat, antelope, raw",3,28.35,g,1 oz,0.85
-175292,17144,NDB #,SR Legacy,"Game meat, antelope, raw",3,453.6,g,1 lb,13.6
-175291,17143,NDB #,SR Legacy,"Veal, ground, cooked, broiled",17,85,g,3 oz,14.4
-175291,17143,NDB #,SR Legacy,"Veal, ground, cooked, broiled",17,299,g,"1 unit, cooked (yield from 1 lb raw meat)",50.8
-175294,17150,NDB #,SR Legacy,"Game meat, beaver, raw",15,113,g,4 oz,17
-175294,17150,NDB #,SR Legacy,"Game meat, beaver, raw",15,453.6,g,1 lb,68
-175289,17141,NDB #,SR Legacy,"Veal, cubed for stew (leg and shoulder), separable lean only, cooked, braised",29,85,g,3 oz,24.6
-175289,17141,NDB #,SR Legacy,"Veal, cubed for stew (leg and shoulder), separable lean only, cooked, braised",29,263,g,"1 unit, cooked (yield from 1 lb raw meat)",76.3
-175293,17149,NDB #,SR Legacy,"Bison, ground, grass-fed, raw",11,28.35,g,1 oz,3.12
-175293,17149,NDB #,SR Legacy,"Bison, ground, grass-fed, raw",11,85,g,1 patty (cooked from 4 oz raw),9.35
-175282,17125,NDB #,SR Legacy,"Veal, shoulder, arm, separable lean only, raw",22,28.35,g,1 oz,6.24
-175282,17125,NDB #,SR Legacy,"Veal, shoulder, arm, separable lean only, raw",22,289,g,"1 steak, excluding refuse (yield from 1 raw steak, with refuse, weighing 385 g)",63.6
-175283,17126,NDB #,SR Legacy,"Veal, shoulder, arm, separable lean only, cooked, braised",30,160,g,"1 steak, excluding refuse (yield from 1 raw steak, with refuse, weighing 385 g)",48
-175283,17126,NDB #,SR Legacy,"Veal, shoulder, arm, separable lean only, cooked, braised",30,85,g,3 oz,25.5
-175287,17135,NDB #,SR Legacy,"Veal, sirloin, separable lean and fat, cooked, braised",17,205,g,"1 piece, cooked, excluding refuse (yield from 1 lb raw meat with refuse)",34.8
-175287,17135,NDB #,SR Legacy,"Veal, sirloin, separable lean and fat, cooked, braised",17,85,g,3 oz,14.4
-175284,17127,NDB #,SR Legacy,"Veal, shoulder, arm, separable lean only, cooked, roasted",27,272,g,"1 piece, cooked, excluding refuse (yield from 1 lb raw meat with refuse)",73.4
-175284,17127,NDB #,SR Legacy,"Veal, shoulder, arm, separable lean only, cooked, roasted",27,85,g,3 oz,23
-175288,17136,NDB #,SR Legacy,"Veal, sirloin, separable lean and fat, cooked, roasted",13,269,g,"1 piece, cooked, excluding refuse (yield from 1 lb raw meat with refuse)",35
-175288,17136,NDB #,SR Legacy,"Veal, sirloin, separable lean and fat, cooked, roasted",13,85,g,3 oz,11
-175285,17133,NDB #,SR Legacy,"Veal, shoulder, blade, separable lean only, cooked, roasted",28,236,g,"1 piece, cooked, excluding refuse (yield from 1 lb raw meat with refuse)",66.1
-175285,17133,NDB #,SR Legacy,"Veal, shoulder, blade, separable lean only, cooked, roasted",28,85,g,3 oz,23.8
-175281,17124,NDB #,SR Legacy,"Veal, shoulder, arm, separable lean and fat, cooked, roasted",26,283,g,"1 piece, cooked, excluding refuse (yield from 1 lb raw meat with refuse)",73.6
-175281,17124,NDB #,SR Legacy,"Veal, shoulder, arm, separable lean and fat, cooked, roasted",26,85,g,3 oz,22.1
-175286,17134,NDB #,SR Legacy,"Veal, sirloin, separable lean and fat, raw",11,453.6,g,1 lb,49.9
-175286,17134,NDB #,SR Legacy,"Veal, sirloin, separable lean and fat, raw",11,28.35,g,1 oz,3.12
-175278,17117,NDB #,SR Legacy,"Veal, shoulder, whole (arm and blade), separable lean and fat, cooked, braised",35,191,g,"1 piece, cooked, excluding refuse (yield from 1 lb raw meat with refuse)",66.8
+174621,8211,NDB #,SR Legacy,"Cereals ready-to-eat, QUAKER, HONEY GRAHAM OH!S",11,27,g,0.75 cup (1 NLEA serving),2.97
+174625,8228,NDB #,SR Legacy,"Cereals, QUAKER, Instant Oatmeal, raisins, dates and walnuts, dry",297,37,g,1 packet,110
+174620,8210,NDB #,SR Legacy,"Cereals ready-to-eat, QUAKER, QUAKER OAT CINNAMON LIFE",387,32,g,0.75 cup (1 NLEA serving),124
+174627,8236,NDB #,SR Legacy,"Cereals, QUAKER, Oat Bran, QUAKER/MOTHER'S Oat Bran, prepared with water, no salt",11,100,g,100 g,11
+174616,7954,NDB #,SR Legacy,"Sausage, breakfast sausage, beef, pre-cooked, unprepared",29,19,g,1 link,5.51
+174618,7956,NDB #,SR Legacy,"Sausage, beef, fresh, cooked",11,43,g,1 serving,4.73
+174617,7955,NDB #,SR Legacy,"Sausage, turkey, fresh, raw",19,57,g,1 serving,10.8
+174615,7949,NDB #,SR Legacy,"Frankfurter, meat, heated",99,52,g,1 serving (1 hot dog),51.5
+174619,8206,NDB #,SR Legacy,"Cereals ready-to-eat, MALT-O-MEAL, COCO-ROOS",333,30,g,0.75 cup (1 NLEA serving),99.9
+174608,7935,NDB #,SR Legacy,"Chicken breast, roll, oven-roasted",6,56,g,1 serving 2 oz,3.36
+174610,7937,NDB #,SR Legacy,"Bologna, pork, turkey and beef",31,28.35,g,1 oz,8.79
+174609,7936,NDB #,SR Legacy,"Bologna, pork and turkey, lite",48,56,g,1 serving 2 oz,26.9
+174611,7938,NDB #,SR Legacy,"Ham, honey, smoked, cooked",6,55,g,1.94 oz (1 serving),3.3
+174613,7944,NDB #,SR Legacy,"Turkey, white, rotisserie, deli cut",16,48,g,1.69 oz (1 serving),7.68
+174614,7945,NDB #,SR Legacy,"Frankfurter, beef, heated",11,48,g,1 frankfurter,5.28
+174614,7945,NDB #,SR Legacy,"Frankfurter, beef, heated",11,451,g,1 package,49.6
+174601,7920,NDB #,SR Legacy,"Swisswurst, pork and beef, with swiss cheese, smoked",74,77,g,1 serving 2.7 oz,57
+174603,7926,NDB #,SR Legacy,"Salami, Italian, pork",10,28,g,1 oz,2.8
+174604,7927,NDB #,SR Legacy,"Sausage, Italian, turkey, smoked",21,56,g,1 serving 2 oz,11.8
+174605,7928,NDB #,SR Legacy,"Sausage, chicken, beef, pork, skinless, smoked",100,84,g,1 link,84
+174602,7921,NDB #,SR Legacy,Bacon and beef sticks,14,28,g,1 oz,3.92
+174606,7929,NDB #,SR Legacy,"Sausage, turkey, hot, smoked",21,56,g,2 oz,11.8
+174595,7910,NDB #,SR Legacy,"Bratwurst, veal, cooked",11,84,g,1 serving 2.96 oz,9.24
+174596,7911,NDB #,SR Legacy,Liverwurst spread,22,55,g,0.25 cup,12.1
+174598,7913,NDB #,SR Legacy,"Salami, pork, beef, less sodium",94,100,g,3.52 oz,94
+2346392,12147,NDB #,Foundation,"Nuts, pine nuts, raw",8.74,100,g,100 g,8.74
+2346398,9266,NDB #,Foundation,"Pineapple, raw",12.5,100,g,100 g,12.5
+2346399,9070,NDB #,Foundation,"Cherries, sweet, dark red, raw",12.3,100,g,100 g,12.3
+2346396,20038,NDB #,Foundation,"Oats, whole grain, rolled, old fashioned",45.5,100,g,100 g,45.5
+2346397,100282,NDB #,Foundation,"Oats, whole grain, steel cut",51.3,100,g,100 g,51.3
+2346389,100281,NDB #,Foundation,"Lettuce, romaine, green, raw",27.6,100,g,100 g,27.6
+2346388,11252,NDB #,Foundation,"Lettuce, iceberg, raw",14.2,100,g,100 g,14.2
+2346395,12142,NDB #,Foundation,"Nuts, pecans, halves, raw",54.8,100,g,100 g,54.8
+2346407,11109,NDB #,Foundation,"Cabbage, green, raw",41.8,100,g,100 g,41.8
+2346391,11253,NDB #,Foundation,"Lettuce, leaf, green, raw",39.8,100,g,100 g,39.8
+2346387,1056,NDB #,Foundation,"Cream, sour, full fat",107,100,g,100 g,107
+2346408,11112,NDB #,Foundation,"Cabbage, red, raw",31,100,g,100 g,31
+2346394,12155,NDB #,Foundation,"Nuts, walnuts, English, halves, raw",88.3,100,g,100 g,88.3
+2346390,11257,NDB #,Foundation,"Lettuce, leaf, red, raw",42.6,100,g,100 g,42.6
+2346406,11205,NDB #,Foundation,"Cucumber, with peel, raw",16.3,100,g,100 g,16.3
+2346412,100279,NDB #,Foundation,"Grapes, red, seedless, raw",10.2,100,g,100 g,10.2
+2346405,11143,NDB #,Foundation,"Celery, raw",46.3,100,g,100 g,46.3
+2346385,1017,NDB #,Foundation,"Cream cheese, full fat, block",97.1,100,g,100 g,97.1
+2346384,1012,NDB #,Foundation,"Cottage cheese, full fat, large or small curd",88.3,100,g,100 g,88.3
+2346400,11052,NDB #,Foundation,"Beans, snap, green, raw",40,100,g,100 g,40
+2346386,1053,NDB #,Foundation,"Cream, heavy",61.2,100,g,100 g,61.2
+2346411,9050,NDB #,Foundation,"Blueberries, raw",11.7,100,g,100 g,11.7
+2346414,9401,NDB #,Foundation,"Applesauce, unsweetened, with added vitamin C",3.82,100,g,100 g,3.82
+2346410,9302,NDB #,Foundation,"Raspberries, raw",16.4,100,g,100 g,16.4
+2346409,9316,NDB #,Foundation,"Strawberries, raw",16.9,100,g,100 g,16.9

@@ -19,18 +19,31 @@ let excludeListFile = null;
 let includeCollapsed = false;
 let minimal = false;
 
+// **FIXED:** Re-written argument parser to be more robust and correctly handle aliases.
 for (let i = 0; i < args.length; i++) {
   const arg = args[i];
-  if (arg.startsWith("--")) {
-    if (arg === "--keep-list") keepListFile = args[++i];
-    else if (arg === "--exclude-list") excludeListFile = args[++i];
-    else if (arg === "--include-collapsed") includeCollapsed = true;
-    else if (arg === "--minimal") {
+  switch (arg) {
+    case "--keep-list":
+    case "--keep":
+      keepListFile = args[++i];
+      break;
+    case "--exclude-list":
+    case "--exclude":
+      excludeListFile = args[++i];
+      break;
+    case "--include-collapsed":
+      includeCollapsed = true;
+      break;
+    case "--minimal":
       minimal = true;
       includeCollapsed = false;
-    }
-  } else {
-    fileArgs.push(arg);
+      break;
+    default:
+      // If it's not a recognized flag, treat it as a positional file argument.
+      if (!arg.startsWith("--")) {
+        fileArgs.push(arg);
+      }
+      break;
   }
 }
 
@@ -39,7 +52,7 @@ const outputBaseName = fileArgs[1] || "curated";
 
 if (!inputCsv) {
   console.error(
-    "Usage: node fdc-csv-curator-abridge.js <input.csv> [output_base_name] [--flags]"
+    "Usage: node fdc-csv-curator-abridge.cjs <input.csv> [output_base_name] [--keep-list keep.txt] [--exclude-list exclude.txt] [--include-collapsed] [--minimal]"
   );
   process.exit(1);
 }
@@ -99,7 +112,7 @@ const produceRegex =
 const bakeryRegex =
   /\b(bread|cake|muffin|biscuit|roll|bun|cracker|pancake|waffle|pastry)\b/i;
 const meatFishRegex =
-  /\b(beef|pork|veal|lamb|goat|chicken|turkey|fish|salmon|tuna|shrimp|sausage|bacon|ham|frankfurter|patty|steak|roast)\b/i;
+  /\b(beef|pork|veal|lamb|goat|chicken|turkey|bison|game|meat|fish)\b/i;
 
 function getFoodCategory(name) {
   if (liquidRegex.test(name)) return "liquid";
@@ -113,23 +126,18 @@ function getFoodCategory(name) {
 function chooseBestServing(group) {
   const category = getFoodCategory(group[0].foodDescription);
   const preferredUnits = unitPriorities[category] || unitPriorities.generic;
-
-  // Filter for servings within a reasonable gram weight window (e.g., 30g to 300g)
   const reasonableServings = group.filter((r) => {
     const weight = parseFloat(r.foodWeight);
     return weight >= 30 && weight <= 300;
   });
-
   const sourceGroup =
     reasonableServings.length > 0 ? reasonableServings : group;
-
   for (const unit of preferredUnits) {
     const matchingMeasures = sourceGroup.filter(
       (r) => r.foodMeasure && r.foodMeasure.toLowerCase().includes(unit)
     );
     if (matchingMeasures.length > 0) {
       if (matchingMeasures.length === 1) return matchingMeasures[0];
-      // TIE-BREAKER: Prefer amount closest to a standard portion size (e.g., 100g)
       return matchingMeasures.reduce((a, b) => {
         const a_diff = Math.abs(parseFloat(a.foodWeight) - 100);
         const b_diff = Math.abs(parseFloat(b.foodWeight) - 100);
@@ -137,23 +145,18 @@ function chooseBestServing(group) {
       });
     }
   }
-
-  // FALLBACK LOGIC: If no preferred units match, prefer non-"100g" and then smallest weight.
   const non100 = sourceGroup.filter((r) => r.foodMeasure !== "100 g");
   if (non100.length > 0) {
     return non100.reduce((a, b) =>
       parseFloat(a.foodWeight) < parseFloat(b.foodWeight) ? a : b
     );
   }
-
-  // Final fallback to the smallest gram weight in the original group.
   return group.reduce((a, b) =>
     parseFloat(a.foodWeight) < parseFloat(b.foodWeight) ? a : b
   );
 }
 
 // --- CORE DATA PROCESSING ---
-
 function collapseDuplicates(recs) {
   const grouped = {};
   recs.forEach((r) => {
@@ -208,7 +211,6 @@ function applyAbridge(data) {
   };
   const stapleFoodRegex =
     /\b(milk|cheese|yogurt|fruit|vegetable|juice|melon|bread|egg|butter)\b/i;
-
   const brandRegex = /\b([A-Z]{3,})\b/;
   const knownBrands =
     /\b(Kraft|Kellogg's|Nestle|Heinz|Campbell's|Pepsi|Coca-Cola|General Mills)\b/i;
@@ -219,7 +221,6 @@ function applyAbridge(data) {
       (!brandRegex.test(f.name) && !knownBrands.test(f.name))
   );
   logStep("Remove brands", before, filtered.length);
-
   const methodWords =
     /\b(roasted|boiled|fried|grilled|braised|steamed|baked|cooked|broiled|raw|pan-fried|not breaded|breaded)\b/gi;
   before = filtered.length;
@@ -241,11 +242,8 @@ function applyAbridge(data) {
     (g) => g.find((f) => /raw/i.test(f.name)) || g[0]
   );
   logStep("Collapse cooking methods", before, filtered.length);
-
-  const meatRegex =
-    /\b(beef|pork|veal|lamb|goat|chicken|turkey|bison|game|meat)\b/i;
-  const meatFoods = filtered.filter((f) => meatRegex.test(f.name));
-  const otherFoods = filtered.filter((f) => !meatRegex.test(f.name));
+  const meatFoods = filtered.filter((f) => meatFishRegex.test(f.name));
+  const otherFoods = filtered.filter((f) => !meatFishRegex.test(f.name));
   const cutWords =
     /\b(blade|bone-in|boneless|picnic|trimmed|shoulder|arm|sirloin|leg|rib|loin|round|cubed for stew|separable lean only|separable lean and fat|whole|composite of trimmed retail cuts|separable fat|top round|ground)\b/gi;
   before = meatFoods.length;
@@ -258,7 +256,7 @@ function applyAbridge(data) {
       .replace(/,\s*$/g, "")
       .replace(/\s\s+/g, " ")
       .trim();
-    const norm = normalizeName(simplerName.split(",")[0]);
+    const norm = normalizeName(simplerName);
     if (!groupedCuts[norm]) groupedCuts[norm] = [];
     groupedCuts[norm].push(f);
   });
@@ -278,7 +276,6 @@ function applyAbridge(data) {
   });
   logStep("Simplify meat cuts", before, simplifiedMeat.length);
   filtered = [...otherFoods, ...simplifiedMeat];
-
   const prepWords = /\b(frozen|canned|prepared|rehydrated|packaged)\b/i;
   before = filtered.length;
   filtered = filtered.filter((f) => {
@@ -287,7 +284,6 @@ function applyAbridge(data) {
     return !prepWords.test(f.name);
   });
   logStep("Remove industrial preps", before, filtered.length);
-
   before = filtered.length;
   filtered = filtered.filter((f) => {
     const normName = normalizeName(f.name);
@@ -297,7 +293,6 @@ function applyAbridge(data) {
     return true;
   });
   logStep("Drop low-calcium 100g-only", before, filtered.length);
-
   const disallowed = /\b(infant formula|restaurant|snack|pet food)\b/i;
   before = filtered.length;
   filtered = filtered.filter((f) => {
@@ -311,7 +306,6 @@ function applyAbridge(data) {
 
 // --- Main Execution ---
 let full = collapseDuplicates(records);
-
 if (excludeSet.size > 0) {
   const beforeCount = full.length;
   const excludeTerms = [...excludeSet];
@@ -325,7 +319,6 @@ if (excludeSet.size > 0) {
     })`
   );
 }
-
 full.forEach((f, idx) => {
   f.id = idx + 1;
 });
@@ -333,13 +326,11 @@ let abridged = applyAbridge(full);
 abridged.forEach((f, idx) => {
   f.id = idx + 1;
 });
-
 fs.writeFileSync(`${outputBaseName}-full.json`, JSON.stringify(full, null, 2));
 fs.writeFileSync(
   `${outputBaseName}-abridged.json`,
   JSON.stringify(abridged, null, 2)
 );
-
 console.log(
   `✅ Full output: ${outputBaseName}-full.json (${full.length} foods)`
 );

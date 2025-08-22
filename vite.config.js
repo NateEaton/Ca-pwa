@@ -9,20 +9,27 @@ import { execSync } from "child_process";
  */
 function createBuildId() {
   // Create timestamp in format YYYYMMDDHHMMSS
-  const timestamp = new Date().toISOString().replace(/[-T:.]/g, '').slice(0, 14);
-  
+  const timestamp = new Date()
+    .toISOString()
+    .replace(/[-T:.]/g, "")
+    .slice(0, 14);
+
   try {
     // Try to get git commit hash (short version)
-    const gitHash = execSync('git rev-parse --short HEAD', { encoding: 'utf8' }).trim();
-    
+    const gitHash = execSync("git rev-parse --short HEAD", {
+      encoding: "utf8",
+    }).trim();
+
     // Check if working directory has uncommitted changes
-    const status = execSync('git status --porcelain', { encoding: 'utf8' }).trim();
+    const status = execSync("git status --porcelain", {
+      encoding: "utf8",
+    }).trim();
     const isDirty = status.length > 0;
-    
-    return `${gitHash}${isDirty ? '-dirty' : ''}-${timestamp}`;
+
+    return `${gitHash}${isDirty ? "-dirty" : ""}-${timestamp}`;
   } catch (error) {
     // Fallback if not in git repo or git not available
-    console.warn('Git not available, using timestamp-only build ID');
+    console.warn("Git not available, using timestamp-only build ID");
     return timestamp;
   }
 }
@@ -33,7 +40,7 @@ function createBuildId() {
  */
 function getGitBranch() {
   try {
-    return execSync('git branch --show-current', { encoding: 'utf8' }).trim();
+    return execSync("git branch --show-current", { encoding: "utf8" }).trim();
   } catch (error) {
     return null;
   }
@@ -70,7 +77,7 @@ export default defineConfig(({ mode }) => {
             "A simple, privacy-focused app to help you track your daily calcium intake.",
           theme_color: "#1976D2",
           background_color: "#ffffff",
-          display: "standalone",
+          display: "fullscreen",
           scope: "/",
           start_url: "/",
           icons: [
@@ -91,11 +98,13 @@ export default defineConfig(({ mode }) => {
       __BUILD_ID__: JSON.stringify(createBuildId()),
       __BUILD_TIME__: JSON.stringify(new Date().toISOString()),
       __GIT_BRANCH__: JSON.stringify(getGitBranch()),
-      
+
       // Application metadata
-      __APP_VERSION__: JSON.stringify(process.env.npm_package_version || '1.0.0'),
+      __APP_VERSION__: JSON.stringify(
+        process.env.npm_package_version || "1.0.0"
+      ),
       __NODE_VERSION__: JSON.stringify(process.version),
-      __BUILD_PLATFORM__: JSON.stringify(process.platform)
+      __BUILD_PLATFORM__: JSON.stringify(process.platform),
     },
     // The optimizeDeps and server sections for WASM are no longer needed
   };
