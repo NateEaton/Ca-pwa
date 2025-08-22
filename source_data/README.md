@@ -1,123 +1,122 @@
 # Calcium Database Source Data
 
-> **⚠️ DRAFT DOCUMENTATION** - This documentation is currently being finalized and may contain incomplete or outdated information.
-
 This folder contains the data processing pipeline used to curate the calcium-rich foods database for the My Calcium Tracker PWA.
 
 ## Overview
 
-The project uses USDA Food Data Central (FDC) data to build a curated database of calcium-rich foods. Two approaches were explored:
+The project uses USDA Food Data Central (FDC) data to build a curated, size-optimized database of calcium-rich foods. The primary method is a CSV processing pipeline that ensures the final database is both user-friendly and small enough for a high-performance web application.
 
-1. **FDC API approach** (`fdc-curator.cjs`) - Initial attempt using the USDA API
-2. **CSV processing approach** (`fdc-csv-curator-abridge.cjs`) - **Primary method used**
+An older API-based approach (`fdc-curator.cjs`) exists for reference but is not used in the main workflow.
 
-**Why CSV over API?** The CSV exports from USDA FDC contain detailed serving size information that isn't available through the API, making them essential for creating a user-friendly food database with realistic portion sizes.
+**Why CSV over API?** The CSV exports from USDA FDC contain detailed serving size information that isn't available through the API, making them essential for creating a database with realistic portion sizes.
 
 ## Data Sources
 
 ### Full Datasets (Download Required)
-To run the complete processing pipeline, download these files from [USDA Food Data Central](https://fdc.nal.usda.gov/):
+To run the complete processing pipeline, download the following datasets from the [USDA Food Data Central Download Page](https://fdc.nal.usda.gov/download-datasets.html):
 
-1. **Search and download** calcium-containing foods by data type:
-   - Foundation Foods
-   - SR Legacy Foods  
-   - Survey (FNDDS) Foods
-   - Branded Foods
+1.  **Foundation Foods** (CSV format)
+2.  **SR Legacy Foods** (CSV format)
 
-2. **Export format**: Choose "CSV" when downloading search results
-3. **Nutrient filter**: Calcium (nutrient ID: 1087), minimum 50mg per 100g
+These two sources provide the best balance of high-quality, non-branded data and detailed serving information.
 
 ### Sample Data (Included)
-This repository includes sample files (first 50 rows) of each large dataset:
-- `nutrientsearchresults_1087_Branded_sample.csv` (from 39MB original)
-- `nutrientsearchresults_1087_SR Legacy_sample.csv` (from 1.7MB original)
-- `nutrientsearchresults_1087_Survey (FNDDS)_sample.csv` (from 2.4MB original) 
-- `sr_legacy_foundation_download_sample.csv` (from 1.6MB original)
-- `nutrientsearchresults_1087_Foundation.csv` (full file, 35KB)
+This repository includes sample files for testing the scripts, including a combined sample of the two main data sources:
+- `sr_legacy_foundation_download_sample.csv`
 
-## Processing Pipeline
+## Detailed End-to-End Workflow
 
-### 1. Data Collection
-```bash
-# For API approach (reference only):
-node fdc-curator.cjs --min-calcium=50
+Follow these steps to go from raw USDA data to an updated application database file (`foodDatabase.js`).
 
-# For CSV approach (primary method):
-# Download CSV exports from USDA FDC website manually
-```
+### Step 0: Prerequisites
 
-### 2. Data Curation
-```bash
-# Process downloaded CSV files with intelligent serving size selection
-node fdc-csv-curator-abridge.cjs input.csv output_name [--options]
+1.  Ensure you have Node.js installed.
+2.  Navigate to this `source_data` folder in your terminal.
+3.  Install the necessary dependencies:
+    ```bash
+    npm install fs-extra csv-parse
+    ```
 
-# Options:
-# --keep-list keep-list.txt     # Force include specific foods
-# --exclude-list exclude-list.txt  # Force exclude specific foods  
-# --include-collapsed           # Include duplicate consolidation info
-# --minimal                     # Minimal output format
-```
+### Step 1: Data Acquisition and Preparation
 
-### 3. Database Merging
-```bash
-# Merge curated data with existing JavaScript database
-node merge-calcium-db.cjs [--minimal] existing-db.js curated.json output.json
-```
+1.  **Download Data:** Download the full **Foundation Foods** and **SR Legacy Foods** datasets in CSV format from the USDA FDC website.
+2.  **Combine CSVs:** The curator script works best with a single input file. Place both downloaded CSVs in this folder and combine them using a terminal command.
+
+    *For macOS or Linux:*
+    ```bash
+    # This merges the two files and removes the header from the second file
+    cat "SR_Legacy_Foods.csv" "Foundation_Foods.csv" | grep -v '"Data Type"' > sr_legacy_foundation_download.csv
+    ```
+    *For Windows:*
+    ```bash
+    # The 'type' command achieves the same result
+    type "SR_Legacy_Foods.csv" "Foundation_Foods.csv" | findstr /v /c:"\"Data Type\"" > sr_legacy_foundation_download.csv
+    ```    This creates the final input file: `sr_legacy_foundation_download.csv`.
+
+### Step 2: Curate and Abridge the Data
+
+1.  **Review Configuration:** Open `exclude-list.txt` and `keep-list.txt` to add or remove any foods you want to specifically exclude or protect from the filtering logic.
+2.  **Run the Curator Script:** Execute the script. **The `--minimal` flag is crucial**; it strips extra metadata to ensure the final database is small enough for the web application.
+
+    ```bash
+    node fdc-csv-curator-abridge.cjs sr_legacy_foundation_download.csv curated-data --minimal --exclude-list exclude-list.txt
+    ```3.  **Review Outputs:** This generates two files:
+    - **`curated-data-abridged.json`**: This is the primary, filtered file you will use in the next step. It contains only the essential data for the app.
+    - **`curated-data-full.json`**: A reference file with complete metadata, useful for debugging or future enhancements but too large for the current app.
+
+### Step 3: Merge with Existing App Data
+
+1.  **Run the Merge Script:** Combine the newly curated data with your app's existing database. This preserves custom-added foods and updates USDA entries.
+
+    **Note:** The `--minimal` flag is required here as well. It tells the merge script to expect the simplified data structure produced in the previous step.
+
+    ```bash
+    # Use the '-abridged.json' file as the input.
+    node merge-calcium-db.cjs --minimal existing-usda-data.js curated-data-abridged.json merged-food-database.json
+    ```
+2.  **Final Output:** This command generates the final, clean database file:
+    - **`merged-food-database.json`**: This file contains the complete, merged, and re-indexed array of all food data, ready for the application.
+
+### Step 4: Update the Svelte Application
+
+This final manual step integrates the new data into your Svelte application.
+
+1.  **Open the Merged File:** Open `merged-food-database.json` in a code editor.
+2.  **Copy the Array:** Select and copy the entire content of the file, from the opening bracket `[` to the final closing bracket `]`.
+3.  **Open Svelte Database File:** In your Svelte project, navigate to the file that exports your food database (e.g., `src/lib/foodDatabase.js` or a similar file).
+4.  **Paste and Replace:** The file will contain a line like `export const foodDatabase = [ ...old data... ];`. Delete the entire old array and paste the new array content you copied.
+5.  **Save and Verify:** Save the file. Your Svelte application will now use the fully updated database. Restart your development server to see the changes.
 
 ## Files Description
 
 ### Processing Scripts
-- **`fdc-curator.cjs`** - API-based data collection (reference implementation)
-- **`fdc-csv-curator-abridge.cjs`** - Primary CSV processing with intelligent serving selection
-- **`merge-calcium-db.cjs`** - Merges curated data with existing database
-- **`get_usda_data.sh`** - Automation wrapper for API approach
+- **`fdc-csv-curator-abridge.cjs`** - **Primary Script.** Processes a combined USDA CSV. It collapses duplicates, selects the most intuitive serving size, and applies intelligent filters. With the `--minimal` flag, it produces a size-optimized JSON output for the app.
+- **`merge-calcium-db.cjs`** - **Second Script.** Merges the curated JSON with `existing-usda-data.js`. The `--minimal` flag is essential for handling the optimized data structure. It preserves custom foods, updates existing USDA foods, adds new ones, and re-indexes all IDs sequentially.
+- `fdc-curator.cjs` - API-based data collection (older, reference implementation).
 
 ### Configuration Files
-- **`keep-list.txt`** - Foods to always include despite filters
-- **`exclude-list.txt`** - Terms to exclude from results
-- **`.env.example`** - Template for FDC API key (if using API approach)
+- **`keep-list.txt`** - A list of food names to protect from being filtered out by the abridgement logic.
+- **`exclude-list.txt`** - A list of terms used to remove any matching foods from the dataset.
 
 ### Data Files
-- **`existing-usda-data.js`** - Base JavaScript database format
-- **CSV samples** - Representative data samples for testing scripts
-
-## Dependencies
-
-```bash
-npm install fs-extra csv-parse dotenv node-fetch
-```
-
-## API Setup (Optional)
-
-1. Register for a free API key at [USDA FDC API Guide](https://fdc.nal.usda.gov/api-guide.html)
-2. Copy `.env.example` to `.env`  
-3. Add your API key: `FDC_API_KEY=your_actual_key`
-
-**Note**: API approach is maintained for reference but CSV processing is recommended.
+- **`existing-usda-data.js`** - A snapshot of the app's database structure, used as the base for the merge script.
+- **`sr_legacy_foundation_download.csv`** - The combined input file you create in Step 1 of the workflow.
+- `*_sample.csv` - Small data samples for quick testing of the scripts.
 
 ## Algorithm Details
 
 ### Serving Size Intelligence
-The CSV curator uses context-aware serving selection:
-- **Food categorization**: Liquid, dairy, produce, bakery, meat/fish
-- **Unit prioritization**: Category-specific preferred units (cup, slice, oz, etc.)
-- **Weight filtering**: Reasonable serving sizes (30g-300g range)
-- **Fallback logic**: Systematic preferences when ideal units unavailable
+The `fdc-csv-curator-abridge.cjs` script uses a context-aware algorithm to select the most intuitive serving size:
+- **Food Categorization**: Foods are categorized (Liquid, Dairy, Produce, etc.) based on keywords.
+- **Unit Prioritization**: Each category has a unique, prioritized list of preferred units (e.g., `cup` for liquids, `oz` for meat).
+- **Weight Filtering**: The algorithm prefers servings within a reasonable gram weight range (30g-300g) to avoid unrealistic portions.
+- **Fallback Logic**: If no ideal unit is found, it uses sensible fallbacks to ensure a good choice is always made.
 
-### Data Abridgement  
-Reduces dataset size while preserving nutrition value:
-- **Brand removal**: Filters commercial brands, keeps staple foods
-- **Cooking method collapse**: Consolidates raw/cooked variants (prefers raw)
-- **Meat cut simplification**: Reduces redundant cuts, prefers ground meat
-- **Preparation filtering**: Removes frozen/canned variants of fresh foods
-- **Low-calcium filtering**: Removes foods <50mg calcium when only 100g serving available
-
-## Workflow Summary
-
-1. **Download** full CSV datasets from USDA FDC
-2. **Configure** keep/exclude lists as needed
-3. **Process** CSV files through curator pipeline
-4. **Merge** results with existing database
-5. **Update** main application's `foodDatabase.js`
-
-This pipeline transforms raw USDA data into a curated, user-friendly calcium foods database optimized for practical meal planning.
+### Data Abridgement & Minimization
+The script applies several filtering passes to reduce the dataset size while preserving nutritional value:
+- **Brand Removal**: Filters commercial brands.
+- **Cooking Method Collapse**: Consolidates raw/cooked variants.
+- **Meat Cut Simplification**: Reduces redundant cuts for certain meats.
+- **Preparation Filtering**: Removes industrial preparations (e.g., "frozen," "canned").
+- **Low-Calcium Filtering**: Intelligently removes low-calcium foods.
+- **Minimal Flag**: The `--minimal` option performs the final and most important optimization by stripping all non-essential metadata fields, resulting in a significantly smaller file for the final application.
