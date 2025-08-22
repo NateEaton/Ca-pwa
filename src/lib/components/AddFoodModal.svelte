@@ -66,6 +66,11 @@
     try {
       foodDatabase = await loadFoodDatabase();
       isDatabaseLoading = false;
+      // If the modal was opened before the database finished loading,
+      // re-run the form setup to correctly find the food ID.
+      if (show) {
+        resetForm();
+      }
     } catch (error) {
       console.error('Error loading food database:', error);
       isDatabaseLoading = false;
