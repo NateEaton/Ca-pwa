@@ -77,7 +77,7 @@ export default defineConfig(({ mode }) => {
             "A simple, privacy-focused app to help you track your daily calcium intake.",
           theme_color: "#1976D2",
           background_color: "#ffffff",
-          display: "fullscreen",
+          display: "standalone",
           scope: "/",
           start_url: "/",
           icons: [
