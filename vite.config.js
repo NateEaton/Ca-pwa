@@ -60,7 +60,7 @@ export default defineConfig(({ mode }) => {
         registerType: "autoUpdate",
         workbox: {
           // REMOVED wasm from globPatterns
-          globPatterns: ["**/*.{js,css,html,ico,png,svg}"],
+          globPatterns: ["**/*.{js,css,html,ico,png,svg,woff,woff2}"],
           additionalManifestEntries: [{ url: "index.html", revision: null }],
           // Force cache refresh on navigation errors
           navigateFallback: null,
