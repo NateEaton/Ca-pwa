@@ -19,7 +19,7 @@
 <script>
   import { createEventDispatcher, onMount } from "svelte";
   import { calciumState, calciumService } from "$lib/stores/calcium";
-  import { loadFoodDatabase } from "$lib/data/foodDatabase";
+  import { DEFAULT_FOOD_DATABASE } from "$lib/data/foodDatabase";
   import { SearchService } from "$lib/services/SearchService";
   import UnitConverter from "$lib/services/UnitConverter.js";
   import ConfirmDialog from "./ConfirmDialog.svelte";
@@ -40,8 +40,8 @@
   let showSearchResults = false;
   let searchTimeout;
   let showDeleteConfirm = false;
-  let foodDatabase = [];
-  let isDatabaseLoading = true;
+  const foodDatabase = DEFAULT_FOOD_DATABASE;
+  let isDatabaseLoading = false; // No loading needed
 
   // Form fields
   let foodName = "";
@@ -61,19 +61,12 @@
   let unitSuggestions = [];
   let showUnitSuggestions = false;
 
-  // Load food database on component mount
+  // Initialize component on mount
   onMount(async () => {
-    try {
-      foodDatabase = await loadFoodDatabase();
-      isDatabaseLoading = false;
-      // If the modal was opened before the database finished loading,
-      // re-run the form setup to correctly find the food ID.
-      if (show) {
-        resetForm();
-      }
-    } catch (error) {
-      console.error('Error loading food database:', error);
-      isDatabaseLoading = false;
+    // Database is already available via static import
+    // If the modal was opened before component mount, re-run form setup
+    if (show) {
+      resetForm();
     }
   });
 

@@ -106,6 +106,9 @@ export default defineConfig(({ mode }) => {
       __NODE_VERSION__: JSON.stringify(process.version),
       __BUILD_PLATFORM__: JSON.stringify(process.platform),
     },
+    build: {
+      chunkSizeWarningLimit: 750
+    },
     // The optimizeDeps and server sections for WASM are no longer needed
   };
 });

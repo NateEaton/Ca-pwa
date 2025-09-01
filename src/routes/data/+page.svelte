@@ -19,7 +19,7 @@
 <script>
   import { onMount, onDestroy } from "svelte";
   import { calciumState, showToast, calciumService } from "$lib/stores/calcium";
-  import { loadFoodDatabase } from "$lib/data/foodDatabase";
+  import { DEFAULT_FOOD_DATABASE } from "$lib/data/foodDatabase";
   import { SearchService } from "$lib/services/SearchService";
   import { goto } from "$app/navigation";
 
@@ -30,8 +30,8 @@
   let filteredFoods = [];
   let isBulkOperationInProgress = false;
   let typeSortRotation = 0; // 0, 1, 2 for three-way type rotation
-  let foodDatabase = [];
-  let isDatabaseLoading = true;
+  const foodDatabase = DEFAULT_FOOD_DATABASE;
+  let isDatabaseLoading = false; // No loading needed
   
   // Calcium filter state
   let calciumFilter = {
@@ -88,15 +88,10 @@
     return 0; // User filter doesn't need rotation (all custom)
   }
 
-  // Load food database on component mount
+  // Initialize component on mount
   onMount(async () => {
-    try {
-      foodDatabase = await loadFoodDatabase();
-      isDatabaseLoading = false;
-    } catch (error) {
-      console.error('Error loading food database:', error);
-      isDatabaseLoading = false;
-    }
+    // Database is already available via static import
+    // No additional initialization needed
   });
 
   // Filter and sort foods

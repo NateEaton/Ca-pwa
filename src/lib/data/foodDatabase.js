@@ -46,28 +46,11 @@ export const DATABASE_METADATA = {
     "Data programmatically filtered to one element per food type, excluding branded foods from SR Legacy, then merged with abridged calcium reference data",
 };
 
-// Cache for the dynamically loaded food database
-let _foodDatabaseCache = null;
+// Static import of the food database
+import { DEFAULT_FOOD_DATABASE as IMPORTED_DATABASE } from './foodDatabaseData.js';
 
-// Function to dynamically load the food database
-export async function loadFoodDatabase() {
-  if (_foodDatabaseCache) {
-    return _foodDatabaseCache;
-  }
-  
-  const module = await import('./foodDatabaseData.js');
-  _foodDatabaseCache = module.DEFAULT_FOOD_DATABASE;
-  return _foodDatabaseCache;
-}
-
-// Legacy export for backward compatibility - will be loaded dynamically
-export let DEFAULT_FOOD_DATABASE = [];
-
-// Initialize the database on first import
-loadFoodDatabase().then(data => {
-  DEFAULT_FOOD_DATABASE.length = 0;
-  DEFAULT_FOOD_DATABASE.push(...data);
-});
+// Direct export - no async loading needed
+export const DEFAULT_FOOD_DATABASE = IMPORTED_DATABASE;
 
 // Search stopwords to ignore
 const SEARCH_STOPWORDS = [

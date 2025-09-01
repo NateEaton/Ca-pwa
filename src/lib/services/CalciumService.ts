@@ -19,7 +19,7 @@
 import { get } from 'svelte/store';
 import { calciumState, showToast } from '$lib/stores/calcium';
 import type { FoodEntry, CustomFood, CalciumSettings, UserServingPreference } from '$lib/types/calcium';
-import { loadFoodDatabase } from '$lib/data/foodDatabase';
+import { DEFAULT_FOOD_DATABASE } from '$lib/data/foodDatabase';
 import { SyncService } from '$lib/services/SyncService';
 import { SyncTrigger } from '$lib/utils/syncTrigger';
 import { getBuildInfo } from '$lib/utils/buildInfo';
@@ -30,7 +30,7 @@ import { getBuildInfo } from '$lib/utils/buildInfo';
  */
 export class CalciumService {
   private db: IDBDatabase | null = null;
-  private foodDatabase: any[] = [];
+  private foodDatabase: any[] = DEFAULT_FOOD_DATABASE;
 
   /**
    * Initializes the service by setting up IndexedDB, running migrations, and loading all data.
@@ -40,8 +40,7 @@ export class CalciumService {
     await this.migrateCustomFoodsIfNeeded();
     await this.migrateFavoritesToIDsIfNeeded();
 
-    // Load food database
-    this.foodDatabase = await loadFoodDatabase();
+    // Database is already assigned in property declaration
 
     await this.loadSettings();
     await this.loadDailyFoods();
