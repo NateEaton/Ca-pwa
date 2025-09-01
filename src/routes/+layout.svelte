@@ -114,10 +114,7 @@
   }
 </script>
 
-{#if false}
-  <slot />
-{:else}
-  <div class="app-container">
+<div class="app-container">
     <Header
       {pageTitle}
       {showInfoIcon}
@@ -141,8 +138,7 @@
     <Toast />
     <DatabaseInfoDialog bind:show={showDatabaseInfoDialog} />
     <AboutDialog bind:show={showAboutDialog} />
-  </div>
-{/if}
+</div>
 
 <style>
   /* ... styles remain the same ... */

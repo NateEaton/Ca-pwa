@@ -37,7 +37,7 @@ export class SyncService {
   private isSyncPending = false;
 
   constructor() {
-    setSyncStatus('offline');
+    // Don't immediately set offline status - let initialize() handle it
   }
 
   /**

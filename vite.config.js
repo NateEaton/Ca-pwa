@@ -62,8 +62,8 @@ export default defineConfig(({ mode }) => {
           // REMOVED wasm from globPatterns
           globPatterns: ["**/*.{js,css,html,ico,png,svg,woff,woff2}"],
           additionalManifestEntries: [{ url: "index.html", revision: null }],
-          // Force cache refresh on navigation errors
-          navigateFallback: null,
+          // Enable navigation fallback for offline SPA routing
+          navigateFallback: (base_path === "/" ? "" : base_path) + "index.html",
           skipWaiting: true,
           clientsClaim: true,
           // Use build ID for cache versioning
@@ -78,8 +78,8 @@ export default defineConfig(({ mode }) => {
           theme_color: "#1976D2",
           background_color: "#ffffff",
           display: "standalone",
-          scope: "/",
-          start_url: "/",
+          scope: base_path,
+          start_url: base_path,
           icons: [
             { src: "pwa-192x192.png", sizes: "192x192", type: "image/png" },
             { src: "pwa-512x512.png", sizes: "512x512", type: "image/png" },
@@ -107,7 +107,7 @@ export default defineConfig(({ mode }) => {
       __BUILD_PLATFORM__: JSON.stringify(process.platform),
     },
     build: {
-      chunkSizeWarningLimit: 750
+      chunkSizeWarningLimit: 750,
     },
     // The optimizeDeps and server sections for WASM are no longer needed
   };
