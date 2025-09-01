@@ -57,6 +57,21 @@ DEPLOY_DIR=""
 export BASE_PATH="" # Export the variable so npm scripts can see it
 
 if [ "$ENVIRONMENT" = "prod" ]; then
+    # Production deployment confirmation
+    echo "🚨 PRODUCTION DEPLOYMENT REQUESTED 🚨"
+    echo "You are about to deploy to production environment."
+    echo "This will overwrite the live application."
+    echo ""
+    read -p "Are you sure you want to continue? Type 'yes' to proceed: " -r
+    echo ""
+    if [[ ! $REPLY =~ ^yes$ ]]; then
+        echo "❌ Production deployment cancelled."
+        echo "💡 Use 'dev' environment for development deployments."
+        exit 1
+    fi
+    echo "✅ Production deployment confirmed. Proceeding..."
+    echo ""
+    
     DEPLOY_DIR="$PROD_DEPLOY_DIR"
     export BASE_PATH="" # Production serves at root path
 elif [ "$ENVIRONMENT" = "dev" ]; then
