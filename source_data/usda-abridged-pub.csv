@@ -1,0 +1,347 @@
+docSeqNo,name,measure,calcium
+1,"Cheese, swiss","1.0 cups, diced",1175
+2,"Whey, sweet, dried","1.0 cups",1154
+3,"Cheese, pasteurized process, swiss","1.0 cups, diced",1081
+4,"Cheese, provolone","1.0 cups, diced",998
+5,"Cheese, muenster","1.0 cups, diced",946
+6,"Cheese, cheddar","1.0 cups, diced",937
+7,"Cheese, mozzarella, low moisture, part-skim","1.0 cups, diced",920
+8,"Tofu, raw, firm, prepared with calcium sulfate","0.5 cups",861
+9,"Cheese, mexican, queso chihuahua","1.0 cups, diced",859
+10,"Cheese, parmesan, grated","1.0 cups",853
+11,"Cheese spread, pasteurized process, American","1.0 cups, diced",787
+12,"Cheese food, pasteurized process, American, vitamin D fortified","1.0 cups",771
+13,"Cheese, feta","1.0 cups, crumbled",740
+14,"Cheese substitute, mozzarella","1.0 cups, shredded",689
+15,"Beverages, Whey protein powder isolate","3.0 scoop",600
+16,"Cheese, mozzarella, whole milk","1.0 cups, shredded",566
+17,"Cornmeal, white, self-rising, bolted, with wheat flour added, enriched","1.0 cups",508
+18,"Soybeans, green, raw","1.0 cups",504
+19,"Cornmeal, white, self-rising, degermed, enriched","1.0 cups",483
+20,"Milk, sheep, fluid","1.0 cups",473
+21,"Beverages, almond milk, chocolate, ready-to-drink","8.0 fl oz",451
+22,"Beverages, almond milk, sweetened, vanilla flavor, ready-to-drink","8.0 fl oz",451
+23,"Milk, dry, nonfat, regular, without added vitamin A and vitamin D","0.25 cups",377
+24,"Nuts, almonds, dry roasted, without salt added","1.0 cups whole kernels",370
+25,"Milk, buttermilk, dried","0.25 cups",355
+26,"Milk, nonfat, fluid, protein fortified","1.0 cups",352
+27,"Milk, reduced fat, fluid, 2% milkfat, protein fortified","1.0 cups",352
+28,"Milk, lowfat, fluid, 1% milkfat, protein fortified","1.0 cups",349
+29,"Orange juice, chilled, includes from concentrate, with added calcium","1.0 cups",349
+30,"Cheese, ricotta, part skim milk","0.5 cups",337
+31,"Eggnog","1.0 cups",330
+32,"Wheat flour, white, all-purpose, enriched, calcium-fortified","1.0 cups",315
+33,"Yogurt, plain, low fat","1.0 container (6 oz)",311
+34,"Milk, producer, fluid, 3.7% milkfat","1.0 cups",290
+35,"Yogurt, fruit, low fat, 11g protein/8 oz","1.0 container (6 oz)",287
+36,"Milk, chocolate, fluid, commercial, whole","1.0 cups",280
+37,"Amaranth leaves, cooked, boiled, drained, without salt","1.0 cups",276
+38,"Beans, pink, mature seeds, raw","1.0 cups",273
+39,"Milk, chocolate, fluid, commercial, reduced fat","1.0 cups",272
+40,"Soybeans, green, cooked, boiled, drained, without salt","1.0 cups",261
+41,"Cheese, ricotta, whole milk","0.5 cups",255
+42,"Turnip greens, frozen, cooked, boiled, drained, without salt","1.0 cups",249
+43,"Garlic, raw","1.0 cups",246
+44,"Fish, salmon, pink, canned, drained solids","3.0 oz",241
+45,"Beans, black, mature seeds, raw","1.0 cups",239
+46,"Yogurt, fruit, low fat, 9g protein/8 oz","1.0 container (6 oz)",235
+47,"Bagels, plain, enriched","1.0 bagel",217
+48,"Biscuits, plain or buttermilk, dry mix","1.0 cups, purchased",215
+49,"Cowpeas (blackeyes), immature seeds, cooked, boiled, drained, without salt","1.0 cups",211
+50,"Yogurt, plain, whole milk","1.0 container (6 oz)",206
+51,"Turnip greens, cooked, boiled, drained, without salt","1.0 cups, chopped",197
+52,"Cereals, WHEATENA, cooked with water","1.0 cups",194
+53,"Spinach, canned, regular pack, solids and liquids","1.0 cups",194
+54,"Bread, white wheat","1.0 slice",192
+55,"Collards, frozen, chopped, unprepared","0.33 package (10 oz)",191
+56,"Candies, confectioner's coating, peanut butter","1.0 cups chips",185
+57,"Jute, potherb, cooked, boiled, drained, without salt","1.0 cups",184
+58,"Cowpeas (blackeyes), immature seeds, raw","1.0 cups",183
+59,"Fish, salmon, pink, canned, without salt, solids with bone and liquid","3.0 oz",181
+60,"Snacks, trail mix, regular, with chocolate chips, unsalted nuts and seeds","1.0 cups",159
+61,"Cabbage, chinese (pak-choi), cooked, boiled, drained, without salt","1.0 cups, shredded",158
+62,"Corn flour, yellow, masa, enriched","1.0 cups",157
+63,"Cereals, CREAM OF WHEAT, instant, prepared with water, without salt","1.0 cups",154
+64,"Puddings, chocolate, dry mix, regular, prepared with whole milk","0.5 cups",151
+65,"Cheese, American, nonfat or fat free","1.0 serving",150
+66,"Cheese, blue","1.0 oz",150
+67,"Potatoes, scalloped, home-prepared with butter","1.0 cups",140
+68,"Pancakes, buckwheat, dry mix, incomplete","1.0 oz",135
+69,"Cereals, oats, instant, fortified, with raisins and spice, prepared with water","1.0 cups",134
+70,"Beans, baked, canned, with pork","1.0 cups",134
+71,"Nuts, hazelnuts or filberts","1.0 cups, chopped",131
+72,"Beans, adzuki, mature seeds, raw","1.0 cups",130
+73,"Currants, zante, dried","1.0 cups",127
+74,"Cheese, cottage, lowfat, 2% milkfat","4.0 oz",125
+75,"Turnip greens, frozen, cooked, boiled, drained, with salt","0.5 cups",125
+76,"Cardoon, raw","1.0 cups, shredded",125
+77,"Teff, cooked","1.0 cups",123
+78,"Oranges, raw, with peel","1.0 cups",119
+79,"Seeds, sunflower seed kernels, oil roasted, without salt","1.0 cups",117
+80,"Sauce, cheese, ready-to-serve","0.25 cups",116
+81,"Cereals ready-to-eat, QUAKER Oatmeal Squares, Golden Maple","1.0 cups",113
+82,"Cheese, camembert","1.0 oz",110
+83,"Milk, canned, condensed, sweetened","1.0 fl oz",108
+84,"Fish, herring, Atlantic, pickled","1.0 cups",108
+85,"Beans, black turtle, mature seeds, cooked, boiled, without salt","1.0 cups",102
+86,"Orange juice, frozen concentrate, unsweetened, undiluted","1.0 cups",100
+87,"Mollusks, oyster, eastern, wild, cooked, moist heat","3.0 oz",99
+88,"Turnip greens, frozen, unprepared","0.5 cups, chopped or diced",97
+89,"Cheese, cottage, creamed, large or small curd","4.0 oz",94
+90,"Cereals ready-to-eat, granola, homemade","1.0 cups",93
+91,"Milk, canned, evaporated, nonfat, with added vitamin A and vitamin D","1.0 fl oz",93
+92,"Kale, frozen, unprepared","1.0 cups",91
+93,"Soup, black bean, canned, condensed","1.0 cups",90
+94,"Purslane, cooked, boiled, drained, without salt","1.0 cups",90
+95,"Pokeberry shoots, (poke), cooked, boiled, drained, without salt","1.0 cups",87
+96,"Broccoli, frozen, chopped, unprepared","1.0 cups",87
+97,"Tomatoes, red, ripe, canned, stewed","1.0 cups",87
+98,"Peanuts, all types, dry-roasted, without salt","1.0 cups",85
+99,"Squash, winter, butternut, cooked, baked, without salt","1.0 cups, cubes",84
+100,"Beans, black turtle, mature seeds, canned","1.0 cups",84
+101,"Cream, fluid, light whipping","1.0 cups, whipped",83
+102,"Milk, canned, evaporated, with added vitamin D","1.0 fl oz",82
+103,"Milk substitutes, fluid, with lauric acid oil","1.0 cups",81
+104,"Tortillas, ready-to-bake or -fry, flour, shelf stable","1.0 tortilla",80
+105,"Tomatoes, red, ripe, canned, packed in tomato juice","1.0 cups",79
+106,"Cream, fluid, heavy whipping","1.0 cups, whipped",79
+107,"Mollusks, oyster, eastern, wild, cooked, dry heat","3.0 oz",78
+108,"Peanuts, valencia, oil-roasted, without salt","1.0 cups",78
+109,"Seeds, sunflower seed kernels, toasted, without salt","1.0 cups",76
+110,"Potatoes, mashed, dehydrated, prepared from granules with milk","1.0 cups",74
+111,"Apricots, dehydrated (low-moisture), sulfured, uncooked","1.0 cups",73
+112,"Tangerines, (mandarin oranges), raw","1.0 cups, sections",72
+113,"Oranges, raw, California, valencias","1.0 cups sections",72
+114,"Peas, edible-podded, frozen, unprepared","1.0 cups",72
+115,"Edamame, frozen, unprepared","1.0 cups",71
+116,"Bread, cornbread, prepared from recipe, made with low fat (2%) milk","1.0 oz",71
+117,"Fish, herring, Pacific, raw","3.0 oz",71
+118,"Figs, canned, water pack, solids and liquids","1.0 cups",69
+119,"Cheese, cottage, lowfat, 1% milkfat","4.0 oz",69
+120,"Bread, cornbread, dry mix, prepared with 2% milk","1.0 muffin",69
+121,"Fish, mackerel, jack, canned, drained solids","1.0 oz, boneless",68
+122,"Okra, frozen, cooked, boiled, drained, without salt","0.5 cups slices",68
+123,"Potatoes, mashed, dehydrated, prepared from flakes without milk","1.0 cups",67
+124,"Peas and carrots, frozen, cooked, boiled, drained, without salt","1.0 package (10 oz)",64
+125,"Squash, winter, acorn, cooked, boiled, mashed, without salt","1.0 cups, mashed",64
+126,"Nuts, butternuts, dried","1.0 cups",64
+127,"Celery, cooked, boiled, drained, without salt","1.0 cups, diced",63
+128,"Fish, pike, northern, cooked, dry heat","3.0 oz",62
+129,"Currants, european black, raw","1.0 cups",62
+130,"Seeds, pumpkin and squash seed kernels, roasted, with salt added","1.0 cups",61
+131,"Burdock root, cooked, boiled, drained, without salt","1.0 cups",61
+132,"Kiwifruit, green, raw","1.0 cups, sliced",61
+133,"Broccoli, frozen, chopped, cooked, boiled, drained, without salt","1.0 cups",61
+134,"Blueberries, wild, canned, heavy syrup, drained","1.0 cups",61
+135,"Cream, whipped, cream topping, pressurized","1.0 cups",61
+136,"Cheese, cottage, creamed, with fruit","4.0 oz",60
+137,"Cabbage, chinese (pe-tsai), raw","1.0 cups, shredded",59
+138,"Puddings, tapioca, ready-to-eat, fat free","1.0 container",58
+139,"Cake, shortcake, biscuit-type, prepared from recipe","1.0 oz",58
+140,"Fish, burbot, cooked, dry heat","1.0 fillet",58
+141,"Lima beans, immature seeds, frozen, baby, unprepared","1.0 cups",57
+142,"Oat flour, partially debranned","1.0 cups",57
+143,"Cake, chocolate, prepared from recipe without frosting","1.0 piece",57
+144,"Beans, snap, green, frozen, cooked, boiled, drained without salt","1.0 cups",57
+145,"Onions, frozen, whole, cooked, boiled, drained, without salt","1.0 cups",57
+146,"Grapefruit juice, white, frozen concentrate, unsweetened, undiluted","1.0 can (6 fl oz)",56
+147,"Muffins, English, mixed-grain","1.0 oz",56
+148,"Nuts, almond butter, plain, with salt added","1.0 tbsp",56
+149,"Soybeans, mature seeds, sprouted, cooked, steamed","1.0 cups",55
+150,"Pasta, fresh-refrigerated, spinach, as purchased","4.0 oz",55
+151,"Beans, pinto, immature seeds, frozen, unprepared","0.33 package (10 oz)",55
+152,"Lima beans, immature seeds, cooked, boiled, drained, without salt","1.0 cups",54
+153,"Bread, pan dulce, sweet yeast bread","1.0 slice",54
+154,"Potatoes, Russet, flesh and skin, baked","1.0 potato large",54
+155,"Crustaceans, spiny lobster, mixed species, cooked, moist heat","3.0 oz",54
+156,"Kale, raw","1.0 cups",53
+157,"Water convolvulus, cooked, boiled, drained, with salt","1.0 cups, chopped",53
+158,"Mollusks, oyster, eastern, cooked, breaded and fried","3.0 oz",53
+159,"Seeds, lotus seeds, dried","1.0 cups",52
+160,"Pork, fresh, loin, country-style ribs, separable lean only","3.0 oz",52
+161,"Rice, white, long-grain, regular, raw, unenriched","1.0 cups",52
+162,"Soup, chicken with rice, canned, condensed","0.5 cups",52
+163,"Bread, pita, white, enriched","1.0 pita, large",52
+164,"Bread, whole-wheat, commercially prepared","1.0 slice",52
+165,"Grapefruit, raw, pink and red, all areas","1.0 cups sections",51
+166,"Lima beans, immature seeds, frozen, baby, cooked","1.0 cups",50
+167,"Turnips, frozen, cooked, boiled, drained, without salt","1.0 cups",50
+168,"Pork, fresh, loin, country-style ribs, separable lean and fat","3.0 oz",48
+169,"Apricots, dried, sulfured, stewed, without added sugar","1.0 cups, halves",48
+170,"Barley flour or meal","1.0 cups",47
+171,"Bread, reduced-calorie, wheat","1.0 oz",46
+172,"Turkey, all classes, back, meat and skin, cooked, roasted","1.0 cups, chopped",46
+173,"Boysenberries, canned, heavy syrup","1.0 cups",46
+174,"Yardlong bean, cooked, boiled, drained, without salt","1.0 cups slices",46
+175,"Squash, winter, butternut, frozen, cooked, boiled, without salt","1.0 cups, mashed",46
+176,"Snacks, tortilla chips, nacho-flavor, reduced fat","1.0 oz",45
+177,"Mollusks, octopus, common, raw","3.0 oz",45
+178,"Tomato products, canned, puree, without salt added","1.0 cups",45
+179,"Soup, beef and vegetables, canned, ready-to-serve","1.0 cups",45
+180,"Beet greens, raw","1.0 cups",44
+181,"Beets, canned, regular pack, solids and liquids","1.0 cups",44
+182,"Puddings, chocolate, ready-to-eat, fat free","1.0 serving 4 oz",44
+183,"Blackberries, frozen, unsweetened","1.0 cups, unthawed",44
+184,"Sweet potato, cooked, baked in skin, flesh, with salt","1.0 medium",43
+185,"Broccoli raab, raw","1.0 cups chopped",43
+186,"Peas, mature seeds, sprouted, raw","1.0 cups",43
+187,"Bread, cheese","1.0 slice",43
+188,"Fish, yellowtail, mixed species, cooked, dry heat","0.5 fillet",42
+189,"Seeds, sesame flour, low-fat","1.0 oz",42
+190,"Carrots, raw","1.0 cups chopped",42
+191,"Sausage, pork and turkey, pre-cooked","1.0 serving",42
+192,"Peas, edible-podded, raw","1.0 cups, chopped",42
+193,"Cake, angelfood, dry mix, prepared","1.0 piece",42
+194,"Tomato products, canned, sauce, with onions","1.0 cups",42
+195,"Cress, garden, raw","1.0 cups",40
+196,"Bread, salvadoran sweet cheese","1.0 serving",40
+197,"Parmesan cheese topping, fat free","1.0 tablespoon",40
+198,"Chocolate-flavored hazelnut spread","1.0 serving 2 TBSP",40
+199,"Soup, cream of celery, canned, prepared with equal volume water","1.0 cups",40
+200,"Cream puff, eclair, custard or cream filled, iced","4.0 oz",40
+201,"Cake, angelfood, commercially prepared","1.0 piece",39
+202,"Nuts, chestnuts, european, raw, unpeeled","1.0 cups",39
+203,"Fish, salmon, coho, wild, cooked, moist heat","3.0 oz",39
+204,"Cowpeas (blackeyes), immature seeds, frozen, cooked","1.0 cups",39
+205,"Mollusks, mussel, blue, raw","1.0 cups",39
+206,"Asparagus, canned, drained solids","1.0 cups",39
+207,"Peaches, dehydrated (low-moisture), sulfured, stewed","1.0 cups",39
+208,"Squash, summer, zucchini, italian style, canned","1.0 cups",39
+209,"Cake, coffeecake, cinnamon with crumb topping, dry mix, prepared","1.0 oz",39
+210,"Lima beans, immature seeds, frozen, fordhook, unprepared","1.0 cups",38
+211,"Squash, summer, crookneck and straightneck, frozen, cooked","1.0 cups slices",38
+212,"Loganberries, frozen","1.0 cups, unthawed",38
+213,"Carrots, canned, no salt added, solids and liquids","0.5 cups slices",38
+214,"Gooseberries, raw","1.0 cups",38
+215,"Breadfruit, raw","1.0 cups",37
+216,"Mollusks, oyster, eastern, farmed, raw","3.0 oz",37
+217,"Grapefruit, sections, canned, juice pack, solids and liquids","1.0 cups",37
+218,"Leeks, (bulb and lower leaf-portion), cooked, boiled, drained","1.0 leek",37
+219,"Brussels sprouts, raw","1.0 cups",37
+220,"Currants, red and white, raw","1.0 cups",37
+221,"Onions, raw","1.0 cups, chopped",37
+222,"Grapefruit, sections, canned, water pack, solids and liquids","1.0 cups",37
+223,"Carrots, canned, regular pack, drained solids","1.0 cups, sliced",36
+224,"Crackers, standard snack-type, sandwich, with cheese filling","0.5 oz",36
+225,"Peas, green, raw","1.0 cups",36
+226,"Bread, wheat","1.0 slice",36
+227,"Hyacinth-beans, immature seeds, cooked, boiled, drained","1.0 cups",36
+228,"Boysenberries, frozen, unsweetened","1.0 cups, unthawed",36
+229,"Vegetable juice cocktail, canned","1.0 cups",35
+230,"Egg, yolk, raw, frozen, sugared, pasteurized","1.0 oz",35
+231,"Bread, protein (includes gluten)","1.0 oz",35
+232,"Squash, winter, hubbard, baked, with salt","1.0 cups, cubes",35
+233,"Crackers, cheese, sandwich-type with cheese filling","6.0 cracker",35
+234,"Grapefruit, raw, white, Florida","1.0 cups sections",34
+235,"Onions, frozen, whole, unprepared","0.33 package (10 oz)",34
+236,"Fish, trout, mixed species, cooked, dry heat","1.0 fillet",34
+237,"Lime juice, raw","1.0 cups",34
+238,"Bread, white, commercially prepared, toasted","1.0 oz",34
+239,"Soup, pea, split with ham, canned, chunky, ready-to-serve","1.0 cups",34
+240,"Sweet potato, canned, syrup pack, drained solids","1.0 cups",33
+241,"Cheese, neufchatel","1.0 oz",33
+242,"Nuts, mixed nuts, oil roasted, with peanuts, lightly salted","1.0 oz",33
+243,"Bread, reduced-calorie, oatmeal","1.0 oz",33
+244,"Tomato products, canned, sauce, with onions, green peppers, and celery","1.0 cups",32
+245,"Pork, fresh, shoulder, whole, separable lean and fat, cooked, roasted","1.0 cups, diced",32
+246,"Asparagus, frozen, cooked, boiled, drained, without salt","1.0 cups",32
+247,"Squash, summer, zucchini, includes skin, cooked, boiled, drained","1.0 cups, sliced",32
+248,"Cream, fluid, half and half","1.0 fl oz",32
+249,"Egg substitute, powder","0.35 oz",32
+250,"Fish, flatfish (flounder and sole species), cooked, dry heat","1.0 fillet",32
+251,"Fish, tuna, skipjack, fresh, cooked, dry heat","3.0 oz",31
+252,"Crackers, wheat, regular","16.0 crackers",31
+253,"Beans, kidney, mature seeds, sprouted, raw","1.0 cups",31
+254,"Snacks, potato chips, made from dried potatoes, cheese-flavor","1.0 oz",31
+255,"Noodles, egg, spinach, enriched, cooked","1.0 cups",30
+256,"Drumstick pods, raw","1.0 cups slices",30
+257,"Blackberry juice, canned","1.0 cups",30
+258,"Spices, savory, ground","1.0 tsp",30
+259,"Spinach, raw","1.0 cups",30
+260,"Onions, sweet, raw","1.0 NLEA serving",30
+261,"Biscuits, plain or buttermilk, refrigerated dough, higher fat","1.0 biscuit",30
+262,"Radishes, raw","1.0 cups slices",29
+263,"Papayas, raw","1.0 cups 1"" pieces",29
+264,"Crackers, wheat, sandwich, with cheese filling","0.5 oz",29
+265,"Macaroni, vegetable, enriched, dry","1.0 cups spiral shaped",29
+266,"Egg, whole, cooked, fried","1.0 large",29
+267,"Cereals ready-to-eat, POST, Shredded Wheat, original spoon-size","1.0 cups",28
+268,"Passion-fruit, (granadilla), purple, raw","1.0 cups",28
+269,"Crustaceans, crab, queen, cooked, moist heat","3.0 oz",28
+270,"Chicken, broiler, rotisserie, BBQ, back meat only","3.0 oz",28
+271,"Egg, whole, cooked, poached","1.0 large",28
+272,"Egg, whole, raw, fresh","1.0 large",28
+273,"Purslane, raw","1.0 cups",28
+274,"Bread, stuffing, dry mix","1.0 oz",27
+275,"Pomegranate juice, bottled","1.0 cups",27
+276,"Cream, fluid, light (coffee cream or table cream)","1.0 fl oz",27
+277,"Cherries, sweet, canned, water pack, solids and liquids","1.0 cups, pitted",27
+278,"Turkey, all classes, leg, meat and skin, cooked, roasted","3.0 oz",27
+279,"Beef, shank crosscuts, separable lean only, trimmed to 1/4"" fat","3.0 oz",27
+280,"Soup, onion, canned, condensed","0.5 cups",27
+281,"Bologna, pork and turkey, lite","1.0 serving 2 oz",27
+282,"Soup, pea, green, canned, condensed","0.5 cups",27
+283,"Bread, reduced-calorie, white","1.0 oz",27
+284,"Pasta, whole-wheat, dry","1.0 cups spaghetti",26
+285,"Turkey, ground, 93% lean, 7% fat, pan-broiled crumbles","3.0 oz",26
+286,"Cereals ready-to-eat, POST, Shredded Wheat, original big biscuit","2.0 biscuits",26
+287,"Spices, cinnamon, ground","1.0 tsp",26
+288,"Beef, loin, top loin, separable lean and fat, trimmed to 1/8"" fat","4.0 oz",26
+289,"Fish, scup, cooked, dry heat","1.0 fillet",26
+290,"Snacks, granola bars, soft, uncoated, peanut butter","1.0 bar",25
+291,"Bread, pound cake type, pan de torta salvadoran","1.0 serving",25
+292,"Chicken, broilers or fryers, dark meat, meat only, cooked, fried","1.0 cups",25
+293,"Cherries, sour, red, canned, light syrup pack, solids and liquids","1.0 cups",25
+294,"Tamarind nectar, canned","1.0 cups",25
+295,"Beef, tenderloin, steak, separable lean and fat, trimmed to 1/8"" fat","4.0 oz",25
+296,"Muffin, blueberry, commercially prepared, low-fat","1.0 muffin small",25
+297,"Chicken, gizzard, all classes, cooked, simmered","1.0 cups chopped",25
+298,"Chicory roots, raw","1.0 root",25
+299,"Soup, chicken, canned, chunky, ready-to-serve","1.0 cups",24
+300,"Grapes, canned, thompson seedless, water pack, solids and liquids","1.0 cups",24
+301,"Tomato products, canned, sauce, with tomato tidbits","1.0 cups",24
+302,"Tomato juice, canned, without salt added","1.0 cups",24
+303,"Tomato juice, canned, with salt added","1.0 cups",24
+304,"Crackers, wheat, sandwich, with peanut butter filling","0.5 oz",24
+305,"Soup, chicken gumbo, canned, condensed","0.5 cups",24
+306,"Pork, fresh, shoulder, blade, boston (roasts), separable lean and fat","3.0 oz",24
+307,"Lamb, Australian, imported, fresh, shoulder ,blade, separable lean only","3.0 oz",24
+308,"Squash, winter, hubbard, cooked, boiled, mashed, with salt","1.0 cups, mashed",24
+309,"Squash, winter, hubbard, cooked, boiled, mashed, without salt","1.0 cups, mashed",24
+310,"Apricots, canned, heavy syrup pack, with skin, solids and liquids","1.0 cups, halves",23
+311,"Carrots, frozen, unprepared","0.5 cups slices",23
+312,"Bread, irish soda, prepared from recipe","1.0 oz",23
+313,"Bologna, chicken, turkey, pork","1.0 serving",23
+314,"Lamb, shoulder, blade, separable lean and fat, trimmed to 1/8"" fat","3.0 oz",23
+315,"Pork, fresh, shoulder, (Boston butt), blade (steaks), separable lean and fat","3.0 oz",23
+316,"Lamb, New Zealand, imported, frozen, shoulder, whole (arm and blade)","3.0 oz",23
+317,"Lamb, Australian, imported, fresh, shoulder, arm, separable lean and fat","3.0 oz",23
+318,"Fish, grouper, mixed species, raw","3.0 oz",23
+319,"Cowpeas, leafy tips, raw","1.0 cups, chopped",23
+320,"Figs, raw","1.0 large",22
+321,"Bread, stuffing, cornbread, dry mix","1.0 oz",22
+322,"Soup, cream of shrimp, canned, prepared with equal volume water","1.0 cups",22
+323,"Apricots, canned, heavy syrup, drained","1.0 cups, halves",22
+324,"Seeds, safflower seed meal, partially defatted","1.0 oz",22
+325,"Beets, raw","1.0 cups",22
+326,"Beef, short loin, porterhouse steak, separable lean and fat","4.0 oz",21
+327,"Cereals, QUAKER, Instant Oatmeal Organic, Regular","1.0 packet",21
+328,"Fish, trout, rainbow, farmed, cooked, dry heat","1.0 fillet",21
+329,"Pie, banana cream, prepared from recipe","1.0 oz",21
+330,"Cauliflower, green, raw","1.0 cups",21
+331,"Sausage, Italian, sweet, links","1.0 link 3 oz",21
+332,"Cookies, molasses","1.0 oz",21
+333,"Asparagus, cooked, boiled, drained","0.5 cups",21
+334,"Bread, rye","1.0 oz",21
+335,"Wheat flour, white, bread, enriched","1.0 cups",21
+336,"Bread, oatmeal, toasted","1.0 oz",20
+337,"Pancakes, plain, frozen, ready-to-heat, microwave","1.0 oz",20
+338,"Flan, caramel custard, dry mix","1.0 package (3 oz)",20
+339,"Cherries, sour, red, frozen, unsweetened","1.0 cups, unthawed",20
+340,"Danish pastry, cinnamon, enriched","1.0 oz",20
+341,"Grapefruit juice, white, canned, sweetened","1.0 cups",20
+342,"Focaccia, Italian flatbread, plain","1.0 piece",20
+343,"Cake, sponge, commercially prepared","1.0 oz",20
+344,"Potatoes, baked, skin, without salt","1.0 skin",20
+345,"Bamboo shoots, raw","1.0 cups",20
+346,"Lamb, New Zealand, imported, frozen, loin, separable lean and fat","3.0 oz",20

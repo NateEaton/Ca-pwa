@@ -32,20 +32,19 @@
   let typeSortRotation = 0; // 0, 1, 2 for three-way type rotation
   const foodDatabase = DEFAULT_FOOD_DATABASE;
   let isDatabaseLoading = false; // No loading needed
-  
+
   // Calcium filter state
   let calciumFilter = {
-    type: 'all', // 'all', 'preset', 'custom'
+    type: "all", // 'all', 'preset', 'custom'
     preset: null, // '0mg', '1-50mg', '51-200mg', '201-500mg', '500mg+'
     min: null,
-    max: null
+    max: null,
   };
   let showCalciumDropdown = false;
-  
+
   // Delete confirmation modal state
   let showDeleteModal = false;
   let foodToDelete = null;
-
 
   // Get food type for sorting based on current filter context
   function getFoodTypeForSort(food) {
@@ -66,25 +65,25 @@
   // Get sort priority for type-based sorting with three-way rotation
   function getTypeSortPriority(food) {
     const type = getFoodTypeForSort(food);
-    
+
     if (selectedFilter === "available") {
       // Available view: Custom / Favorite / Database rotation
       const priorities = [
-        { Custom: 0, Favorite: 1, Database: 2 },  // Custom first
-        { Favorite: 0, Database: 1, Custom: 2 },  // Favorite first  
-        { Database: 0, Custom: 1, Favorite: 2 }   // Database first
+        { Custom: 0, Favorite: 1, Database: 2 }, // Custom first
+        { Favorite: 0, Database: 1, Custom: 2 }, // Favorite first
+        { Database: 0, Custom: 1, Favorite: 2 }, // Database first
       ];
       return priorities[typeSortRotation][type] || 999;
     } else if (selectedFilter === "database") {
       // Database view: Favorite / Hidden / Database rotation
       const priorities = [
-        { Favorite: 0, Hidden: 1, Database: 2 },  // Favorite first
-        { Hidden: 0, Database: 1, Favorite: 2 },  // Hidden first
-        { Database: 0, Favorite: 1, Hidden: 2 }   // Database (shown) first
+        { Favorite: 0, Hidden: 1, Database: 2 }, // Favorite first
+        { Hidden: 0, Database: 1, Favorite: 2 }, // Hidden first
+        { Database: 0, Favorite: 1, Hidden: 2 }, // Database (shown) first
       ];
       return priorities[typeSortRotation][type] || 999;
     }
-    
+
     return 0; // User filter doesn't need rotation (all custom)
   }
 
@@ -100,11 +99,13 @@
     typeSortRotation;
     calciumFilter;
     let foods = [];
-    
+
     // Apply filter
     if (selectedFilter === "available") {
       // Show all addable foods: database foods (excluding hidden ones) + custom foods + favorites
-      const visibleDatabaseFoods = [...foodDatabase].filter(food => !$calciumState.hiddenFoods.has(food.id));
+      const visibleDatabaseFoods = [...foodDatabase].filter(
+        (food) => !$calciumState.hiddenFoods.has(food.id)
+      );
       foods = [...visibleDatabaseFoods, ...$calciumState.customFoods];
     } else if (selectedFilter === "database") {
       // Show all database foods for management (including hidden and favorites)
@@ -113,27 +114,28 @@
       // Show only custom foods
       foods = [...$calciumState.customFoods];
     }
-    
+
     // Apply enhanced search
     if (searchQuery.trim()) {
       const results = SearchService.searchFoods(searchQuery, foods, {
-        mode: 'database',
+        mode: "database",
         favorites: $calciumState.favorites,
-        hiddenFoods: selectedFilter === "database" ? new Set() : $calciumState.hiddenFoods, // Don't filter hidden foods in database mode
-// No maxResults - show all matching foods for complete bulk operations
+        hiddenFoods:
+          selectedFilter === "database" ? new Set() : $calciumState.hiddenFoods, // Don't filter hidden foods in database mode
+        // No maxResults - show all matching foods for complete bulk operations
       });
-      foods = results.map(result => result.food);
+      foods = results.map((result) => result.food);
     }
-    
+
     // Apply calcium filter
-    if (calciumFilter.type !== 'all') {
-      foods = foods.filter(food => passesCalciumFilter(food));
+    if (calciumFilter.type !== "all") {
+      foods = foods.filter((food) => passesCalciumFilter(food));
     }
-    
+
     // Apply sort
     foods.sort((a, b) => {
       let comparison = 0;
-      
+
       switch (sortBy) {
         case "name":
           comparison = a.name.localeCompare(b.name);
@@ -153,47 +155,53 @@
           return comparison;
           break;
       }
-      
+
       return sortOrder === "desc" ? -comparison : comparison;
     });
-    
+
     filteredFoods = foods;
   }
 
   // Bulk selection reactive logic
-  $: eligibleFoodsForBulk = filteredFoods.filter(food => 
-    !food.isCustom && // Only database foods can be hidden
-    !$calciumState.favorites.has(food.id) // Skip favorites
+  $: eligibleFoodsForBulk = filteredFoods.filter(
+    (food) =>
+      !food.isCustom && // Only database foods can be hidden
+      !$calciumState.favorites.has(food.id) // Skip favorites
   );
-  
-  $: hiddenEligibleFoods = eligibleFoodsForBulk.filter(food => 
+
+  $: hiddenEligibleFoods = eligibleFoodsForBulk.filter((food) =>
     $calciumState.hiddenFoods.has(food.id)
   );
-  
-  $: allNonFavoritesHidden = eligibleFoodsForBulk.length > 0 && 
+
+  $: allNonFavoritesHidden =
+    eligibleFoodsForBulk.length > 0 &&
     hiddenEligibleFoods.length === eligibleFoodsForBulk.length;
-  
+
   $: someNonFavoritesHidden = hiddenEligibleFoods.length > 0;
-  
-  $: favoriteCount = filteredFoods.filter(food => 
-    !food.isCustom && $calciumState.favorites.has(food.id)
+
+  $: favoriteCount = filteredFoods.filter(
+    (food) => !food.isCustom && $calciumState.favorites.has(food.id)
   ).length;
-  
-  $: bulkActionText = allNonFavoritesHidden 
+
+  $: bulkActionText = allNonFavoritesHidden
     ? `Unhide all ${eligibleFoodsForBulk.length} foods`
     : `Hide all ${eligibleFoodsForBulk.length} foods`;
-  
-  $: showBulkActions = selectedFilter === "database" && 
-    (searchQuery.trim() || calciumFilter.type !== 'all') && 
-    filteredFoods.length > 0 && 
+
+  $: showBulkActions =
+    selectedFilter === "database" &&
+    (searchQuery.trim() || calciumFilter.type !== "all") &&
+    filteredFoods.length > 0 &&
     eligibleFoodsForBulk.length > 0;
 
   // Item count display logic
   $: {
     let totalCount = 0;
     if (selectedFilter === "available") {
-      const visibleDatabaseFoods = [...foodDatabase].filter(food => !$calciumState.hiddenFoods.has(food.id));
-      totalCount = visibleDatabaseFoods.length + $calciumState.customFoods.length;
+      const visibleDatabaseFoods = [...foodDatabase].filter(
+        (food) => !$calciumState.hiddenFoods.has(food.id)
+      );
+      totalCount =
+        visibleDatabaseFoods.length + $calciumState.customFoods.length;
     } else if (selectedFilter === "database") {
       totalCount = foodDatabase.length;
     } else if (selectedFilter === "user") {
@@ -202,13 +210,16 @@
   }
 
   $: itemCountText = (() => {
-    const hasActiveFilters = searchQuery.trim() || calciumFilter.type !== 'all';
+    const hasActiveFilters = searchQuery.trim() || calciumFilter.type !== "all";
     let totalCount = 0;
     let filterLabel = "";
-    
+
     if (selectedFilter === "available") {
-      const visibleDatabaseFoods = [...foodDatabase].filter(food => !$calciumState.hiddenFoods.has(food.id));
-      totalCount = visibleDatabaseFoods.length + $calciumState.customFoods.length;
+      const visibleDatabaseFoods = [...foodDatabase].filter(
+        (food) => !$calciumState.hiddenFoods.has(food.id)
+      );
+      totalCount =
+        visibleDatabaseFoods.length + $calciumState.customFoods.length;
       filterLabel = "available";
     } else if (selectedFilter === "database") {
       totalCount = foodDatabase.length;
@@ -217,7 +228,7 @@
       totalCount = $calciumState.customFoods.length;
       filterLabel = "custom";
     }
-    
+
     if (hasActiveFilters) {
       return `${filteredFoods.length} of ${totalCount} ${filterLabel} foods`;
     } else {
@@ -225,10 +236,14 @@
     }
   })();
 
+  function openFoodDocs(food) {
+    const docsUrl = `/database-docs.html#food-${food.id}`;
+    window.open(docsUrl, "_blank", "noopener,noreferrer");
+  }
 
   function handleFilterClick(filter) {
     selectedFilter = filter;
-    
+
     // If switching to User filter and Type sort is active, change to Calcium sort
     if (filter === "user" && sortBy === "type") {
       sortBy = "calcium";
@@ -262,10 +277,13 @@
 
   async function toggleFoodHidden(food) {
     if (food.isCustom || !food.id) return; // Can't hide custom foods
-    
+
     if (calciumService) {
       // If food is currently a favorite and we're trying to hide it, remove from favorites first
-      if ($calciumState.favorites.has(food.id) && !$calciumState.hiddenFoods.has(food.id)) {
+      if (
+        $calciumState.favorites.has(food.id) &&
+        !$calciumState.hiddenFoods.has(food.id)
+      ) {
         await calciumService.toggleFavorite(food.id);
       }
       await calciumService.toggleHiddenFood(food.id);
@@ -274,10 +292,13 @@
 
   async function toggleFavorite(food) {
     if (food.isCustom) return; // Only allow favorites for database foods
-    
+
     if (calciumService) {
       // If food is currently hidden and we're trying to favorite it, unhide it first
-      if ($calciumState.hiddenFoods.has(food.id) && !$calciumState.favorites.has(food.id)) {
+      if (
+        $calciumState.hiddenFoods.has(food.id) &&
+        !$calciumState.favorites.has(food.id)
+      ) {
         await calciumService.toggleHiddenFood(food.id);
       }
       await calciumService.toggleFavorite(food.id);
@@ -296,21 +317,21 @@
 
   async function handleDeleteFood() {
     if (!foodToDelete || !foodToDelete.id) return;
-    
+
     // Store the name before deletion in case the object becomes stale
     const foodName = foodToDelete.name;
     const foodId = foodToDelete.id;
-    
+
     if (calciumService) {
       try {
         await calciumService.deleteCustomFood(foodId);
-        showToast(`Deleted ${foodName}`, 'success');
+        showToast(`Deleted ${foodName}`, "success");
       } catch (error) {
-        console.error('Error deleting custom food:', error);
-        showToast('Failed to delete food', 'error');
+        console.error("Error deleting custom food:", error);
+        showToast("Failed to delete food", "error");
       }
     }
-    
+
     // Close modal
     showDeleteModal = false;
     foodToDelete = null;
@@ -347,81 +368,88 @@
 
   function selectCalciumFilter(type, preset = null, min = null, max = null) {
     calciumFilter = { type, preset, min, max };
-    if (type !== 'custom') {
+    if (type !== "custom") {
       showCalciumDropdown = false;
     }
   }
 
-
-
   function getCalciumFilterText() {
-    if (calciumFilter.type === 'all') return 'Ca';
-    if (calciumFilter.type === 'preset') return `Ca:${calciumFilter.preset}`;
-    if (calciumFilter.type === 'custom') return `Ca:${calciumFilter.min || 0}-${calciumFilter.max || '∞'}mg`;
-    return 'Ca';
+    if (calciumFilter.type === "all") return "Ca";
+    if (calciumFilter.type === "preset") return `Ca:${calciumFilter.preset}`;
+    if (calciumFilter.type === "custom")
+      return `Ca:${calciumFilter.min || 0}-${calciumFilter.max || "∞"}mg`;
+    return "Ca";
   }
 
   function passesCalciumFilter(food) {
-    if (calciumFilter.type === 'all') return true;
-    
+    if (calciumFilter.type === "all") return true;
+
     const calcium = Math.round(food.calcium);
-    
-    if (calciumFilter.type === 'preset') {
+
+    if (calciumFilter.type === "preset") {
       switch (calciumFilter.preset) {
-        case '0mg': return calcium === 0;
-        case '1-50mg': return calcium >= 1 && calcium <= 50;
-        case '51-200mg': return calcium >= 51 && calcium <= 200;
-        case '201-500mg': return calcium >= 201 && calcium <= 500;
-        case '500mg+': return calcium > 500;
-        default: return true;
+        case "0mg":
+          return calcium === 0;
+        case "1-50mg":
+          return calcium >= 1 && calcium <= 50;
+        case "51-200mg":
+          return calcium >= 51 && calcium <= 200;
+        case "201-500mg":
+          return calcium >= 201 && calcium <= 500;
+        case "500mg+":
+          return calcium > 500;
+        default:
+          return true;
       }
     }
-    
-    if (calciumFilter.type === 'custom') {
+
+    if (calciumFilter.type === "custom") {
       const min = calciumFilter.min || 0;
       const max = calciumFilter.max || Infinity;
       return calcium >= min && calcium <= max;
     }
-    
+
     return true;
   }
 
   function handleClickOutside(event) {
-    if (showCalciumDropdown && !event.target.closest('.calcium-filter-container')) {
+    if (
+      showCalciumDropdown &&
+      !event.target.closest(".calcium-filter-container")
+    ) {
       showCalciumDropdown = false;
     }
   }
 
   async function handleBulkToggle() {
     if (isBulkOperationInProgress || !calciumService) return;
-    
+
     isBulkOperationInProgress = true;
-    
+
     try {
       // Capture the current state before making any changes
       const currentEligibleFoods = [...eligibleFoodsForBulk];
       const currentHiddenState = new Set($calciumState.hiddenFoods);
       const targetHidden = !allNonFavoritesHidden;
-      
-      
+
       // Process all eligible foods - don't filter, just set them all to the target state
       const batchSize = 10;
       for (let i = 0; i < currentEligibleFoods.length; i += batchSize) {
         const batch = currentEligibleFoods.slice(i, i + batchSize);
-        
+
         // Process each food in the batch
         for (const food of batch) {
           const isCurrentlyHidden = currentHiddenState.has(food.id);
-          
+
           // Only toggle if the current state doesn't match the target state
           if (isCurrentlyHidden !== targetHidden) {
             await calciumService.toggleHiddenFood(food.id);
           }
         }
-        
+
         // Small delay between batches to keep UI responsive
         if (i + batchSize < currentEligibleFoods.length) {
-          await new Promise(resolve => setTimeout(resolve, 10));
+          await new Promise((resolve) => setTimeout(resolve, 10));
         }
       }
     } catch (error) {
@@ -430,7 +458,6 @@
       isBulkOperationInProgress = false;
     }
   }
-
 </script>
 
 <svelte:head>
@@ -438,7 +465,6 @@
 </svelte:head>
 
 <div class="data-page">
-
   <div class="content">
     {#if isDatabaseLoading}
       <div class="loading-state">
@@ -446,334 +472,403 @@
         <p>Loading food database...</p>
       </div>
     {:else}
-    <!-- Search and Calcium Filter Row -->
-    <div class="search-row">
-      <div class="search-container">
-        <input 
-          type="text" 
-          class="data-search" 
-          placeholder="Search foods..."
-          bind:value={searchQuery}
-        />
-        <span class="material-icons search-icon">search</span>
-        
-        {#if searchQuery}
-          <button class="clear-search-btn" on:click={clearSearch}>
-            <span class="material-icons">close</span>
+      <!-- Search and Calcium Filter Row -->
+      <div class="search-row">
+        <div class="search-container">
+          <input
+            type="text"
+            class="data-search"
+            placeholder="Search foods..."
+            bind:value={searchQuery}
+          />
+          <span class="material-icons search-icon">search</span>
+
+          {#if searchQuery}
+            <button class="clear-search-btn" on:click={clearSearch}>
+              <span class="material-icons">close</span>
+            </button>
+          {/if}
+        </div>
+
+        <!-- Calcium Filter Button with Dropdown -->
+        <div class="calcium-filter-container">
+          <button
+            class="calcium-filter-btn"
+            class:active={calciumFilter.type !== "all"}
+            on:click={toggleCalciumDropdown}
+            title="Filter by calcium content"
+          >
+            {getCalciumFilterText()}
+            <span class="material-icons">expand_more</span>
           </button>
-        {/if}
-      </div>
-      
-      <!-- Calcium Filter Button with Dropdown -->
-      <div class="calcium-filter-container">
-        <button 
-          class="calcium-filter-btn" 
-          class:active={calciumFilter.type !== 'all'}
-          on:click={toggleCalciumDropdown}
-          title="Filter by calcium content"
-        >
-          {getCalciumFilterText()}
-          <span class="material-icons">expand_more</span>
-        </button>
-        
-        <!-- Calcium Filter Dropdown -->
-        {#if showCalciumDropdown}
-          <div class="calcium-dropdown">
-        <div class="calcium-dropdown-content">
-          <div class="filter-section">
-            <h4>Calcium Filter</h4>
-            
-            <label class="filter-option">
-              <input
-                type="radio"
-                name="calcium-filter"
-                checked={calciumFilter.type === 'all'}
-                on:change={() => selectCalciumFilter('all')}
-              />
-              All levels
-            </label>
-            
-            <label class="filter-option">
-              <input
-                type="radio"
-                name="calcium-filter"
-                checked={calciumFilter.preset === '0mg'}
-                on:change={() => selectCalciumFilter('preset', '0mg')}
-              />
-              0mg (no calcium)
-            </label>
-            
-            <label class="filter-option">
-              <input
-                type="radio"
-                name="calcium-filter"
-                checked={calciumFilter.preset === '1-50mg'}
-                on:change={() => selectCalciumFilter('preset', '1-50mg')}
-              />
-              1-50mg (very low)
-            </label>
-            
-            <label class="filter-option">
-              <input
-                type="radio"
-                name="calcium-filter"
-                checked={calciumFilter.preset === '51-200mg'}
-                on:change={() => selectCalciumFilter('preset', '51-200mg')}
-              />
-              51-200mg (low)
-            </label>
-            
-            <label class="filter-option">
-              <input
-                type="radio"
-                name="calcium-filter"
-                checked={calciumFilter.preset === '201-500mg'}
-                on:change={() => selectCalciumFilter('preset', '201-500mg')}
-              />
-              201-500mg (moderate)
-            </label>
-            
-            <label class="filter-option">
-              <input
-                type="radio"
-                name="calcium-filter"
-                checked={calciumFilter.preset === '500mg+'}
-                on:change={() => selectCalciumFilter('preset', '500mg+')}
-              />
-              500mg+ (high)
-            </label>
-            
-            <div class="custom-range">
-              <label class="filter-option">
-                <input
-                  type="radio"
-                  name="calcium-filter"
-                  checked={calciumFilter.type === 'custom'}
-                  on:change={() => { calciumFilter = { type: 'custom', preset: null, min: calciumFilter.min || 0, max: calciumFilter.max || 1000 }; }}
-                />
-                Custom range:
-              </label>
-              <div class="range-inputs">
-                <input
-                  type="number"
-                  placeholder="Min"
-                  bind:value={calciumFilter.min}
-                  on:input={() => { calciumFilter = { type: 'custom', preset: null, min: calciumFilter.min, max: calciumFilter.max }; }}
-                  min="0"
-                />
-                <span>to</span>
-                <input
-                  type="number"
-                  placeholder="Max"
-                  bind:value={calciumFilter.max}
-                  on:input={() => { calciumFilter = { type: 'custom', preset: null, min: calciumFilter.min, max: calciumFilter.max }; }}
-                  min="0"
-                />
-                <span>mg</span>
+
+          <!-- Calcium Filter Dropdown -->
+          {#if showCalciumDropdown}
+            <div class="calcium-dropdown">
+              <div class="calcium-dropdown-content">
+                <div class="filter-section">
+                  <h4>Calcium Filter</h4>
+
+                  <label class="filter-option">
+                    <input
+                      type="radio"
+                      name="calcium-filter"
+                      checked={calciumFilter.type === "all"}
+                      on:change={() => selectCalciumFilter("all")}
+                    />
+                    All levels
+                  </label>
+
+                  <label class="filter-option">
+                    <input
+                      type="radio"
+                      name="calcium-filter"
+                      checked={calciumFilter.preset === "0mg"}
+                      on:change={() => selectCalciumFilter("preset", "0mg")}
+                    />
+                    0mg (no calcium)
+                  </label>
+
+                  <label class="filter-option">
+                    <input
+                      type="radio"
+                      name="calcium-filter"
+                      checked={calciumFilter.preset === "1-50mg"}
+                      on:change={() => selectCalciumFilter("preset", "1-50mg")}
+                    />
+                    1-50mg (very low)
+                  </label>
+
+                  <label class="filter-option">
+                    <input
+                      type="radio"
+                      name="calcium-filter"
+                      checked={calciumFilter.preset === "51-200mg"}
+                      on:change={() =>
+                        selectCalciumFilter("preset", "51-200mg")}
+                    />
+                    51-200mg (low)
+                  </label>
+
+                  <label class="filter-option">
+                    <input
+                      type="radio"
+                      name="calcium-filter"
+                      checked={calciumFilter.preset === "201-500mg"}
+                      on:change={() =>
+                        selectCalciumFilter("preset", "201-500mg")}
+                    />
+                    201-500mg (moderate)
+                  </label>
+
+                  <label class="filter-option">
+                    <input
+                      type="radio"
+                      name="calcium-filter"
+                      checked={calciumFilter.preset === "500mg+"}
+                      on:change={() => selectCalciumFilter("preset", "500mg+")}
+                    />
+                    500mg+ (high)
+                  </label>
+
+                  <div class="custom-range">
+                    <label class="filter-option">
+                      <input
+                        type="radio"
+                        name="calcium-filter"
+                        checked={calciumFilter.type === "custom"}
+                        on:change={() => {
+                          calciumFilter = {
+                            type: "custom",
+                            preset: null,
+                            min: calciumFilter.min || 0,
+                            max: calciumFilter.max || 1000,
+                          };
+                        }}
+                      />
+                      Custom range:
+                    </label>
+                    <div class="range-inputs">
+                      <input
+                        type="number"
+                        placeholder="Min"
+                        bind:value={calciumFilter.min}
+                        on:input={() => {
+                          calciumFilter = {
+                            type: "custom",
+                            preset: null,
+                            min: calciumFilter.min,
+                            max: calciumFilter.max,
+                          };
+                        }}
+                        min="0"
+                      />
+                      <span>to</span>
+                      <input
+                        type="number"
+                        placeholder="Max"
+                        bind:value={calciumFilter.max}
+                        on:input={() => {
+                          calciumFilter = {
+                            type: "custom",
+                            preset: null,
+                            min: calciumFilter.min,
+                            max: calciumFilter.max,
+                          };
+                        }}
+                        min="0"
+                      />
+                      <span>mg</span>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
-        </div>
-      </div>
-        {/if}
-      </div>
-    </div>
-
-    <!-- Item Count Display -->
-    <div class="item-count-display">
-      <span class="item-count-text">{itemCountText}</span>
-    </div>
-
-    <!-- Bulk Actions (only shown for search results in database mode) -->
-    {#if showBulkActions}
-      <div class="bulk-actions">
-        <div class="bulk-select-container">
-          <input
-            type="checkbox"
-            id="bulk-select"
-            class="bulk-checkbox"
-            checked={allNonFavoritesHidden}
-            indeterminate={someNonFavoritesHidden && !allNonFavoritesHidden}
-            on:change={handleBulkToggle}
-            disabled={isBulkOperationInProgress}
-            aria-describedby="bulk-description"
-          />
-          <label 
-            for="bulk-select" 
-            class="bulk-label"
-          >
-            {isBulkOperationInProgress ? "Processing..." : bulkActionText}
-          </label>
-          {#if favoriteCount > 0}
-            <span class="bulk-skip-note" id="bulk-description">
-              (skipping {favoriteCount} favorite{favoriteCount === 1 ? '' : 's'})
-            </span>
           {/if}
         </div>
       </div>
-    {/if}
 
-    <!-- Filter Controls -->
-    <div class="data-filter-controls">
-      <span class="material-icons filter-section-icon">filter_list</span>
-      <div class="sort-options">
-        <div 
-          class="sort-option" 
-          class:active={selectedFilter === "available"}
-          on:click={() => handleFilterClick("available")}
-          on:keydown={(e) => handleFilterKeydown(e, "available")}
-          role="button"
-          tabindex="0"
-        >
-          <span class="material-icons">visibility</span>
-          <span>Available</span>
-        </div>
-        <div 
-          class="sort-option" 
-          class:active={selectedFilter === "database"}
-          on:click={() => handleFilterClick("database")}
-          on:keydown={(e) => handleFilterKeydown(e, "database")}
-          role="button"
-          tabindex="0"
-        >
-          <span class="material-icons">shield</span>
-          <span>Database</span>
-        </div>
-        <div 
-          class="sort-option" 
-          class:active={selectedFilter === "user"}
-          on:click={() => handleFilterClick("user")}
-          on:keydown={(e) => handleFilterKeydown(e, "user")}
-          role="button"
-          tabindex="0"
-        >
-          <span class="material-icons">person</span>
-          <span>User</span>
-        </div>
+      <!-- Item Count Display -->
+      <div class="item-count-display">
+        <span class="item-count-text">{itemCountText}</span>
       </div>
-    </div>
 
-    <!-- Sort Controls -->
-    <div class="data-sort-controls">
-      <span class="material-icons sort-section-icon">sort</span>
-      <div class="sort-options">
-        <div 
-          class="sort-option" 
-          class:active={sortBy === "name"}
-          on:click={() => handleSortClick("name")}
-          on:keydown={(e) => handleSortKeydown(e, "name")}
-          role="button"
-          tabindex="0"
-        >
-          <span class="material-icons">sort_by_alpha</span>
-          <span>Name</span>
-          <span class="material-icons sort-icon">{getSortIcon("name")}</span>
-        </div>
-        <div 
-          class="sort-option" 
-          class:active={sortBy === "calcium"}
-          on:click={() => handleSortClick("calcium")}
-          on:keydown={(e) => handleSortKeydown(e, "calcium")}
-          role="button"
-          tabindex="0"
-        >
-          <span class="material-icons">science</span>
-          <span>Ca</span>
-          <span class="material-icons sort-icon">{getSortIcon("calcium")}</span>
-        </div>
-        <div 
-          class="sort-option" 
-          class:active={sortBy === "type"}
-          class:disabled={selectedFilter === "user"}
-          on:click={() => selectedFilter !== "user" && handleSortClick("type")}
-          on:keydown={(e) => selectedFilter !== "user" && handleSortKeydown(e, "type")}
-          role="button"
-          tabindex={selectedFilter === "user" ? "-1" : "0"}
-        >
-          <span class="material-icons">category</span>
-          <span>Type</span>
-          <span class="material-icons sort-icon">{selectedFilter === "user" ? "" : getSortIcon("type")}</span>
-        </div>
-      </div>
-    </div>
-
-    <!-- Results -->
-    <div class="results-container">
-      {#each filteredFoods as food}
-        <div class="food-item" class:custom={food.isCustom} class:database-mode={selectedFilter === "database"}>
-          {#if selectedFilter === "database" && !food.isCustom}
-            <div class="hide-checkbox-container">
-              <input
-                type="checkbox"
-                class="hide-checkbox"
-                checked={$calciumState.hiddenFoods.has(food.id)}
-                on:change={() => toggleFoodHidden(food)}
-                title={$calciumState.hiddenFoods.has(food.id) ? "Unhide food" : "Hide food"}
-              />
-            </div>
-          {/if}
-          <div class="food-info">
-            <div class="food-name">{food.name}</div>
-            <div class="food-measure">{food.measure}</div>
-          </div>
-          <div class="food-calcium">
-            <div class="calcium-amount" title="{food.calcium}mg">{Math.round(food.calcium)}mg</div>
-            <div class="food-type">
-              {food.isCustom ? "User" : "Database"}
-            </div>
-          </div>
-          {#if !food.isCustom}
-            <button 
-              class="favorite-btn"
-              class:favorite={$calciumState.favorites.has(food.id)}
-              on:click={() => toggleFavorite(food)}
-              title={$calciumState.favorites.has(food.id) ? "Remove from favorites" : "Add to favorites"}
-            >
-              <span class="material-icons">
-                {$calciumState.favorites.has(food.id) ? "star" : "star_border"}
+      <!-- Bulk Actions (only shown for search results in database mode) -->
+      {#if showBulkActions}
+        <div class="bulk-actions">
+          <div class="bulk-select-container">
+            <input
+              type="checkbox"
+              id="bulk-select"
+              class="bulk-checkbox"
+              checked={allNonFavoritesHidden}
+              indeterminate={someNonFavoritesHidden && !allNonFavoritesHidden}
+              on:change={handleBulkToggle}
+              disabled={isBulkOperationInProgress}
+              aria-describedby="bulk-description"
+            />
+            <label for="bulk-select" class="bulk-label">
+              {isBulkOperationInProgress ? "Processing..." : bulkActionText}
+            </label>
+            {#if favoriteCount > 0}
+              <span class="bulk-skip-note" id="bulk-description">
+                (skipping {favoriteCount} favorite{favoriteCount === 1
+                  ? ""
+                  : "s"})
               </span>
-            </button>
-          {:else if selectedFilter !== "database"}
-            <button 
-              class="delete-btn"
-              on:click={() => confirmDeleteFood(food)}
-              title="Delete custom food"
-            >
-              <span class="material-icons">delete</span>
-            </button>
-          {/if}
-        </div>
-      {:else}
-        <div class="empty-state">
-          <div class="empty-icon">🔍</div>
-          <div class="empty-text">
-            <h3>No foods found</h3>
-            <p>Try adjusting your search or filter</p>
+            {/if}
           </div>
         </div>
-      {/each}
-    </div>
+      {/if}
+
+      <!-- Filter Controls -->
+      <div class="data-filter-controls">
+        <span class="material-icons filter-section-icon">filter_list</span>
+        <div class="sort-options">
+          <div
+            class="sort-option"
+            class:active={selectedFilter === "available"}
+            on:click={() => handleFilterClick("available")}
+            on:keydown={(e) => handleFilterKeydown(e, "available")}
+            role="button"
+            tabindex="0"
+          >
+            <span class="material-icons">visibility</span>
+            <span>Available</span>
+          </div>
+          <div
+            class="sort-option"
+            class:active={selectedFilter === "database"}
+            on:click={() => handleFilterClick("database")}
+            on:keydown={(e) => handleFilterKeydown(e, "database")}
+            role="button"
+            tabindex="0"
+          >
+            <span class="material-icons">shield</span>
+            <span>Database</span>
+          </div>
+          <div
+            class="sort-option"
+            class:active={selectedFilter === "user"}
+            on:click={() => handleFilterClick("user")}
+            on:keydown={(e) => handleFilterKeydown(e, "user")}
+            role="button"
+            tabindex="0"
+          >
+            <span class="material-icons">person</span>
+            <span>User</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Sort Controls -->
+      <div class="data-sort-controls">
+        <span class="material-icons sort-section-icon">sort</span>
+        <div class="sort-options">
+          <div
+            class="sort-option"
+            class:active={sortBy === "name"}
+            on:click={() => handleSortClick("name")}
+            on:keydown={(e) => handleSortKeydown(e, "name")}
+            role="button"
+            tabindex="0"
+          >
+            <span class="material-icons">sort_by_alpha</span>
+            <span>Name</span>
+            <span class="material-icons sort-icon">{getSortIcon("name")}</span>
+          </div>
+          <div
+            class="sort-option"
+            class:active={sortBy === "calcium"}
+            on:click={() => handleSortClick("calcium")}
+            on:keydown={(e) => handleSortKeydown(e, "calcium")}
+            role="button"
+            tabindex="0"
+          >
+            <span class="material-icons">science</span>
+            <span>Ca</span>
+            <span class="material-icons sort-icon"
+              >{getSortIcon("calcium")}</span
+            >
+          </div>
+          <div
+            class="sort-option"
+            class:active={sortBy === "type"}
+            class:disabled={selectedFilter === "user"}
+            on:click={() =>
+              selectedFilter !== "user" && handleSortClick("type")}
+            on:keydown={(e) =>
+              selectedFilter !== "user" && handleSortKeydown(e, "type")}
+            role="button"
+            tabindex={selectedFilter === "user" ? "-1" : "0"}
+          >
+            <span class="material-icons">category</span>
+            <span>Type</span>
+            <span class="material-icons sort-icon"
+              >{selectedFilter === "user" ? "" : getSortIcon("type")}</span
+            >
+          </div>
+        </div>
+      </div>
+
+      <!-- Results -->
+      <div class="results-container">
+        {#each filteredFoods as food}
+          <div
+            class="food-item"
+            class:custom={food.isCustom}
+            class:database-mode={selectedFilter === "database"}
+          >
+            {#if selectedFilter === "database" && !food.isCustom}
+              <div class="hide-checkbox-container">
+                <input
+                  type="checkbox"
+                  class="hide-checkbox"
+                  checked={$calciumState.hiddenFoods.has(food.id)}
+                  on:change={() => toggleFoodHidden(food)}
+                  title={$calciumState.hiddenFoods.has(food.id)
+                    ? "Unhide food"
+                    : "Hide food"}
+                />
+              </div>
+            {:else if selectedFilter === "available" && !food.isCustom}
+              <div class="docs-link-container">
+                <button
+                  class="docs-link-btn"
+                  on:click={() => openFoodDocs(food)}
+                  title="View in database documentation"
+                >
+                  <span class="material-icons">open_in_new</span>
+                </button>
+              </div>
+            {/if}
+            <div class="food-info">
+              <div class="food-name">{food.name}</div>
+              <div class="food-measure">{food.measure}</div>
+            </div>
+            <div class="food-calcium">
+              <div class="calcium-amount" title="{food.calcium}mg">
+                {Math.round(food.calcium)}mg
+              </div>
+              <div class="food-type">
+                {food.isCustom ? "User" : "Database"}
+              </div>
+            </div>
+            {#if !food.isCustom}
+              <button
+                class="favorite-btn"
+                class:favorite={$calciumState.favorites.has(food.id)}
+                on:click={() => toggleFavorite(food)}
+                title={$calciumState.favorites.has(food.id)
+                  ? "Remove from favorites"
+                  : "Add to favorites"}
+              >
+                <span class="material-icons">
+                  {$calciumState.favorites.has(food.id)
+                    ? "star"
+                    : "star_border"}
+                </span>
+              </button>
+            {:else if selectedFilter !== "database"}
+              <button
+                class="delete-btn"
+                on:click={() => confirmDeleteFood(food)}
+                title="Delete custom food"
+              >
+                <span class="material-icons">delete</span>
+              </button>
+            {/if}
+          </div>
+        {:else}
+          <div class="empty-state">
+            <div class="empty-icon">🔍</div>
+            <div class="empty-text">
+              <h3>No foods found</h3>
+              <p>Try adjusting your search or filter</p>
+            </div>
+          </div>
+        {/each}
+      </div>
     {/if}
   </div>
-
 </div>
 
 <!-- Delete Confirmation Modal -->
 {#if showDeleteModal && foodToDelete}
-  <div class="modal-backdrop" on:click={cancelDelete} on:keydown={handleBackdropKeydown} role="button" tabindex="0">
-    <div class="delete-modal" role="dialog" aria-labelledby="delete-title" aria-modal="true">
+  <div
+    class="modal-backdrop"
+    on:click={cancelDelete}
+    on:keydown={handleBackdropKeydown}
+    role="button"
+    tabindex="0"
+  >
+    <div
+      class="delete-modal"
+      role="dialog"
+      aria-labelledby="delete-title"
+      aria-modal="true"
+    >
       <div class="modal-header">
         <h3 id="delete-title">Delete Custom Food</h3>
       </div>
-      
+
       <div class="modal-body">
-        <p>Are you sure you want to delete <strong>{foodToDelete?.name || 'this food'}</strong>?</p>
-        <p class="warning-text">This action cannot be undone. Past journal entries will keep this food's data.</p>
+        <p>
+          Are you sure you want to delete <strong
+            >{foodToDelete?.name || "this food"}</strong
+          >?
+        </p>
+        <p class="warning-text">
+          This action cannot be undone. Past journal entries will keep this
+          food's data.
+        </p>
       </div>
-      
+
       <div class="modal-actions">
         <button class="cancel-btn" on:click={cancelDelete}>Cancel</button>
-        <button class="delete-btn-modal" on:click={handleDeleteFood}>Delete</button>
+        <button class="delete-btn-modal" on:click={handleDeleteFood}
+          >Delete</button
+        >
       </div>
     </div>
   </div>
@@ -860,7 +955,6 @@
   .clear-search-btn .material-icons {
     font-size: 18px;
   }
-
 
   .data-filter-controls,
   .data-sort-controls {
@@ -1178,7 +1272,8 @@
   }
 
   /* Mobile responsive */
-  @media (max-width: 30rem) { /* 480px equivalent */
+  @media (max-width: 30rem) {
+    /* 480px equivalent */
     .content {
       padding: var(--spacing-md);
       padding-bottom: 5rem;
@@ -1214,11 +1309,11 @@
     .food-info {
       margin-right: var(--spacing-md);
     }
-
   }
 
   /* Hide text labels on mobile, show icons only */
-  @media (max-width: 30rem) { /* 480px equivalent */
+  @media (max-width: 30rem) {
+    /* 480px equivalent */
     .data-filter-controls .sort-option span:not(.material-icons),
     .data-sort-controls .sort-option span:not(.material-icons) {
       display: none;
@@ -1346,7 +1441,6 @@
     font-size: 16px;
   }
 
-
   /* Calcium Dropdown */
   .calcium-dropdown {
     position: absolute;
@@ -1420,7 +1514,6 @@
     color: var(--text-secondary);
   }
 
-
   /* Mobile responsive calcium filter */
   @media (max-width: 30rem) {
     .calcium-filter-btn {
@@ -1469,7 +1562,42 @@
   }
 
   @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+    0% {
+      transform: rotate(0deg);
+    }
+    100% {
+      transform: rotate(360deg);
+    }
+  }
+
+  .docs-link-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+  }
+
+  .docs-link-btn {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: var(--spacing-xs);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    width: 32px;
+    height: 32px;
+  }
+
+  .docs-link-btn:hover {
+    background: var(--primary-alpha-10);
+    color: var(--primary);
+  }
+
+  .docs-link-btn .material-icons {
+    font-size: var(--icon-size-md);
   }
 </style>

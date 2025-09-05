@@ -1,0 +1,36 @@
+{
+  "sourceName": "usda-fdc",
+  "sourceIdColumn": "fdcId",
+  "subsetColumn": "foodType",
+  "columnMapping": {
+    "foodDescription": "name",
+    "measureValue": "calcium",
+    "foodMeasure": "measure",
+    "value": "calciumPer100g"
+  },
+  "dataTypeMapping": {
+    "calcium": "float",
+    "calciumPer100g": "float",
+    "sourceId": "integer"
+  },
+  "metadata": {
+    "source": "USDA-FDC",
+    "label": "USDA FoodData Central",
+    "name": "USDA FoodData Central - Foundation & SR Legacy",
+    "description": "Comprehensive food database combining USDA FoodData Central (Foundation and SR Legacy sources) with calcium content data for nutrition tracking",
+    "version": "2025.2",
+    "created": "2025-08-09",
+    "author": "USDA Agricultural Research Service",
+    "sourceUrls": [
+      {
+        "name": "USDA FoodData Central",
+        "url": "https://fdc.nal.usda.gov/food-search"
+      },
+      {
+        "name": "USDA Abridged List Ordered by Calcium Nutrient Content in Household Measure",
+        "url": "https://www.nal.usda.gov/sites/default/files/page-files/calcium.pdf"
+      }
+    ],
+    "notes": "TEST"
+  }
+}

@@ -1,4 +1,4 @@
-/*
+/**
  * My Calcium Tracker PWA
  * Copyright (C) 2025 Nathan A. Eaton Jr.
  *
@@ -17,40 +17,158 @@
  */
 
 /**
- * @fileoverview USDA food database with calcium content data.
- * Contains 4400+ foods from USDA FoodData Central with calcium measurements.
+ * @fileoverview Enhanced food database with rehydration support.
+ * Handles both minified and non-minified data structures transparently.
+ * Provides backward compatibility while supporting bundle size optimization.
  */
 
-// Database metadata for source tracking and abstraction
-export const DATABASE_METADATA = {
-  source: "USDA-FDC",
-  label: "USDA FoodData Central",
-  name: "USDA FoodData Central - Foundation & SR Legacy",
-  description:
-    "Comprehensive food database combining USDA FoodData Central (Foundation and SR Legacy sources) with previous USDA Calcium Content Reference data",
-  version: "2025.2",
-  recordCount: 4483,
-  created: "2025-08-09",
-  author: "USDA Agricultural Research Service",
-  sourceUrls: [
-    {
-      name: "USDA FoodData Central",
-      url: "https://fdc.nal.usda.gov/food-search",
-    },
-    {
-      name: "USDA Calcium Content Reference",
-      url: "https://www.nal.usda.gov/sites/default/files/page-files/calcium.pdf",
-    },
-  ],
-  notes:
-    "Data programmatically filtered to one element per food type, excluding branded foods from SR Legacy, then merged with abridged calcium reference data",
-};
+// --- Data Import and Rehydration Logic ---
 
-// Static import of the food database
-import { DEFAULT_FOOD_DATABASE as IMPORTED_DATABASE } from './foodDatabaseData.js';
+let _databaseCache = null;
+let _metadataCache = null;
 
-// Direct export - no async loading needed
-export const DEFAULT_FOOD_DATABASE = IMPORTED_DATABASE;
+/**
+ * Rehydrates minified food data back to full object structure
+ * @param {Array} minifiedData - Array of minified food objects
+ * @param {Object} keyMapping - Mapping from minified keys to full keys
+ * @returns {Array} Array of fully rehydrated food objects
+ */
+function rehydrateDatabase(minifiedData, keyMapping) {
+  return minifiedData.map((minifiedFood) => {
+    const rehydratedFood = {};
+
+    // Rehydrate each property using key mapping
+    for (const [minifiedKey, value] of Object.entries(minifiedFood)) {
+      const fullKey = keyMapping[minifiedKey];
+      if (fullKey) {
+        rehydratedFood[fullKey] = value;
+      } else {
+        // Fallback: if key not in mapping, use as-is (shouldn't happen in normal operation)
+        console.warn(`Unknown minified key: ${minifiedKey}`);
+        rehydratedFood[minifiedKey] = value;
+      }
+    }
+
+    return rehydratedFood;
+  });
+}
+
+/**
+ * Loads and processes the food database, handling both minified and standard formats
+ * @returns {Array} The processed food database
+ */
+async function loadFoodDatabase() {
+  if (_databaseCache) {
+    return _databaseCache;
+  }
+
+  try {
+    const module = await import("./foodDatabaseData.js");
+
+    // Check if we have minified data (has KEYS export)
+    if (module.KEYS && module.DB) {
+      console.log("Loading minified food database with rehydration...");
+      _databaseCache = rehydrateDatabase(module.DB, module.KEYS);
+      _metadataCache = module.DATABASE_METADATA;
+    }
+    // Check if we have standard format (has DEFAULT_FOOD_DATABASE export)
+    else if (module.DEFAULT_FOOD_DATABASE) {
+      console.log("Loading standard food database...");
+      _databaseCache = module.DEFAULT_FOOD_DATABASE;
+      _metadataCache = module.DATABASE_METADATA;
+    }
+    // Fallback: look for any array export
+    else {
+      console.warn("Unknown food database format, attempting fallback...");
+      // Try to find the first array export
+      const arrayExport = Object.values(module).find((exp) =>
+        Array.isArray(exp)
+      );
+      if (arrayExport) {
+        _databaseCache = arrayExport;
+      } else {
+        console.error("No valid food database found in module");
+        _databaseCache = [];
+      }
+      _metadataCache = module.DATABASE_METADATA || getDefaultMetadata();
+    }
+
+    console.log(`Food database loaded: ${_databaseCache.length} foods`);
+    return _databaseCache;
+  } catch (error) {
+    console.error("Error loading food database:", error);
+    _databaseCache = [];
+    _metadataCache = getDefaultMetadata();
+    return _databaseCache;
+  }
+}
+
+/**
+ * Returns default metadata when none is available
+ */
+function getDefaultMetadata() {
+  return {
+    version: "4.0",
+    recordCount: 0,
+    created: new Date().toISOString().split("T")[0],
+    author: "Ca PWA Data Pipeline",
+    notes: "Default metadata - database may not have loaded correctly",
+    sourceUrls: [],
+  };
+}
+
+// --- Public Exports ---
+
+// Database metadata (loaded asynchronously)
+export let DATABASE_METADATA = null;
+
+// Food database (loaded asynchronously)
+export let DEFAULT_FOOD_DATABASE = [];
+
+// Load database and metadata on module initialization
+loadFoodDatabase()
+  .then((database) => {
+    // Update the exported arrays
+    DEFAULT_FOOD_DATABASE.length = 0;
+    DEFAULT_FOOD_DATABASE.push(...database);
+
+    // Update metadata
+    DATABASE_METADATA = _metadataCache;
+  })
+  .catch((error) => {
+    console.error("Failed to initialize food database:", error);
+    DATABASE_METADATA = getDefaultMetadata();
+  });
+
+/**
+ * Async function to get fully loaded database
+ * Use this in services that need guaranteed database access
+ */
+export async function getFoodDatabase() {
+  return await loadFoodDatabase();
+}
+
+/**
+ * Async function to get database metadata
+ */
+export async function getDatabaseMetadata() {
+  if (!_metadataCache) {
+    await loadFoodDatabase();
+  }
+  return _metadataCache;
+}
+
+/**
+ * Get a food by ID (async version for services)
+ * @param {number} id - The food ID to find
+ * @returns {Object|null} The food object or null if not found
+ */
+export async function getFoodById(id) {
+  const database = await loadFoodDatabase();
+  return database.find((food) => food.id === id) || null;
+}
+
+// --- Search Functions (Legacy Support) ---
 
 // Search stopwords to ignore
 const SEARCH_STOPWORDS = [
@@ -87,8 +205,10 @@ const SEARCH_STOPWORDS = [
   "steamed",
 ];
 
-// Helper function to search foods
-// @deprecated Use SearchService.searchFoods() instead for enhanced search capabilities
+/**
+ * Legacy search function for backward compatibility
+ * @deprecated Use SearchService.searchFoods() instead for enhanced search capabilities
+ */
 export function searchFoods(
   query,
   customFoods = [],
@@ -99,91 +219,58 @@ export function searchFoods(
     "Warning: searchFoods() is deprecated. Use SearchService.searchFoods() for better performance and features."
   );
 
-  if (!query || query.trim().length === 0) return [];
+  if (!query || query.trim().length === 0) {
+    return [];
+  }
 
-  const keywords = query
+  const searchTerms = query
     .toLowerCase()
     .split(/\s+/)
-    .filter((word) => word.length > 0 && !SEARCH_STOPWORDS.includes(word));
+    .filter((term) => term.length > 0 && !SEARCH_STOPWORDS.includes(term));
 
-  if (keywords.length === 0) return [];
+  if (searchTerms.length === 0) {
+    return [];
+  }
 
-  // Combine default database and custom foods
   const allFoods = [...DEFAULT_FOOD_DATABASE, ...customFoods];
 
-  const results = allFoods
+  return allFoods
+    .filter((food) => !hiddenFoods.has(food.id))
     .map((food) => {
-      const searchText = food.name.toLowerCase();
+      const nameWords = food.name.toLowerCase().split(/\s+/);
       let score = 0;
 
-      keywords.forEach((keyword) => {
-        if (searchText.includes(keyword)) {
-          if (searchText.startsWith(keyword)) {
-            score += 10;
-          } else if (searchText.indexOf(" " + keyword) !== -1) {
+      // Scoring logic
+      for (const term of searchTerms) {
+        if (food.name.toLowerCase().includes(term)) {
+          score += term.length;
+          if (nameWords.some((word) => word.startsWith(term))) {
+            score += 2;
+          }
+          if (nameWords.some((word) => word === term)) {
             score += 5;
-          } else {
-            score += 1;
           }
         }
-      });
+      }
 
       return { food, score };
     })
     .filter((result) => result.score > 0)
-    .filter((result) => !hiddenFoods.has(result.food.id))
     .sort((a, b) => {
-      if (favorites.has(a.food.id) && !favorites.has(b.food.id)) return -1;
-      if (!favorites.has(a.food.id) && favorites.has(b.food.id)) return 1;
-      return b.score - a.score;
+      // Favorites first
+      const aFav = favorites.has(a.food.id);
+      const bFav = favorites.has(b.food.id);
+      if (aFav !== bFav) return bFav - aFav;
+
+      // Then by score
+      if (b.score !== a.score) return b.score - a.score;
+
+      // Finally by name
+      return a.food.name.localeCompare(b.food.name);
     })
+    .slice(0, 50)
     .map((result) => result.food);
-
-  return results.slice(0, 50);
 }
 
-// Helper function to normalize measurement units
-export function normalizeUnit(unit) {
-  if (!unit || typeof unit !== "string") {
-    return unit;
-  }
-
-  const unitMap = {
-    cup: "cup",
-    cups: "cup",
-    c: "cup",
-    tbsp: "tablespoon",
-    tablespoon: "tablespoon",
-    tablespoons: "tablespoon",
-    tsp: "teaspoon",
-    teaspoon: "teaspoon",
-    teaspoons: "teaspoon",
-    oz: "ounce",
-    ounce: "ounce",
-    ounces: "ounce",
-    lb: "pound",
-    lbs: "pound",
-    pound: "pound",
-    pounds: "pound",
-    kg: "kilogram",
-    kilograms: "kilogram",
-    g: "gram",
-    grams: "gram",
-    mg: "milligram",
-    milligrams: "milligram",
-    ml: "milliliter",
-    milliliters: "milliliter",
-    l: "liter",
-    liters: "liter",
-    "fl oz": "fluid ounce",
-    "fluid ounces": "fluid ounce",
-    piece: "piece",
-    pieces: "piece",
-    slice: "slice",
-    slices: "slice",
-    serving: "serving",
-    servings: "serving",
-  };
-
-  return unitMap[unit.toLowerCase()] || unit;
-}
+// For legacy compatibility, maintain the original loadFoodDatabase export
+export { loadFoodDatabase };

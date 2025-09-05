@@ -1,0 +1,546 @@
+/* database-docs.css - Food Database Documentation Styles */
+
+/* CSS Variables matching app design system */
+:root {
+  --primary: #2a95f5;
+  --primary-variant: #1976d2;
+  --secondary: #ff7043;
+  --surface: #ffffff;
+  --background: #f5f5f5;
+  --surface-variant: #f0f0f0;
+
+  --text-primary: #212121;
+  --text-secondary: #757575;
+  --text-hint: #bdbdbd;
+  --divider: #e0e0e0;
+
+  --shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 4px 12px rgba(0, 0, 0, 0.15);
+
+  --success: #4caf50;
+  --warning: #ff9800;
+  --error: #f44336;
+
+  --spacing-xs: 0.25rem;
+  --spacing-sm: 0.5rem;
+  --spacing-md: 0.75rem;
+  --spacing-lg: 1rem;
+  --spacing-xl: 1.25rem;
+  --spacing-2xl: 1.5rem;
+  --spacing-3xl: 2rem;
+}
+
+/* Dark theme support */
+[data-theme="dark"] {
+  --background: #121212;
+  --surface: #1e1e1e;
+  --surface-variant: #2d2d2d;
+  --text-primary: #ffffff;
+  --text-secondary: #b3b3b3;
+  --text-hint: #757575;
+  --divider: #333333;
+  --shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+/* Base styles matching app */
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background-color: var(--background);
+  color: var(--text-primary);
+  line-height: 1.5;
+}
+
+.page-container {
+  max-width: 1400px;
+  margin: 0 auto;
+  background: var(--surface);
+  min-height: 100vh;
+  box-shadow: var(--shadow-lg);
+}
+
+/* Header section */
+.header {
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-variant) 100%);
+  color: white;
+  padding: var(--spacing-3xl);
+  text-align: center;
+  position: relative;
+}
+
+.header h1 {
+  margin: 0 0 var(--spacing-sm) 0;
+  font-size: 2.2em;
+  font-weight: 500;
+}
+
+.header p {
+  margin: 0;
+  font-size: 1.1em;
+  opacity: 0.9;
+}
+
+/* Theme toggle button */
+.theme-toggle {
+  position: absolute;
+  top: var(--spacing-lg);
+  right: var(--spacing-lg);
+  background: rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: white;
+  border-radius: 50px;
+  padding: var(--spacing-sm) var(--spacing-lg);
+  cursor: pointer;
+  font-size: 0.9em;
+  transition: all 0.2s ease;
+}
+
+.theme-toggle:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* Search section */
+.search-section {
+  padding: var(--spacing-xl);
+  background: var(--surface-variant);
+  border-bottom: 1px solid var(--divider);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.search-container {
+  max-width: 600px;
+  margin: 0 auto;
+  position: relative;
+}
+
+.search-input {
+  width: 100%;
+  padding: var(--spacing-md) var(--spacing-lg);
+  font-size: 1em;
+  border: 1px solid var(--divider);
+  border-radius: 24px;
+  background: var(--surface);
+  color: var(--text-primary);
+  outline: none;
+  transition: all 0.2s ease;
+  box-shadow: var(--shadow);
+}
+
+.search-input:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(42, 165, 245, 0.1);
+}
+
+.search-clear {
+  position: absolute;
+  right: var(--spacing-md);
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: var(--spacing-xs);
+  border-radius: 50%;
+  display: none;
+}
+
+.search-clear:hover {
+  background: var(--surface-variant);
+}
+
+.search-results-count {
+  margin-top: var(--spacing-sm);
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 0.9em;
+}
+
+/* Source information section */
+.source-info-section {
+  padding: var(--spacing-xl);
+  background: var(--surface);
+  border-bottom: 1px solid var(--divider);
+}
+
+.source-info-section h3 {
+  margin: 0 0 var(--spacing-lg) 0;
+  color: var(--primary-variant);
+  font-weight: 500;
+}
+
+.metadata-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: var(--spacing-lg);
+  margin-bottom: var(--spacing-lg);
+}
+
+.metadata-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.metadata-label {
+  font-weight: 600;
+  color: var(--text-secondary);
+  font-size: 0.9em;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.metadata-value {
+  color: var(--text-primary);
+  font-size: 1em;
+}
+
+.description-section,
+.source-links-section,
+.notes-section {
+  margin-top: var(--spacing-lg);
+}
+
+.metadata-description,
+.processing-notes {
+  margin: var(--spacing-sm) 0 0 0;
+  color: var(--text-primary);
+  line-height: 1.6;
+}
+
+.source-links {
+  margin-top: var(--spacing-sm);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-md);
+}
+
+.source-link {
+  color: var(--primary);
+  text-decoration: none;
+  padding: var(--spacing-xs) var(--spacing-md);
+  border: 1px solid var(--primary);
+  border-radius: 16px;
+  font-size: 0.9em;
+  transition: all 0.2s ease;
+}
+
+.source-link:hover {
+  background: var(--primary);
+  color: white;
+}
+
+/* Explanation section */
+.explanation-section {
+  padding: var(--spacing-xl);
+  background: var(--surface);
+  border-bottom: 1px solid var(--divider);
+}
+
+.explanation-section h4 {
+  margin: 0 0 var(--spacing-lg) 0;
+  color: var(--primary-variant);
+  font-weight: 500;
+}
+
+.explanation-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: var(--spacing-lg);
+}
+
+.explanation-item {
+  padding: var(--spacing-lg);
+  background: var(--surface-variant);
+  border-radius: 8px;
+  border-left: 4px solid var(--primary);
+}
+
+.explanation-item h5 {
+  margin: 0 0 var(--spacing-sm) 0;
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.explanation-item p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 0.9em;
+  line-height: 1.5;
+}
+
+/* Statistics section */
+.stats-section {
+  background: var(--surface-variant);
+  padding: var(--spacing-lg) var(--spacing-xl);
+  border-bottom: 1px solid var(--divider);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--spacing-md);
+}
+
+.stats-info {
+  display: flex;
+  gap: var(--spacing-xl);
+  flex-wrap: wrap;
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.stat-number {
+  font-size: 1.5em;
+  font-weight: 600;
+  color: var(--primary);
+}
+
+.stat-label {
+  font-size: 0.85em;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.generated-info {
+  color: var(--text-secondary);
+  font-size: 0.9em;
+}
+
+/* Table styles */
+.table-container {
+  overflow-x: auto;
+  background: var(--surface);
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 1000px;
+}
+
+thead th {
+  background: var(--surface-variant);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  padding: var(--spacing-lg) var(--spacing-md);
+  text-align: left;
+  font-weight: 600;
+  border-bottom: 2px solid var(--divider);
+  color: var(--text-primary);
+  font-size: 0.9em;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+tbody td {
+  padding: var(--spacing-md);
+  border-bottom: 1px solid var(--divider);
+  font-size: 0.9em;
+  vertical-align: top;
+}
+
+/* Included food rows */
+.included-row {
+  background-color: var(--surface);
+}
+
+.included-row:hover {
+  background-color: var(--surface-variant);
+}
+
+.app-id {
+  font-weight: 600;
+  color: var(--primary);
+  font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, monospace;
+}
+
+.app-name {
+  font-weight: 500;
+  color: var(--text-primary);
+  position: relative;
+}
+
+.group-indicator {
+  color: var(--secondary);
+  font-weight: 600;
+  margin-left: 2px;
+}
+
+.group-count {
+  font-size: 0.75em;
+  color: var(--text-secondary);
+  font-weight: normal;
+  margin-top: 2px;
+  font-style: italic;
+}
+
+.original-name {
+  color: var(--text-primary);
+  font-size: 0.9em;
+}
+
+.calcium {
+  font-weight: 600;
+  color: var(--success);
+  text-align: right;
+  font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, monospace;
+}
+
+.calcium-per-100g {
+  font-weight: 600;
+  color: var(--success);
+  text-align: right;
+  font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, monospace;
+}
+
+.measure {
+  color: var(--text-primary);
+  font-size: 0.9em;
+}
+
+.source-info {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.subset-badge {
+  font-size: 0.75em;
+  padding: 2px var(--spacing-xs);
+  background: var(--surface-variant);
+  border-radius: 12px;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  width: fit-content;
+}
+
+.source-link {
+  color: var(--primary);
+  text-decoration: none;
+  font-size: 0.85em;
+  font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, monospace;
+}
+
+.source-link:hover {
+  text-decoration: underline;
+}
+
+/* Collapsed food rows */
+.collapsed-row {
+  background-color: var(--surface-variant);
+  opacity: 0.8;
+}
+
+.collapsed-row:hover {
+  opacity: 1;
+}
+
+.collapsed-connector {
+  position: relative;
+  width: 24px;
+  padding: var(--spacing-md) var(--spacing-xs);
+}
+
+.tree-line {
+  position: absolute;
+  left: 12px;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--text-hint);
+}
+
+.tree-line::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: -6px;
+  width: 12px;
+  height: 1px;
+  background: var(--text-hint);
+}
+
+.collapsed-name {
+  color: var(--text-primary);
+  font-size: 0.9em;
+  font-style: italic;
+  padding-left: var(--spacing-lg);
+}
+
+.collapsed-calcium,
+.collapsed-measure {
+  color: var(--text-secondary);
+  font-size: 0.9em;
+}
+
+.collapsed-calcium {
+  text-align: right;
+  font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, monospace;
+  color: var(--success);
+  font-weight: 500;
+}
+
+.collapsed-calcium-per-100g {
+  text-align: right;
+  font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, monospace;
+  color: var(--success);
+  font-weight: 500;
+  font-size: 0.9em;
+}
+
+/* Hidden class for search filtering */
+.hidden {
+  display: none !important;
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+  .header {
+    padding: var(--spacing-xl);
+  }
+
+  .header h1 {
+    font-size: 1.8em;
+  }
+
+  .metadata-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .stats-info {
+    justify-content: center;
+  }
+
+  .theme-toggle {
+    position: static;
+    margin-top: var(--spacing-lg);
+  }
+
+  table {
+    min-width: 900px;
+  }
+
+  .explanation-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .search-section {
+    padding: var(--spacing-md);
+  }
+}

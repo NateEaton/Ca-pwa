@@ -73,7 +73,6 @@ export interface USDAFood {
   name: string;
   calcium: number;
   measure: string;
-  isCustom: false;
   isFavorite?: boolean;
 }
 

@@ -54,17 +54,19 @@ safariConsole*.txt
 # For now, transient notes that are useful locally but not necessarily 
 # a permenant part of project or something to push to Github
 # Same for tasks
-/_notes/
+/_notes/*
 /_tasks/
 
-# Source data - exclude large datasets and generated files
+# Source data - exclude environment config, tmp/, large datasets, generated files
 source_data/.env
+source_data/tmp/
 source_data/curated-*.json
 source_data/merged-*.json
 source_data/nutrientsearchresults_1087_Branded.csv
 source_data/nutrientsearchresults_1087_SR\ Legacy.csv
 source_data/nutrientsearchresults_1087_Survey\ \(FNDDS\).csv
 source_data/sr_legacy_foundation_download.csv
+source_data/mastered-sr_legacy_foundation_download.json
 
 # Cloudflare Workers secrets
 worker/wrangler.toml

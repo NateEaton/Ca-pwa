@@ -59,6 +59,7 @@ export default defineConfig(({ mode }) => {
       VitePWA({
         registerType: "autoUpdate",
         workbox: {
+          maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5MB (increased from default 2MB)
           // REMOVED wasm from globPatterns
           globPatterns: ["**/*.{js,css,html,ico,png,svg,woff,woff2}"],
           additionalManifestEntries: [{ url: "index.html", revision: null }],

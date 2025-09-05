@@ -1,0 +1,16 @@
+{
+  "sourceName": "usda-fdc",
+  "sourceIdColumn": "docSeqNo",
+  "subsetName": "abridged pub",
+  "columnMapping": {
+    "name": "name",
+    "measure": "measure",
+    "calcium": "calcium"
+  },
+  "dataTypeMapping": {
+    "name": "string",
+    "measure": "string",
+    "calcium": "float",
+    "sourceId": "integer"
+  }
+}
