@@ -1038,17 +1038,13 @@
     margin-bottom: 8px;
     display: flex;
     justify-content: space-between;
-    align-items: flex-start;
+    align-items: center;
     position: relative;
   }
 
   .food-item.custom {
     border-left: 3px solid var(--secondary-color);
     background-color: var(--custom-food-bg);
-  }
-
-  .food-item.database-mode {
-    align-items: center;
   }
 
   .hide-checkbox-container {
@@ -1571,10 +1567,9 @@
   }
 
   .docs-link-container {
+    margin-right: var(--spacing-md);
     display: flex;
     align-items: center;
-    justify-content: center;
-    width: 40px;
   }
 
   .docs-link-btn {
@@ -1582,14 +1577,14 @@
     border: none;
     color: var(--text-secondary);
     cursor: pointer;
-    padding: var(--spacing-xs);
+    padding: 0;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
     transition: all 0.2s ease;
-    width: 32px;
-    height: 32px;
+    width: 18px;
+    height: 18px;
   }
 
   .docs-link-btn:hover {
@@ -1598,6 +1593,6 @@
   }
 
   .docs-link-btn .material-icons {
-    font-size: var(--icon-size-md);
+    font-size: 18px;
   }
 </style>
