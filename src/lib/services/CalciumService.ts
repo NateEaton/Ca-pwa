@@ -31,6 +31,7 @@ import { getBuildInfo } from '$lib/utils/buildInfo';
 export class CalciumService {
   private db: IDBDatabase | null = null;
   private foodDatabase: any[] = DEFAULT_FOOD_DATABASE;
+  private nextCustomFoodId: number = -1;
 
   /**
    * Initializes the service by setting up IndexedDB, running migrations, and loading all data.
@@ -40,7 +41,11 @@ export class CalciumService {
     await this.migrateCustomFoodsIfNeeded();
     await this.migrateFavoritesToIDsIfNeeded();
 
-    // Database is already assigned in property declaration
+    // Initialize negative ID counter after database setup
+    await this.initializeCustomFoodIdCounter();
+
+    // Migrate existing positive ID custom foods to negative IDs
+    await this.migrateExistingCustomFoods();
 
     await this.loadSettings();
     await this.loadDailyFoods();
@@ -89,6 +94,30 @@ export class CalciumService {
         if (oldVersion < 7 && !db.objectStoreNames.contains('hiddenFoods')) {
           db.createObjectStore('hiddenFoods', { keyPath: 'foodId' });
         }
+      };
+    });
+  }
+
+  private async initializeCustomFoodIdCounter(): Promise<void> {
+    if (!this.db) return;
+    
+    const transaction = this.db.transaction(['customFoods'], 'readonly');
+    const store = transaction.objectStore('customFoods');
+    const request = store.getAll();
+    
+    return new Promise((resolve) => {
+      request.onsuccess = () => {
+        const customFoods = request.result;
+        if (customFoods.length > 0) {
+          // Find the most negative ID and go one lower
+          const minId = Math.min(...customFoods.map(f => f.id));
+          this.nextCustomFoodId = minId < 0 ? minId - 1 : -1;
+        }
+        resolve();
+      };
+      request.onerror = () => {
+        console.error('Error initializing custom food ID counter:', request.error);
+        resolve();
       };
     });
   }
@@ -177,6 +206,97 @@ export class CalciumService {
       await this.setMigrationStatus('favoritesToIDs', true);
     } catch (error) {
       console.error('Favorites migration failed:', error);
+    }
+  }
+
+  private async migrateExistingCustomFoods(): Promise<void> {
+    if (!this.db) return;
+
+    const migrationStatus = await this.getMigrationStatus('customFoodsToNegativeIDs');
+    if (migrationStatus) return;
+
+    try {
+      const transaction = this.db.transaction(['customFoods'], 'readonly');
+      const store = transaction.objectStore('customFoods');
+      const request = store.getAll();
+
+      const customFoods = await new Promise<any[]>((resolve, reject) => {
+        request.onsuccess = () => resolve(request.result || []);
+        request.onerror = () => reject(request.error);
+      });
+
+      const positiveFoods = customFoods.filter(f => f.id > 0);
+      
+      if (positiveFoods.length > 0) {
+        // Create mapping of old positive IDs to new negative IDs
+        const idMapping = new Map<number, number>();
+        positiveFoods.forEach((food, index) => {
+          const newId = this.nextCustomFoodId - index;
+          idMapping.set(food.id, newId);
+        });
+
+        // Update journal entries with the new ID mapping
+        await this.updateJournalEntriesCustomFoodIds(idMapping);
+
+        // Update custom foods with new negative IDs
+        for (const food of positiveFoods) {
+          const newId = idMapping.get(food.id)!;
+          const newFood = { ...food, id: newId };
+          await this.saveCustomFoodToIndexedDB(newFood);
+          await this.deleteCustomFoodFromIndexedDB(food.id);
+        }
+
+        // Update counter for next custom foods
+        this.nextCustomFoodId -= positiveFoods.length;
+      }
+
+      await this.setMigrationStatus('customFoodsToNegativeIDs', true);
+    } catch (error) {
+      console.error('Custom foods negative ID migration failed:', error);
+    }
+  }
+
+  private async deleteCustomFoodFromIndexedDB(id: number): Promise<void> {
+    if (!this.db) return;
+
+    return new Promise((resolve, reject) => {
+      const transaction = this.db!.transaction(['customFoods'], 'readwrite');
+      const store = transaction.objectStore('customFoods');
+      const request = store.delete(id);
+
+      request.onsuccess = () => resolve();
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  private async updateJournalEntriesCustomFoodIds(idMapping: Map<number, number>): Promise<void> {
+    if (!this.db) return;
+
+    try {
+      const journalEntries = await this.getAllJournalEntries();
+      
+      for (const entry of journalEntries) {
+        let needsUpdate = false;
+        const updatedFoods = entry.foods.map((food: any) => {
+          if (food.isCustom && food.customFoodId && food.customFoodId > 0) {
+            const newId = idMapping.get(food.customFoodId);
+            if (newId) {
+              needsUpdate = true;
+              return {
+                ...food,
+                customFoodId: newId
+              };
+            }
+          }
+          return food;
+        });
+
+        if (needsUpdate) {
+          await this.saveFoodsForDate(entry.date, updatedFoods);
+        }
+      }
+    } catch (error) {
+      console.error('Error updating journal entries for custom food ID migration:', error);
     }
   }
 
@@ -416,7 +536,8 @@ export class CalciumService {
       const store = transaction.objectStore('customFoods');
       let request: IDBRequest;
 
-      if (foodData.id) {
+      if (foodData.id && foodData.id < 0) {
+        // Updating existing custom food
         const dbObject = {
           name: foodData.name,
           calcium: foodData.calcium,
@@ -426,27 +547,31 @@ export class CalciumService {
           id: foodData.id
         };
         request = store.put(dbObject);
-
       } else {
+        // Creating new custom food with negative ID
         const newFoodObject = {
           name: foodData.name,
           calcium: foodData.calcium,
           measure: foodData.measure,
           isCustom: true,
-          dateAdded: new Date().toISOString()
+          dateAdded: new Date().toISOString(),
+          id: this.nextCustomFoodId
         };
-        request = store.add(newFoodObject);
+        
+        // Decrement for next custom food
+        this.nextCustomFoodId--;
+        
+        request = store.put(newFoodObject); // Use put instead of add for manual ID
       }
 
       request.onsuccess = () => {
-        const newId = request.result as number;
         const savedFood: CustomFood = {
-            name: foodData.name,
-            calcium: foodData.calcium,
-            measure: foodData.measure,
-            isCustom: true,
-            dateAdded: foodData.dateAdded || new Date().toISOString(),
-            id: newId
+          name: foodData.name,
+          calcium: foodData.calcium,
+          measure: foodData.measure,
+          isCustom: true,
+          dateAdded: foodData.dateAdded || new Date().toISOString(),
+          id: foodData.id || this.nextCustomFoodId + 1 // The ID we just used
         };
 
         calciumState.update(state => {
@@ -620,7 +745,19 @@ export class CalciumService {
         await this.clearAllData();
       }
       
-      await new Promise(resolve => setTimeout(resolve, 100));
+      // Allow more time for IndexedDB operations to complete
+      await new Promise(resolve => setTimeout(resolve, 300));
+
+      // Reinitialize the custom food ID counter after clearing data
+      this.nextCustomFoodId = -1;
+      await this.initializeCustomFoodIdCounter();
+
+      // Verify database connection is still valid
+      if (!this.db || this.db.readyState !== 'done' || !this.db.objectStoreNames.contains('customFoods')) {
+        console.warn('Database connection unstable during restore, reinitializing...');
+        await this.initializeIndexedDB();
+        await this.initializeCustomFoodIdCounter();
+      }
 
       if (backupData.preferences) {
         calciumState.update(state => ({ ...state, settings: backupData.preferences }));
@@ -628,7 +765,24 @@ export class CalciumService {
       }
       if (backupData.customFoods && Array.isArray(backupData.customFoods)) {
         for (const customFood of backupData.customFoods) {
-          await this.saveCustomFoodToIndexedDB(customFood);
+          try {
+            if (customFood.id < 0) {
+              // Restore with existing negative ID
+              await this.saveCustomFoodToIndexedDB(customFood);
+              // Update counter if this ID is more negative
+              if (customFood.id < this.nextCustomFoodId) {
+                this.nextCustomFoodId = customFood.id - 1;
+              }
+            } else {
+              // Convert positive ID to negative (migration scenario)
+              const newCustomFood = { ...customFood, id: this.nextCustomFoodId };
+              await this.saveCustomFoodToIndexedDB(newCustomFood);
+              this.nextCustomFoodId--;
+            }
+          } catch (error) {
+            console.error('Error restoring custom food:', customFood.name, error);
+            // Continue with other custom foods even if one fails
+          }
         }
       }
       if (backupData.favorites && Array.isArray(backupData.favorites)) {
@@ -1174,6 +1328,34 @@ private async clearAllData(): Promise<void> {
     return state.hiddenFoods.has(foodId);
   }
 
+  /**
+   * Determines if a food ID belongs to a custom food (negative ID) or database food (positive ID).
+   * @param foodId The ID to check
+   * @returns Object with isCustom and isDatabase flags
+   */
+  static getFoodType(foodId: number): { isCustom: boolean; isDatabase: boolean } {
+    return {
+      isCustom: foodId < 0,
+      isDatabase: foodId > 0
+    };
+  }
+
+  /**
+   * Finds a food by ID, searching both database and custom foods.
+   * @param foodId The ID of the food to find
+   * @param customFoods Array of custom foods to search
+   * @returns The food object or null if not found
+   */
+  findFoodById(foodId: number, customFoods: CustomFood[]): any | null {
+    if (foodId < 0) {
+      // Look in custom foods
+      return customFoods.find(f => f.id === foodId) || null;
+    } else {
+      // Look in main database
+      return this.foodDatabase.find(f => f.id === foodId) || null;
+    }
+  }
+
   private async loadServingPreferences(): Promise<void> {
     if (!this.db) return;
 
@@ -1375,7 +1557,19 @@ private async clearAllData(): Promise<void> {
       if (syncData.customFoods && Array.isArray(syncData.customFoods)) {
         for (const customFood of syncData.customFoods) {
           try {
-            await this.saveCustomFoodToIndexedDB(customFood);
+            if (customFood.id < 0) {
+              // Apply with existing negative ID
+              await this.saveCustomFoodToIndexedDB(customFood);
+              // Update counter if this ID is more negative
+              if (customFood.id < this.nextCustomFoodId) {
+                this.nextCustomFoodId = customFood.id - 1;
+              }
+            } else {
+              // Convert positive ID to negative (migration scenario)
+              const newCustomFood = { ...customFood, id: this.nextCustomFoodId };
+              await this.saveCustomFoodToIndexedDB(newCustomFood);
+              this.nextCustomFoodId--;
+            }
           } catch (error) {
             console.warn('Failed to apply synced custom food:', customFood.name, error);
           }
