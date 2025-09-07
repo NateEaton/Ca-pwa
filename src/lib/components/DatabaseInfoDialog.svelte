@@ -20,6 +20,8 @@
   import { DATABASE_METADATA } from "$lib/data/foodDatabase";
   
   export let show = false;
+  
+  let notesExpanded = false;
 
   function handleClose() {
     show = false;
@@ -41,6 +43,21 @@
     if (event.key === "Escape") {
       handleClose();
     }
+  }
+
+  function toggleNotes() {
+    notesExpanded = !notesExpanded;
+  }
+
+  function getNotesPreview(notes) {
+    if (!notes) return '';
+    const sentences = notes.split('. ');
+    return sentences.slice(0, 2).join('. ') + '.';
+  }
+
+  function formatTextWithLineBreaks(text) {
+    if (!text) return '';
+    return text.replace(/\n/g, '<br>');
   }
 </script>
 
@@ -96,7 +113,16 @@
           
           <div class="notes-section">
             <h4>Processing Notes</h4>
-            <p class="notes-text">{DATABASE_METADATA.notes}</p>
+            <div class="notes-text">
+              {#if notesExpanded}
+                {@html formatTextWithLineBreaks(DATABASE_METADATA.notes)}
+              {:else}
+                {@html formatTextWithLineBreaks(getNotesPreview(DATABASE_METADATA.notes))}
+              {/if}
+            </div>
+            <button class="toggle-notes-btn" on:click={toggleNotes}>
+              {notesExpanded ? 'Show less' : 'Read more'}
+            </button>
           </div>
           
           <div class="source-link-section">
@@ -251,6 +277,27 @@
     line-height: 1.5;
     margin: 0;
     font-style: italic;
+  }
+
+  .toggle-notes-btn {
+    background: none;
+    border: 1px solid var(--primary-color);
+    color: var(--primary-color);
+    cursor: pointer;
+    font-size: 0.9em;
+    text-decoration: none;
+    margin-top: var(--spacing-sm);
+    padding: var(--spacing-xs) var(--spacing-md);
+    display: block;
+    font-style: normal;
+    border-radius: 16px;
+    width: fit-content;
+    transition: all 0.2s ease;
+  }
+
+  .toggle-notes-btn:hover {
+    background: var(--primary-color);
+    color: white;
   }
 
   .source-links {

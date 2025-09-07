@@ -28,7 +28,7 @@ export const DB = [
   },
   {
     "i": 363,
-    "n": "Veal, Shoulder, Arm, Separable Lean*",
+    "n": "Veal, shoulder, arm, separable lean only, raw",
     "m": "1 oz",
     "c": 6.24
   },
@@ -40,7 +40,7 @@ export const DB = [
   },
   {
     "i": 386,
-    "n": "Lamb, New Zealand, Imported, Square-Cut Shoulder, Separable Lean*",
+    "n": "Lamb, New Zealand, imported, square-cut shoulder, separable lean only, raw",
     "m": "4 oz",
     "c": 13.6
   },
@@ -52,13 +52,13 @@ export const DB = [
   },
   {
     "i": 391,
-    "n": "Lamb, New Zealand, Imported, Rack - Partly Frenched, Separable Lean*",
+    "n": "Lamb, New Zealand, imported, rack - partly frenched, separable lean only, cooked, fast roasted",
     "m": "3 oz",
     "c": 18.7
   },
   {
     "i": 393,
-    "n": "Lamb, New Zealand, Imported, Rack - Partly Frenched, Separable Lean*",
+    "n": "Lamb, New Zealand, imported, rack - partly frenched, separable lean only, raw",
     "m": "4 oz",
     "c": 13.6
   },
@@ -139,6 +139,12 @@ export const DB = [
     "n": "Fish, trout, brook, raw, New York State",
     "m": "1 filet",
     "c": 37.2
+  },
+  {
+    "i": 474,
+    "n": "Crustaceans, shrimp, raw",
+    "m": "3 oz",
+    "c": 54.4
   },
   {
     "i": 475,
@@ -382,7 +388,7 @@ export const DB = [
   },
   {
     "i": 521,
-    "n": "Fish, Pollock, Alaska*",
+    "n": "Fish, pollock, Alaska, raw (may contain additives to retain moisture)",
     "m": "3 oz",
     "c": 12.8
   },
@@ -1090,7 +1096,7 @@ export const DB = [
   },
   {
     "i": 689,
-    "n": "Cookies, Oatmeal, Refrigerated Dough*",
+    "n": "Cookies, oatmeal, refrigerated dough",
     "m": "1 oz",
     "c": 8.79
   },
@@ -1336,7 +1342,7 @@ export const DB = [
   },
   {
     "i": 747,
-    "n": "Biscuits, Plain Or Buttermilk, Dry Mix*",
+    "n": "Biscuits, plain or buttermilk, dry mix",
     "m": "1 oz",
     "c": 50.7
   },
@@ -1360,13 +1366,13 @@ export const DB = [
   },
   {
     "i": 754,
-    "n": "Lamb, Australian, Imported, Fresh, Leg, Hindshank, Heel On, Bone-In, Separable Lean*",
+    "n": "Lamb, Australian, imported, fresh, leg, hindshank, heel on, bone-in, separable lean and fat, trimmed to 1/8 fat, raw",
     "m": "4 oz",
     "c": 5.65
   },
   {
     "i": 757,
-    "n": "Lamb, Australian, Imported, Fresh, External Fat*",
+    "n": "Lamb, Australian, imported, fresh, external fat, raw",
     "m": "4 oz",
     "c": 11.3
   },
@@ -1384,7 +1390,7 @@ export const DB = [
   },
   {
     "i": 763,
-    "n": "Lamb, Australian, Imported, Fresh, Rack, Roast, Frenched, Bone-In, Separable Lean*",
+    "n": "Lamb, Australian, imported, fresh, rack, roast, frenched, bone-in, separable lean only, trimmed to 1/8 fat, cooked, roasted",
     "m": "3 oz",
     "c": 5.1
   },
@@ -1408,7 +1414,7 @@ export const DB = [
   },
   {
     "i": 773,
-    "n": "Lamb, New Zealand, Imported, Square-Cut Shoulder, Separable Lean*",
+    "n": "Lamb, New Zealand, imported, square-cut shoulder, separable lean and fat, cooked, slow roasted",
     "m": "3 oz",
     "c": 10.2
   },
@@ -1426,7 +1432,7 @@ export const DB = [
   },
   {
     "i": 778,
-    "n": "Lamb, New Zealand, Imported, Square-Cut Shoulder Chops, Separable Lean*",
+    "n": "Lamb, New Zealand, imported, square-cut shoulder chops, separable lean and fat, raw",
     "m": "4 oz",
     "c": 24.9
   },
@@ -1630,7 +1636,7 @@ export const DB = [
   },
   {
     "i": 859,
-    "n": "Beef, Flank, Steak, Separable Lean*",
+    "n": "Beef, flank, steak, separable lean only, trimmed to 0 fat, select, raw",
     "m": "4 oz",
     "c": 23.7
   },
@@ -1642,13 +1648,13 @@ export const DB = [
   },
   {
     "i": 861,
-    "n": "Beef, Flank, Steak, Separable Lean*",
+    "n": "Beef, flank, steak, separable lean only, trimmed to 0 fat, all grades, raw",
     "m": "4 oz",
     "c": 27.1
   },
   {
     "i": 865,
-    "n": "Beef, Bottom Sirloin, Tri-Tip Roast, Separable Lean*",
+    "n": "Beef, bottom sirloin, tri-tip roast, separable lean only, trimmed to 0 fat, choice, raw",
     "m": "4 oz",
     "c": 30.5
   },
@@ -1660,19 +1666,19 @@ export const DB = [
   },
   {
     "i": 869,
-    "n": "Beef, Bottom Sirloin, Tri-Tip Roast, Separable Lean*",
+    "n": "Beef, bottom sirloin, tri-tip roast, separable lean only, trimmed to 0 fat, all grades, raw",
     "m": "4 oz",
     "c": 26
   },
   {
     "i": 871,
-    "n": "Beef, Brisket, Flat Half, Separable Lean*",
+    "n": "Beef, brisket, flat half, separable lean only, trimmed to 1/8 fat, select, raw",
     "m": "4 oz",
     "c": 20.3
   },
   {
     "i": 872,
-    "n": "Beef, Top Sirloin, Steak, Separable Lean*",
+    "n": "Beef, top sirloin, steak, separable lean only, trimmed to 1/8 fat, choice, raw",
     "m": "4 oz",
     "c": 31.6
   },
@@ -1684,7 +1690,7 @@ export const DB = [
   },
   {
     "i": 874,
-    "n": "Beef, Tenderloin, Steak, Separable Lean*",
+    "n": "Beef, tenderloin, steak, separable lean only, trimmed to 1/8 fat, choice, raw",
     "m": "4 oz",
     "c": 31.6
   },
@@ -1696,7 +1702,7 @@ export const DB = [
   },
   {
     "i": 876,
-    "n": "Beef, Rib, Small End (Ribs 10-12), Separable Lean*",
+    "n": "Beef, rib, small end (ribs 10-12), separable lean only, trimmed to 1/8 fat, choice, raw",
     "m": "4 oz",
     "c": 31.6
   },
@@ -1786,7 +1792,7 @@ export const DB = [
   },
   {
     "i": 898,
-    "n": "Beef, New Zealand, Imported, Brisket Point End, Separable Lean*",
+    "n": "Beef, New Zealand, imported, brisket point end, separable lean and fat, raw",
     "m": "4 oz",
     "c": 5.65
   },
@@ -1840,7 +1846,7 @@ export const DB = [
   },
   {
     "i": 913,
-    "n": "Beef, New Zealand, Imported, Hind Shin, Separable Lean*",
+    "n": "Beef, New Zealand, imported, hind shin, separable lean only, raw",
     "m": "4 oz",
     "c": 4.52
   },
@@ -1864,19 +1870,19 @@ export const DB = [
   },
   {
     "i": 919,
-    "n": "Beef, New Zealand, Imported, Cube Roll, Separable Lean*",
+    "n": "Beef, New Zealand, imported, cube roll, separable lean only, cooked, fast roasted",
     "m": "3 oz",
     "c": 4.25
   },
   {
     "i": 922,
-    "n": "Beef, New Zealand, Imported, Bolar Blade, Separable Lean*",
+    "n": "Beef, New Zealand, imported, bolar blade, separable lean only, cooked, fast roasted",
     "m": "3 oz",
     "c": 4.25
   },
   {
     "i": 924,
-    "n": "Beef, Top Loin Petite Roast/Filet, Boneless, Separable Lean*",
+    "n": "Beef, top loin petite roast/filet, boneless, separable lean and fat, trimmed to 1/8 fat, all grades, raw",
     "m": "4 oz",
     "c": 6.78
   },
@@ -1894,7 +1900,7 @@ export const DB = [
   },
   {
     "i": 930,
-    "n": "Beef, Loin, Top Sirloin Cap Steak, Boneless, Separable Lean*",
+    "n": "Beef, loin, top sirloin cap steak, boneless, separable lean and fat, trimmed to 1/8 fat, all grades, raw",
     "m": "4 oz",
     "c": 6.78
   },
@@ -1906,7 +1912,7 @@ export const DB = [
   },
   {
     "i": 932,
-    "n": "Beef, Loin, Top Sirloin Cap Steak, Boneless, Separable Lean*",
+    "n": "Beef, loin, top sirloin cap steak, boneless, separable lean and fat, trimmed to 1/8 fat, choice, raw",
     "m": "4 oz",
     "c": 6.78
   },
@@ -1984,7 +1990,7 @@ export const DB = [
   },
   {
     "i": 946,
-    "n": "Beef, Top Loin Petite Roast/Filet, Boneless, Separable Lean*",
+    "n": "Beef, top loin petite roast/filet, boneless, separable lean only, trimmed to 1/8 fat, choice, raw",
     "m": "4 oz",
     "c": 5.65
   },
@@ -2139,10 +2145,22 @@ export const DB = [
     "c": 7.2
   },
   {
+    "i": 1018,
+    "n": "Sausage, breakfast sausage, beef, pre-cooked, unprepared",
+    "m": "1 link",
+    "c": 5.51
+  },
+  {
     "i": 1019,
     "n": "Sausage, beef, fresh, cooked",
     "m": "1 serving",
     "c": 4.73
+  },
+  {
+    "i": 1020,
+    "n": "Sausage, turkey, fresh, raw",
+    "m": "1 serving",
+    "c": 10.8
   },
   {
     "i": 1021,
@@ -2481,6 +2499,12 @@ export const DB = [
     "c": 5.61
   },
   {
+    "i": 1109,
+    "n": "Sauce, salsa, ready-to-serve",
+    "m": "2 tbsp",
+    "c": 10.8
+  },
+  {
     "i": 1110,
     "n": "Sauce, homemade, white, thick",
     "m": "0.5 cup",
@@ -2499,14 +2523,8 @@ export const DB = [
     "c": 0.096
   },
   {
-    "i": 1113,
-    "n": "Turkey, Breast, From Whole Bird, Meat Only, With Added Solution, R*",
-    "m": "3 oz",
-    "c": 11
-  },
-  {
     "i": 1114,
-    "n": "Turkey, Back, From Whole Bird, Meat Only, With Added Solution, R*",
+    "n": "Turkey, back, from whole bird, meat only, with added solution, raw",
     "m": "4 oz",
     "c": 17
   },
@@ -2674,7 +2692,7 @@ export const DB = [
   },
   {
     "i": 1171,
-    "n": "Lamb, New Zealand, Imported, Loin Saddle, Separable Lean*",
+    "n": "Lamb, New Zealand, imported, loin saddle, separable lean and fat, cooked, fast roasted",
     "m": "3 oz",
     "c": 5.95
   },
@@ -2692,7 +2710,7 @@ export const DB = [
   },
   {
     "i": 1174,
-    "n": "Lamb, New Zealand, Imported, Loin Saddle, Separable Lean*",
+    "n": "Lamb, New Zealand, imported, loin saddle, separable lean and fat, raw",
     "m": "4 oz",
     "c": 6.78
   },
@@ -2704,7 +2722,7 @@ export const DB = [
   },
   {
     "i": 1177,
-    "n": "Lamb, New Zealand, Imported, Neck Chops, Separable Lean*",
+    "n": "Lamb, New Zealand, imported, neck chops, separable lean only, raw",
     "m": "4 oz",
     "c": 26
   },
@@ -2758,7 +2776,7 @@ export const DB = [
   },
   {
     "i": 1192,
-    "n": "Lamb, New Zealand, Imported, Flap, Boneless, Separable Lean*",
+    "n": "Lamb, New Zealand, imported, flap, boneless, separable lean only, raw",
     "m": "4 oz",
     "c": 7.91
   },
@@ -2800,13 +2818,13 @@ export const DB = [
   },
   {
     "i": 1200,
-    "n": "Veal, Australian, Shank, Fore, Bone-In, Separable Lean*",
+    "n": "Veal, Australian, shank, fore, bone-in, separable lean only, raw",
     "m": "4 oz",
     "c": 18.1
   },
   {
     "i": 1214,
-    "n": "Lamb, Australian, Imported, Fresh, Shoulder, Arm, Separable Lean*",
+    "n": "Lamb, Australian, imported, fresh, shoulder, arm, separable lean only, trimmed to 1/8 fat, raw",
     "m": "1 oz",
     "c": 4.25
   },
@@ -2824,19 +2842,19 @@ export const DB = [
   },
   {
     "i": 1226,
-    "n": "Lamb, Australian, Imported, Fresh, Leg, Sirloin Half, Boneless, Separable Lean*",
+    "n": "Lamb, Australian, imported, fresh, leg, sirloin half, boneless, separable lean only, trimmed to 1/8 fat, raw",
     "m": "1 oz",
     "c": 2.84
   },
   {
     "i": 1228,
-    "n": "Lamb, Australian, Imported, Fresh, Leg, Center Slice, Bone-In, Separable Lean*",
+    "n": "Lamb, Australian, imported, fresh, leg, center slice, bone-in, separable lean only, trimmed to 1/8 fat, raw",
     "m": "1 oz",
     "c": 2.55
   },
   {
     "i": 1232,
-    "n": "Lamb, Australian, Imported, Fresh, Foreshank, Separable Lean*",
+    "n": "Lamb, Australian, imported, fresh, foreshank, separable lean only, trimmed to 1/8 fat, raw",
     "m": "3 oz",
     "c": 9.35
   },
@@ -2866,7 +2884,7 @@ export const DB = [
   },
   {
     "i": 1249,
-    "n": "Lamb, Shoulder, Arm, Separable Lean And Fat, Trimmed To 1/8 Fat, Choice, R*",
+    "n": "Lamb, shoulder, arm, separable lean and fat, trimmed to 1/8 fat, choice, raw",
     "m": "1 oz",
     "c": 3.97
   },
@@ -2950,7 +2968,7 @@ export const DB = [
   },
   {
     "i": 1291,
-    "n": "Lamb, New Zealand, Imported, Leg Chop/Steak, Bone-In, Separable Lean*",
+    "n": "Lamb, New Zealand, imported, leg chop/steak, bone-in, separable lean and fat, raw",
     "m": "4 oz",
     "c": 11.3
   },
@@ -2962,7 +2980,7 @@ export const DB = [
   },
   {
     "i": 1306,
-    "n": "Lamb, Shoulder, Blade, Separable Lean*",
+    "n": "Lamb, shoulder, blade, separable lean only, trimmed to 1/4 fat, choice, raw",
     "m": "1 oz",
     "c": 4.54
   },
@@ -2980,7 +2998,7 @@ export const DB = [
   },
   {
     "i": 1317,
-    "n": "Lamb, Rib, Separable Lean*",
+    "n": "Lamb, rib, separable lean and fat, trimmed to 1/4 fat, choice, raw",
     "m": "1 oz",
     "c": 4.25
   },
@@ -3007,6 +3025,12 @@ export const DB = [
     "n": "Chickpea flour (besan)",
     "m": "1 cup",
     "c": 41.4
+  },
+  {
+    "i": 1346,
+    "n": "Hummus, commercial",
+    "m": "1 tbsp",
+    "c": 7.05
   },
   {
     "i": 1347,
@@ -3052,7 +3076,7 @@ export const DB = [
   },
   {
     "i": 1356,
-    "n": "Soy Sauce Made From Soy And Wheat (Shoyu)*",
+    "n": "Soy sauce made from soy and wheat (shoyu)",
     "m": "1 tbsp",
     "c": 5.28
   },
@@ -3076,7 +3100,7 @@ export const DB = [
   },
   {
     "i": 1361,
-    "n": "Tempeh*",
+    "n": "Tempeh",
     "m": "1 cup",
     "c": 184
   },
@@ -3088,7 +3112,7 @@ export const DB = [
   },
   {
     "i": 1363,
-    "n": "Soy Flour, Full-Fat, R*",
+    "n": "Soy flour, full-fat, raw",
     "m": "1 tbsp",
     "c": 10.7
   },
@@ -3387,12 +3411,6 @@ export const DB = [
     "c": 41.6
   },
   {
-    "i": 1425,
-    "n": "Crustaceans, shrimp, mixed species, raw (may contain additives to retain moisture)",
-    "m": "3 oz",
-    "c": 45.9
-  },
-  {
     "i": 1426,
     "n": "Crustaceans, lobster, northern, cooked, moist heat",
     "m": "3 oz",
@@ -3424,7 +3442,7 @@ export const DB = [
   },
   {
     "i": 1431,
-    "n": "Crustaceans, Crab, Blue*",
+    "n": "Crustaceans, crab, blue, raw",
     "m": "3 oz",
     "c": 75.6
   },
@@ -4006,7 +4024,7 @@ export const DB = [
   },
   {
     "i": 1571,
-    "n": "Beef, Top Sirloin, Steak, Separable Lean*",
+    "n": "Beef, top sirloin, steak, separable lean only, trimmed to 1/8 fat, all grades, raw",
     "m": "4 oz",
     "c": 28.2
   },
@@ -4024,13 +4042,13 @@ export const DB = [
   },
   {
     "i": 1574,
-    "n": "Beef, Chuck, Arm Pot Roast, Separable Lean*",
+    "n": "Beef, chuck, arm pot roast, separable lean only, trimmed to 1/8 fat, choice, raw",
     "m": "4 oz",
     "c": 17
   },
   {
     "i": 1577,
-    "n": "Beef, Chuck, Arm Pot Roast, Separable Lean*",
+    "n": "Beef, chuck, arm pot roast, separable lean only, trimmed to 1/8 fat, all grades, raw",
     "m": "4 oz",
     "c": 18.1
   },
@@ -4150,7 +4168,7 @@ export const DB = [
   },
   {
     "i": 1603,
-    "n": "Beef, Chuck, Clod Roast, Separable Lean*",
+    "n": "Beef, chuck, clod roast, separable lean and fat, trimmed to 0 fat, choice, cooked, roasted",
     "m": "3 oz",
     "c": 6.8
   },
@@ -4186,7 +4204,7 @@ export const DB = [
   },
   {
     "i": 1612,
-    "n": "Beef, Composite Of Trimmed Retail Cuts, Separable Lean*",
+    "n": "Beef, composite of trimmed retail cuts, separable lean and fat, trimmed to 0 fat, choice, raw",
     "m": "4 oz",
     "c": 14.7
   },
@@ -4198,25 +4216,25 @@ export const DB = [
   },
   {
     "i": 1614,
-    "n": "Beef, Composite Of Trimmed Retail Cuts, Separable Lean*",
+    "n": "Beef, composite of trimmed retail cuts, separable lean only, trimmed to 1/8 fat, choice, raw",
     "m": "4 oz",
     "c": 20.3
   },
   {
     "i": 1617,
-    "n": "Beef, Loin, Top Loin Steak, Boneless, Lip-On, Separable Lean*",
+    "n": "Beef, loin, top loin steak, boneless, lip-on, separable lean only, trimmed to 1/8 fat, all grades, raw",
     "m": "4 oz",
     "c": 17
   },
   {
     "i": 1618,
-    "n": "Beef, Loin, Top Loin Steak, Boneless, Lip-On, Separable Lean*",
+    "n": "Beef, Loin, Top Loin Steak, Boneless, Lip-On, Separable Lean Only, Trimmed To 1/8 Fat, Choice, Raw*",
     "m": "4 oz",
     "c": 17
   },
   {
     "i": 1619,
-    "n": "Beef, Loin, Top Loin Steak, Boneless, Lip-On, Separable Lean*",
+    "n": "Beef, loin, top loin steak, boneless, lip-on, separable lean only, trimmed to 1/8 fat, select, raw",
     "m": "4 oz",
     "c": 15.8
   },
@@ -4228,7 +4246,7 @@ export const DB = [
   },
   {
     "i": 1625,
-    "n": "Beef, Loin, Tenderloin Roast, Boneless, Separable Lean*",
+    "n": "Beef, loin, tenderloin roast, boneless, separable lean only, trimmed to 0 fat, choice, raw",
     "m": "4 oz",
     "c": 14.7
   },
@@ -4282,7 +4300,7 @@ export const DB = [
   },
   {
     "i": 1639,
-    "n": "Beef, Loin, Tenderloin Steak, Boneless, Separable Lean*",
+    "n": "Beef, loin, tenderloin steak, boneless, separable lean and fat, trimmed to 0 fat, all grades, raw",
     "m": "4 oz",
     "c": 15.8
   },
@@ -4294,13 +4312,13 @@ export const DB = [
   },
   {
     "i": 1641,
-    "n": "Beef, Loin, Tenderloin Steak, Boneless, Separable Lean*",
+    "n": "Beef, loin, tenderloin steak, boneless, separable lean and fat, trimmed to 0 fat, choice, raw",
     "m": "4 oz",
     "c": 15.8
   },
   {
     "i": 1642,
-    "n": "Beef, Loin, Tenderloin Roast, Boneless, Separable Lean*",
+    "n": "Beef, loin, tenderloin roast, boneless, separable lean and fat, trimmed to 0 fat, all grades, raw",
     "m": "4 oz",
     "c": 15.8
   },
@@ -4348,7 +4366,7 @@ export const DB = [
   },
   {
     "i": 1651,
-    "n": "Beef, Australian, Imported, Grass-Fed, Round, Bottom Round Steak/Roast, Boneless, Separable Lean*",
+    "n": "Beef, Australian, imported, grass-fed, round, bottom round steak/roast, boneless, separable lean and fat, raw",
     "m": "4 oz",
     "c": 5.65
   },
@@ -4617,12 +4635,6 @@ export const DB = [
     "c": 1.32
   },
   {
-    "i": 1755,
-    "n": "Sausage, Turkey, Fresh*",
-    "m": "1 serving",
-    "c": 12.5
-  },
-  {
     "i": 1756,
     "n": "Liver cheese, pork",
     "m": "1 oz",
@@ -4677,6 +4689,12 @@ export const DB = [
     "c": 3.12
   },
   {
+    "i": 1766,
+    "n": "Frankfurter, beef, unheated",
+    "m": "1 package",
+    "c": 62.4
+  },
+  {
     "i": 1767,
     "n": "Corned beef loaf, jellied",
     "m": "1 slice (1 oz) (4 x 4 x 3/32 thick)",
@@ -4714,7 +4732,7 @@ export const DB = [
   },
   {
     "i": 1777,
-    "n": "Veal, Australian, Rib, Rib Roast, Separable Lean*",
+    "n": "Veal, Australian, rib, rib roast, separable lean and fat, raw",
     "m": "4 oz",
     "c": 10.2
   },
@@ -5806,7 +5824,7 @@ export const DB = [
   },
   {
     "i": 2183,
-    "n": "Sour Cream*",
+    "n": "Sour cream, reduced fat",
     "m": "1 cup",
     "c": 324
   },
@@ -5841,6 +5859,12 @@ export const DB = [
     "c": 84.5
   },
   {
+    "i": 2190,
+    "n": "Egg, yolk, raw, frozen, salted, pasteurized",
+    "m": "1 oz",
+    "c": 32
+  },
+  {
     "i": 2191,
     "n": "Cheese, mexican, queso asadero",
     "m": "1 slice (1 oz)",
@@ -5869,6 +5893,12 @@ export const DB = [
     "n": "Cheese, parmesan, shredded",
     "m": "1 tbsp",
     "c": 62.6
+  },
+  {
+    "i": 2197,
+    "n": "Egg, yolk, dried",
+    "m": "1 tbsp",
+    "c": 11.6
   },
   {
     "i": 2198,
@@ -5974,19 +6004,19 @@ export const DB = [
   },
   {
     "i": 2218,
-    "n": "Beef, Rib Eye Steak, Boneless, Lip Off, Separable Lean*",
+    "n": "Beef, rib eye steak, boneless, lip off, separable lean and fat, trimmed to 0 fat, choice, raw",
     "m": "4 oz",
     "c": 9.04
   },
   {
     "i": 2219,
-    "n": "Beef, Rib, Back Ribs, Bone-In, Separable Lean*",
+    "n": "Beef, rib, back ribs, bone-in, separable lean and fat, trimmed to 0 fat, choice, raw",
     "m": "4 oz",
     "c": 10.2
   },
   {
     "i": 2220,
-    "n": "Beef, Rib, Back Ribs, Bone-In, Separable Lean*",
+    "n": "Beef, rib, back ribs, bone-in, separable lean and fat, trimmed to 0 fat, select, raw",
     "m": "4 oz",
     "c": 11.3
   },
@@ -6004,7 +6034,7 @@ export const DB = [
   },
   {
     "i": 2225,
-    "n": "Beef, Plate Steak, Boneless, Outside Skirt, Separable Lean*",
+    "n": "Beef, plate steak, boneless, outside skirt, separable lean and fat, trimmed to 0 fat, all grades, raw",
     "m": "4 oz",
     "c": 6.78
   },
@@ -6022,7 +6052,7 @@ export const DB = [
   },
   {
     "i": 2232,
-    "n": "Beef, Rib Eye Steak/Roast, Boneless, Lip-On, Separable Lean*",
+    "n": "Beef, rib eye steak/roast, boneless, lip-on, separable lean and fat, trimmed to 1/8 fat, choice, raw",
     "m": "4 oz",
     "c": 9.04
   },
@@ -6046,13 +6076,13 @@ export const DB = [
   },
   {
     "i": 2240,
-    "n": "Beef, Rib Eye Roast, Bone-In, Lip-On, Separable Lean*",
+    "n": "Beef, rib eye roast, bone-in, lip-on, separable lean and fat, trimmed to 1/8 fat, choice, cooked, roasted",
     "m": "3 oz",
     "c": 11
   },
   {
     "i": 2249,
-    "n": "Beef, Plate Steak, Boneless, Outside Skirt, Separable Lean*",
+    "n": "Beef, plate steak, boneless, outside skirt, separable lean only, trimmed to 0 fat, choice, raw",
     "m": "4 oz",
     "c": 5.65
   },
@@ -6136,7 +6166,7 @@ export const DB = [
   },
   {
     "i": 2275,
-    "n": "Beef, Short Loin, Porterhouse Steak, Separable Lean*",
+    "n": "Beef, short loin, porterhouse steak, separable lean and fat, trimmed to 1/8 fat, all grades, raw",
     "m": "4 oz",
     "c": 21.5
   },
@@ -6640,37 +6670,37 @@ export const DB = [
   },
   {
     "i": 2481,
-    "n": "Beef, Round, Tip Round, Roast, Separable Lean*",
+    "n": "Beef, round, tip round, roast, separable lean only, trimmed to 0 fat, all grades, raw",
     "m": "4 oz",
     "c": 20.3
   },
   {
     "i": 2482,
-    "n": "Beef, Round, Tip Round, Roast, Separable Lean*",
+    "n": "Beef, round, tip round, roast, separable lean only, trimmed to 0 fat, select, raw",
     "m": "4 oz",
     "c": 22.6
   },
   {
     "i": 2484,
-    "n": "Beef, Round, Tip Round, Roast, Separable Lean*",
+    "n": "Beef, round, tip round, roast, separable lean only, trimmed to 0 fat, choice, raw",
     "m": "4 oz",
     "c": 20.3
   },
   {
     "i": 2487,
-    "n": "Beef, Bottom Sirloin, Tri-Tip Roast, Separable Lean*",
+    "n": "Beef, bottom sirloin, tri-tip roast, separable lean only, trimmed to 0 fat, select, raw",
     "m": "4 oz",
     "c": 24.9
   },
   {
     "i": 2488,
-    "n": "Beef, Round, Eye Of Round, Roast, Separable Lean*",
+    "n": "Beef, round, eye of round, roast, separable lean only, trimmed to 1/8 fat, select, raw",
     "m": "4 oz",
     "c": 24.9
   },
   {
     "i": 2489,
-    "n": "Beef, Round, Top Round, Steak, Separable Lean*",
+    "n": "Beef, round, top round, steak, separable lean only, trimmed to 1/8 fat, select, raw",
     "m": "4 oz",
     "c": 24.9
   },
@@ -6753,10 +6783,10 @@ export const DB = [
     "c": 4.52
   },
   {
-    "i": 2517,
-    "n": "Beef, New Zealand, Imported, Subcutaneous Fat*",
-    "m": "3 oz",
-    "c": 14.4
+    "i": 2518,
+    "n": "Beef, New Zealand, imported, subcutaneous fat, raw",
+    "m": "4 oz",
+    "c": 22.6
   },
   {
     "i": 2524,
@@ -7275,16 +7305,22 @@ export const DB = [
     "c": 4.52
   },
   {
+    "i": 2738,
+    "n": "Turkey, breast, from whole bird, meat only, with added solution, raw",
+    "m": "4 oz",
+    "c": 15.8
+  },
+  {
     "i": 2739,
     "n": "Turkey, Whole, Meat Only, With Added Solution, R*",
     "m": "3 oz",
     "c": 11.9
   },
   {
-    "i": 2740,
-    "n": "Turkey, Whole, Meat And Skin, With Added Solution, R*",
-    "m": "3 oz",
-    "c": 12.8
+    "i": 2741,
+    "n": "Turkey, whole, meat and skin, with added solution, raw",
+    "m": "4 oz",
+    "c": 15.8
   },
   {
     "i": 2742,
@@ -7474,7 +7510,7 @@ export const DB = [
   },
   {
     "i": 2807,
-    "n": "Sweet Rolls, Cinnamon, Refrigerated Dough With Frosting*",
+    "n": "Sweet rolls, cinnamon, refrigerated dough with frosting, baked",
     "m": "1 oz",
     "c": 9.64
   },
@@ -7660,7 +7696,7 @@ export const DB = [
   },
   {
     "i": 2862,
-    "n": "Crackers, Whole-Wheat*",
+    "n": "Crackers, whole-wheat",
     "m": "0.5 oz",
     "c": 5.11
   },
@@ -7738,7 +7774,7 @@ export const DB = [
   },
   {
     "i": 2878,
-    "n": "Cookies, Peanut Butter, Refrigerated Dough*",
+    "n": "Cookies, peanut butter, refrigerated dough, baked",
     "m": "1 oz",
     "c": 31.5
   },
@@ -7869,6 +7905,12 @@ export const DB = [
     "c": 36.2
   },
   {
+    "i": 2924,
+    "n": "Bread, whole-wheat, commercially prepared",
+    "m": "1 slice",
+    "c": 51.5
+  },
+  {
     "i": 2925,
     "n": "Bread, reduced-calorie, oat bran, toasted",
     "m": "1 slice",
@@ -7996,7 +8038,7 @@ export const DB = [
   },
   {
     "i": 2957,
-    "n": "Veal, Foreshank, Osso Buco, Separable Lean*",
+    "n": "Veal, foreshank, osso buco, separable lean and fat, cooked, braised",
     "m": "3 oz",
     "c": 18.7
   },
@@ -8008,7 +8050,7 @@ export const DB = [
   },
   {
     "i": 2962,
-    "n": "Veal, Shank, Separable Lean*",
+    "n": "Veal, shank, separable lean and fat, raw",
     "m": "4 oz",
     "c": 13.6
   },
@@ -8092,7 +8134,7 @@ export const DB = [
   },
   {
     "i": 3000,
-    "n": "Veal, Australian, Shank, Hind, Bone-In, Separable Lean*",
+    "n": "Veal, Australian, shank, hind, bone-in, separable lean and fat, raw",
     "m": "3 oz",
     "c": 13.6
   },
@@ -8101,12 +8143,6 @@ export const DB = [
     "n": "Lamb, Australian, ground,  85% lean / 15% fat, raw",
     "m": "1 serving (4 oz)",
     "c": 10.2
-  },
-  {
-    "i": 3003,
-    "n": "Lamb, New Zealand, Imported, Intermuscular Fat*",
-    "m": "3 oz",
-    "c": 5.1
   },
   {
     "i": 3020,
@@ -8122,7 +8158,7 @@ export const DB = [
   },
   {
     "i": 3028,
-    "n": "Lamb, Australian, Imported, Fresh, Leg, Sirloin Chops, Boneless, Separable Lean*",
+    "n": "Lamb, Australian, imported, fresh, leg, sirloin chops, boneless, separable lean only, trimmed to 1/8 fat, raw",
     "m": "1 oz",
     "c": 2.55
   },
@@ -8212,7 +8248,7 @@ export const DB = [
   },
   {
     "i": 3121,
-    "n": "Lamb, Foreshank, Separable Lean*",
+    "n": "Lamb, foreshank, separable lean only, trimmed to 1/4 fat, choice, raw",
     "m": "1 oz",
     "c": 2.55
   },
@@ -9021,6 +9057,12 @@ export const DB = [
     "c": 17.4
   },
   {
+    "i": 3408,
+    "n": "Egg, white, raw, frozen, pasteurized",
+    "m": "1 oz",
+    "c": 2.24
+  },
+  {
     "i": 3409,
     "n": "Cheese, mexican, queso anejo",
     "m": "1 oz",
@@ -9073,6 +9115,12 @@ export const DB = [
     "n": "Egg, turkey, whole, fresh, raw",
     "m": "1 egg",
     "c": 78.2
+  },
+  {
+    "i": 3419,
+    "n": "Egg, whole, dried",
+    "m": "1 tbsp",
+    "c": 12.2
   },
   {
     "i": 3420,
@@ -9136,7 +9184,7 @@ export const DB = [
   },
   {
     "i": 3430,
-    "n": "Cheese, Cottage, Lowfat, 2% Milkfat*",
+    "n": "Cheese, cottage, lowfat, 2% milkfat",
     "m": "4 oz",
     "c": 125
   },
@@ -9166,7 +9214,7 @@ export const DB = [
   },
   {
     "i": 3440,
-    "n": "Beef, Rib, Back Ribs, Bone-In, Separable Lean*",
+    "n": "Beef, rib, back ribs, bone-in, separable lean and fat, trimmed to 0 fat, all grades, raw",
     "m": "4 oz",
     "c": 11.3
   },
@@ -9202,7 +9250,7 @@ export const DB = [
   },
   {
     "i": 3459,
-    "n": "Beef, Rib Eye Roast, Bone-In, Lip-On, Separable Lean*",
+    "n": "Beef, rib eye roast, bone-in, lip-on, separable lean and fat, trimmed to 1/8 fat, all grades, cooked, roasted",
     "m": "3 oz",
     "c": 11
   },
@@ -10156,7 +10204,7 @@ export const DB = [
   },
   {
     "i": 3779,
-    "n": "Beef, Round, Top Round, Steak, Separable Lean*",
+    "n": "Beef, round, top round, steak, separable lean only, trimmed to 1/8 fat, choice, raw",
     "m": "4 oz",
     "c": 22.6
   },
@@ -10168,19 +10216,19 @@ export const DB = [
   },
   {
     "i": 3784,
-    "n": "Beef, Round, Top Round, Steak, Separable Lean*",
+    "n": "Beef, round, top round, steak, separable lean only, trimmed to 1/8 fat, all grades, raw",
     "m": "4 oz",
     "c": 22.6
   },
   {
     "i": 3786,
-    "n": "Beef, Round, Eye Of Round, Roast, Separable Lean*",
+    "n": "Beef, round, eye of round, roast, separable lean only, trimmed to 1/8 fat, choice, raw",
     "m": "4 oz",
     "c": 22.6
   },
   {
     "i": 3789,
-    "n": "Beef, Tenderloin, Steak, Separable Lean*",
+    "n": "Beef, tenderloin, steak, separable lean only, trimmed to 1/8 fat, all grades, raw",
     "m": "4 oz",
     "c": 27.1
   },
@@ -10192,13 +10240,13 @@ export const DB = [
   },
   {
     "i": 3792,
-    "n": "Beef, Rib, Small End (Ribs 10-12), Separable Lean*",
+    "n": "Beef, rib, small end (ribs 10-12), separable lean only, trimmed to 1/8 fat, all grades, raw",
     "m": "4 oz",
     "c": 27.1
   },
   {
     "i": 3793,
-    "n": "Beef, Top Sirloin, Steak, Separable Lean*",
+    "n": "Beef, top sirloin, steak, separable lean only, trimmed to 1/8 fat, select, raw",
     "m": "4 oz",
     "c": 24.9
   },
@@ -10306,7 +10354,7 @@ export const DB = [
   },
   {
     "i": 3817,
-    "n": "Beef, Plate, Outside Skirt Steak, Separable Lean*",
+    "n": "Beef, plate, outside skirt steak, separable lean and fat, trimmed to 0 fat, all grades, cooked, broiled",
     "m": "3 oz",
     "c": 9.35
   },
@@ -10324,7 +10372,7 @@ export const DB = [
   },
   {
     "i": 3824,
-    "n": "Beef, Composite Of Trimmed Retail Cuts, Separable Lean*",
+    "n": "Beef, composite of trimmed retail cuts, separable lean and fat, trimmed to 0 fat, select, raw",
     "m": "4 oz",
     "c": 14.7
   },
@@ -10905,22 +10953,16 @@ export const DB = [
     "c": 12.4
   },
   {
-    "i": 4067,
-    "n": "Turkey, Drumstick, From Whole Bird, Meat Only, R*",
-    "m": "3 oz",
-    "c": 7.65
-  },
-  {
     "i": 4069,
     "n": "Turkey, retail parts, thigh, meat and skin, raw",
     "m": "4 oz",
     "c": 4.52
   },
   {
-    "i": 4071,
-    "n": "Turkey, Wing, From Whole Bird, Meat Only, With Added Solution, R*",
+    "i": 4072,
+    "n": "Turkey, wing, from whole bird, meat only, with added solution, raw",
     "m": "3 oz",
-    "c": 11
+    "c": 11.9
   },
   {
     "i": 4073,
@@ -10930,7 +10972,7 @@ export const DB = [
   },
   {
     "i": 4074,
-    "n": "Turkey, Drumstick, From Whole Bird, Meat Only, With Added Solution, R*",
+    "n": "Turkey, drumstick, from whole bird, meat only, with added solution, raw",
     "m": "4 oz",
     "c": 17
   },
@@ -11143,6 +11185,12 @@ export const DB = [
     "n": "Chicken, broilers or fryers, breast, meat and skin, raw",
     "m": "0.5 breast, bone removed (yield from 1 lb ready-to-cook chicken)",
     "c": 9.57
+  },
+  {
+    "i": 4125,
+    "n": "Chicken, broilers or fryers, breast, meat only, cooked, roasted",
+    "m": "1 cup, chopped or diced",
+    "c": 21
   },
   {
     "i": 4126,
@@ -11421,6 +11469,12 @@ export const DB = [
     "c": 2.48
   },
   {
+    "i": 4180,
+    "n": "Salad dressing, french dressing, commercial, regular",
+    "m": "1 tbsp",
+    "c": 4.32
+  },
+  {
     "i": 4182,
     "n": "Oil, olive, salad or cooking",
     "m": "1 tablespoon",
@@ -11667,6 +11721,12 @@ export const DB = [
     "c": 673
   },
   {
+    "i": 4293,
+    "n": "Yogurt, Greek, plain, whole milk",
+    "m": "100 g",
+    "c": 100
+  },
+  {
     "i": 4294,
     "n": "Ice cream bar, covered with chocolate and nuts",
     "m": "100 g",
@@ -11752,7 +11812,7 @@ export const DB = [
   },
   {
     "i": 4314,
-    "n": "Yogurt, Plain, Whole Milk*",
+    "n": "Yogurt, plain, whole milk",
     "m": "1 cup (8 fl oz)",
     "c": 296
   },
@@ -11799,6 +11859,12 @@ export const DB = [
     "c": 869
   },
   {
+    "i": 4322,
+    "n": "Milk, nonfat, fluid, protein fortified, with added vitamin A and vitamin D (fat free and skim)",
+    "m": "1 cup",
+    "c": 352
+  },
+  {
     "i": 4323,
     "n": "Milk, nonfat, fluid, with added nonfat milk solids, vitamin A and vitamin D (fat free or skim)",
     "m": "1 cup",
@@ -11827,6 +11893,24 @@ export const DB = [
     "n": "Milk, producer, fluid, 3.7% milkfat",
     "m": "1 cup",
     "c": 290
+  },
+  {
+    "i": 4328,
+    "n": "Milk, reduced fat, fluid, 2% milkfat, with added vitamin A and vitamin D",
+    "m": "1 cup",
+    "c": 293
+  },
+  {
+    "i": 4329,
+    "n": "Milk, lowfat, fluid, 1% milkfat, protein fortified, with added vitamin A and vitamin D",
+    "m": "1 cup",
+    "c": 349
+  },
+  {
+    "i": 4330,
+    "n": "Milk, whole, 3.25% milkfat, with added vitamin D",
+    "m": "1 cup",
+    "c": 276
   },
   {
     "i": 4332,
@@ -11920,7 +12004,7 @@ export const DB = [
   },
   {
     "i": 4348,
-    "n": "Cheese, Parmesan, Grated*",
+    "n": "Cheese, parmesan, grated",
     "m": "1 oz",
     "c": 242
   },
@@ -11962,7 +12046,7 @@ export const DB = [
   },
   {
     "i": 4355,
-    "n": "Cheese, Mozzarella*",
+    "n": "Cheese, mozzarella, low moisture, part-skim",
     "m": "1 slice (1 oz)",
     "c": 195
   },
@@ -11974,7 +12058,7 @@ export const DB = [
   },
   {
     "i": 4362,
-    "n": "Beef, Chuck Eye Steak, Boneless, Separable Lean*",
+    "n": "Beef, chuck eye steak, boneless, separable lean and fat, trimmed to 0 fat, all grades, raw",
     "m": "4 oz",
     "c": 15.8
   },
@@ -12034,7 +12118,7 @@ export const DB = [
   },
   {
     "i": 4383,
-    "n": "Beef, Chuck, Under Blade Center Steak, Boneless, Denver Cut, Separable Lean*",
+    "n": "Beef, chuck, under blade center steak, boneless, Denver Cut, separable lean and fat, trimmed to 0 fat, choice, raw",
     "m": "4 oz",
     "c": 12.4
   },
@@ -12064,13 +12148,13 @@ export const DB = [
   },
   {
     "i": 4402,
-    "n": "Beef, Chuck Eye Country-Style Ribs, Boneless, Separable Lean*",
+    "n": "Beef, chuck eye Country-Style ribs, boneless, separable lean only, trimmed to 0 fat, select, raw",
     "m": "4 oz",
     "c": 17
   },
   {
     "i": 4403,
-    "n": "Beef, Chuck Eye Country-Style Ribs, Boneless, Separable Lean*",
+    "n": "Beef, chuck eye Country-Style ribs, boneless, separable lean only, trimmed to 0 fat, all grades, raw",
     "m": "4 oz",
     "c": 17
   },
@@ -12165,10 +12249,10 @@ export const DB = [
     "c": 42.4
   },
   {
-    "i": 4455,
-    "n": "Turkey, Back, From Whole Bird, Meat And Skin, With Added Solution, R*",
-    "m": "3 oz",
-    "c": 12.8
+    "i": 4457,
+    "n": "Turkey, back, from whole bird, meat and skin, with added solution, raw",
+    "m": "4 oz",
+    "c": 15.8
   },
   {
     "i": 4460,
@@ -12177,10 +12261,10 @@ export const DB = [
     "c": 10.2
   },
   {
-    "i": 4463,
-    "n": "Turkey, Thigh, From Whole Bird, Meat Only, With Added Solution, R*",
-    "m": "3 oz",
-    "c": 13.6
+    "i": 4462,
+    "n": "Turkey, drumstick, from whole bird, meat only, raw",
+    "m": "4 oz",
+    "c": 12.4
   },
   {
     "i": 4464,
@@ -12193,6 +12277,12 @@ export const DB = [
     "n": "Turkey, retail parts, breast, meat and skin, with added solution, raw",
     "m": "4 oz",
     "c": 10.2
+  },
+  {
+    "i": 4468,
+    "n": "Turkey, thigh, from whole bird, meat only, with added solution, raw",
+    "m": "4 oz",
+    "c": 17
   },
   {
     "i": 4472,
@@ -12373,12 +12463,6 @@ export const DB = [
     "n": "Squab, (pigeon), light meat without skin, raw",
     "m": "1 unit (yield from 1 lb ready-to-cook squab)",
     "c": 15.1
-  },
-  {
-    "i": 4516,
-    "n": "Chicken, Broilers Or Fryers, Breast, Meat Only, Cooked*",
-    "m": "1 unit (yield from 1 lb ready-to-cook chicken)",
-    "c": 8.32
   },
   {
     "i": 4517,
@@ -12607,12 +12691,6 @@ export const DB = [
     "n": "Oil, safflower, salad or cooking, high oleic (primary safflower oil of commerce)",
     "m": "1 tablespoon",
     "c": 0
-  },
-  {
-    "i": 4570,
-    "n": "Salad Dressing, French Dressing, Commercial, Regular*",
-    "m": "1 tablespoon",
-    "c": 3.6
   },
   {
     "i": 4571,
@@ -13125,6 +13203,12 @@ export const DB = [
     "c": 296
   },
   {
+    "i": 4742,
+    "n": "Cheese, ricotta, whole milk",
+    "m": "1 cup",
+    "c": 507
+  },
+  {
     "i": 4744,
     "n": "Cheese, tilsit",
     "m": "1 oz",
@@ -13144,7 +13228,7 @@ export const DB = [
   },
   {
     "i": 4748,
-    "n": "Cheese, Monterey*",
+    "n": "Cheese, monterey",
     "m": "1 package (6 oz)",
     "c": 1270
   },
@@ -13168,13 +13252,13 @@ export const DB = [
   },
   {
     "i": 4758,
-    "n": "Beef, Chuck Eye Steak, Boneless, Separable Lean*",
+    "n": "Beef, chuck eye steak, boneless, separable lean and fat, trimmed to 0 fat, select, raw",
     "m": "4 oz",
     "c": 15.8
   },
   {
     "i": 4762,
-    "n": "Beef, Chuck Eye Steak, Boneless, Separable Lean*",
+    "n": "Beef, chuck eye steak, boneless, separable lean and fat, trimmed to 0 fat, choice, raw",
     "m": "4 oz",
     "c": 15.8
   },
@@ -13299,12 +13383,6 @@ export const DB = [
     "c": 11.8
   },
   {
-    "i": 4907,
-    "n": "Bulgur, Dry*",
-    "m": "1 cup",
-    "c": 49
-  },
-  {
     "i": 4910,
     "n": "Amaranth grain, uncooked",
     "m": "1 cup",
@@ -13377,6 +13455,12 @@ export const DB = [
     "c": 7.32
   },
   {
+    "i": 4936,
+    "n": "Ice creams, vanilla, fat free",
+    "m": "0.5 cup",
+    "c": 99.8
+  },
+  {
     "i": 4938,
     "n": "Snacks, Sesame Sticks, Wheat-Based*",
     "m": "1 oz",
@@ -13408,7 +13492,7 @@ export const DB = [
   },
   {
     "i": 4944,
-    "n": "Snacks, Potato Chips, Plain*",
+    "n": "Snacks, potato chips, plain, unsalted",
     "m": "1 bag (8 oz)",
     "c": 54.5
   },
@@ -13462,7 +13546,7 @@ export const DB = [
   },
   {
     "i": 4964,
-    "n": "Beef, Round, Bottom Round, Steak, Separable Lean*",
+    "n": "Beef, round, bottom round, steak, separable lean only, trimmed to 0 fat, all grades, cooked, braised",
     "m": "3 oz",
     "c": 5.95
   },
@@ -13474,7 +13558,7 @@ export const DB = [
   },
   {
     "i": 4966,
-    "n": "Beef, Round, Bottom Round, Roast, Separable Lean*",
+    "n": "Beef, round, bottom round, roast, separable lean only, trimmed to 0 fat, all grades, cooked, roasted",
     "m": "3 oz",
     "c": 5.1
   },
@@ -13486,7 +13570,7 @@ export const DB = [
   },
   {
     "i": 4968,
-    "n": "Beef, Rib, Small End (Ribs 10-12), Separable Lean*",
+    "n": "Beef, rib, small end (ribs 10-12), separable lean only, trimmed to 0 fat, all grades, cooked, broiled",
     "m": "3 oz",
     "c": 16.2
   },
@@ -13498,7 +13582,7 @@ export const DB = [
   },
   {
     "i": 4970,
-    "n": "Beef, Rib, Large End (Ribs 6-9), Separable Lean*",
+    "n": "Beef, rib, large end (ribs 6-9), separable lean only, trimmed to 0 fat, choice, cooked, roasted",
     "m": "3 oz",
     "c": 6.8
   },
@@ -13528,7 +13612,7 @@ export const DB = [
   },
   {
     "i": 4977,
-    "n": "Beef, Rib, Large End (Ribs 6-9), Separable Lean*",
+    "n": "Beef, rib, large end (ribs 6-9), separable lean and fat, trimmed to 0 fat, select, cooked, roasted",
     "m": "3 oz",
     "c": 7.65
   },
@@ -13540,13 +13624,13 @@ export const DB = [
   },
   {
     "i": 4980,
-    "n": "Beef, Brisket, Whole, Separable Lean*",
+    "n": "Beef, brisket, whole, separable lean and fat, trimmed to 0 fat, all grades, cooked, braised",
     "m": "3 oz",
     "c": 5.95
   },
   {
     "i": 4982,
-    "n": "Beef, Brisket, Flat Half, Separable Lean*",
+    "n": "Beef, brisket, flat half, separable lean and fat, trimmed to 0 fat, all grades, cooked, braised",
     "m": "3 oz",
     "c": 16.2
   },
@@ -13570,7 +13654,7 @@ export const DB = [
   },
   {
     "i": 4991,
-    "n": "Beef, Brisket, Flat Half, Separable Lean*",
+    "n": "Beef, brisket, flat half, separable lean only, trimmed to 0 fat, choice, cooked, braised",
     "m": "3 oz",
     "c": 11.9
   },
@@ -13666,7 +13750,7 @@ export const DB = [
   },
   {
     "i": 5011,
-    "n": "Nuts, Mixed Nuts, Dry Roasted, With Peanuts, With*",
+    "n": "Nuts, mixed nuts, dry roasted, with peanuts, without salt added",
     "m": "1 oz",
     "c": 24.7
   },
@@ -13689,12 +13773,6 @@ export const DB = [
     "c": 26.4
   },
   {
-    "i": 5016,
-    "n": "Nuts, Hazelnuts Or Filberts*",
-    "m": "1 oz (21 whole kernels)",
-    "c": 32.3
-  },
-  {
     "i": 5018,
     "n": "Nuts, chestnuts, european, dried, unpeeled",
     "m": "1 oz",
@@ -13705,12 +13783,6 @@ export const DB = [
     "n": "Nuts, butternuts, dried",
     "m": "1 oz",
     "c": 15
-  },
-  {
-    "i": 5020,
-    "n": "Nuts, Chestnuts, Chinese, R*",
-    "m": "1 oz",
-    "c": 5.39
   },
   {
     "i": 5021,
@@ -13885,12 +13957,6 @@ export const DB = [
     "n": "Tomato Juice, Canned, With*",
     "m": "1 cup",
     "c": 24.3
-  },
-  {
-    "i": 5055,
-    "n": "Squash, Winter, Hubbard*",
-    "m": "1 cup, cubes",
-    "c": 34.8
   },
   {
     "i": 5056,
@@ -14134,7 +14200,7 @@ export const DB = [
   },
   {
     "i": 5121,
-    "n": "Vegetable Juice Cocktail*",
+    "n": "Vegetable juice cocktail, low sodium, canned",
     "m": "1 cup",
     "c": 38.1
   },
@@ -14167,12 +14233,6 @@ export const DB = [
     "n": "Tomatoes, green, raw",
     "m": "1 slice or wedge",
     "c": 2.6
-  },
-  {
-    "i": 5139,
-    "n": "Taro, Tahitian*",
-    "m": "1 cup slices",
-    "c": 204
   },
   {
     "i": 5142,
@@ -14266,7 +14326,7 @@ export const DB = [
   },
   {
     "i": 5172,
-    "n": "Peas, Green*",
+    "n": "Peas, green, raw",
     "m": "1 cup",
     "c": 36.2
   },
@@ -14320,7 +14380,7 @@ export const DB = [
   },
   {
     "i": 5192,
-    "n": "Collards, Raw*",
+    "n": "Collards, raw",
     "m": "1 cup, chopped",
     "c": 83.5
   },
@@ -14362,7 +14422,7 @@ export const DB = [
   },
   {
     "i": 5205,
-    "n": "Brussels Sprouts, Raw*",
+    "n": "Brussels sprouts, raw",
     "m": "1 cup",
     "c": 37
   },
@@ -14391,8 +14451,14 @@ export const DB = [
     "c": 43.5
   },
   {
+    "i": 5215,
+    "n": "Broccoli, raw",
+    "m": "1 cup chopped",
+    "c": 42.8
+  },
+  {
     "i": 5216,
-    "n": "Broccoli Raab*",
+    "n": "Broccoli raab, raw",
     "m": "1 cup chopped",
     "c": 43.2
   },
@@ -14584,7 +14650,7 @@ export const DB = [
   },
   {
     "i": 5350,
-    "n": "Snacks, Corn-Based, Extruded, Puffs Or Twists, Cheese-Flavor*",
+    "n": "Snacks, corn-based, extruded, puffs or twists, cheese-flavor, unenriched",
     "m": "1 oz",
     "c": 16.4
   },
@@ -14643,16 +14709,16 @@ export const DB = [
     "c": 7.1
   },
   {
-    "i": 5391,
-    "n": "Beef, Cured, Corned Beef, Brisket*",
-    "m": "3 oz",
-    "c": 6.8
-  },
-  {
     "i": 5392,
     "n": "Beef, cured, breakfast strips, cooked",
     "m": "1 package, cooked (yield from 12 oz raw product)",
     "c": 15.3
+  },
+  {
+    "i": 5393,
+    "n": "Beef, cured, corned beef, brisket, raw",
+    "m": "1 oz",
+    "c": 1.98
   },
   {
     "i": 5395,
@@ -14740,7 +14806,7 @@ export const DB = [
   },
   {
     "i": 5410,
-    "n": "Nuts, Pistachio Nuts, Raw*",
+    "n": "Nuts, pistachio nuts, raw",
     "m": "1 oz (49 kernels)",
     "c": 29.8
   },
@@ -14788,7 +14854,7 @@ export const DB = [
   },
   {
     "i": 5421,
-    "n": "Nuts, Coconut Milk*",
+    "n": "Nuts, coconut milk, raw (liquid expressed from grated meat and water)",
     "m": "1 cup",
     "c": 38.4
   },
@@ -14806,7 +14872,7 @@ export const DB = [
   },
   {
     "i": 5425,
-    "n": "Nuts, Cashew Nuts, Raw*",
+    "n": "Nuts, cashew nuts, raw",
     "m": "1 oz",
     "c": 10.5
   },
@@ -14827,6 +14893,12 @@ export const DB = [
     "n": "Nuts, chestnuts, european, dried, peeled",
     "m": "1 oz",
     "c": 18.1
+  },
+  {
+    "i": 5429,
+    "n": "Nuts, chestnuts, chinese, raw",
+    "m": "1 oz",
+    "c": 5.1
   },
   {
     "i": 5430,
@@ -15196,7 +15268,7 @@ export const DB = [
   },
   {
     "i": 5560,
-    "n": "Potatoes*",
+    "n": "Potatoes, raw, skin",
     "m": "1 skin",
     "c": 11.4
   },
@@ -15214,7 +15286,7 @@ export const DB = [
   },
   {
     "i": 5565,
-    "n": "Potatoes, White, Flesh And Skin*",
+    "n": "Potatoes, white, flesh and skin, raw",
     "m": "0.5 cup, diced",
     "c": 6.75
   },
@@ -15232,7 +15304,7 @@ export const DB = [
   },
   {
     "i": 5569,
-    "n": "Potatoes, Red, Flesh And Skin*",
+    "n": "Potatoes, red, flesh and skin, raw",
     "m": "0.5 cup, diced",
     "c": 7.5
   },
@@ -15340,7 +15412,7 @@ export const DB = [
   },
   {
     "i": 5607,
-    "n": "Celery, Raw*",
+    "n": "Celery, raw",
     "m": "1 NLEA serving",
     "c": 44
   },
@@ -15352,7 +15424,7 @@ export const DB = [
   },
   {
     "i": 5609,
-    "n": "Cauliflower, Raw*",
+    "n": "Cauliflower, raw",
     "m": "1 cup chopped (1/2 pieces)",
     "c": 23.5
   },
@@ -15397,6 +15469,12 @@ export const DB = [
     "n": "Broccoli, Cooked, Boiled, Drained, With*",
     "m": "0.5 cup, chopped",
     "c": 31.2
+  },
+  {
+    "i": 5628,
+    "n": "Beans, Snap, Green*",
+    "m": "1 cup 1/2 pieces",
+    "c": 37
   },
   {
     "i": 5632,
@@ -15586,7 +15664,7 @@ export const DB = [
   },
   {
     "i": 5684,
-    "n": "Melons, Honeydew, Raw*",
+    "n": "Melons, honeydew, raw",
     "m": "1 NLEA serving",
     "c": 8.04
   },
@@ -15823,6 +15901,12 @@ export const DB = [
     "n": "Restaurant, family style, macaroni & cheese, from kids' menu",
     "m": "1 cup",
     "c": 135
+  },
+  {
+    "i": 5776,
+    "n": "Agave, raw (Southwest)",
+    "m": "100 g",
+    "c": 417
   },
   {
     "i": 5804,
@@ -16504,7 +16588,7 @@ export const DB = [
   },
   {
     "i": 5974,
-    "n": "Puddings, Vanilla, Ready-To-Eat*",
+    "n": "Puddings, vanilla, ready-to-eat",
     "m": "1 oz",
     "c": 13.9
   },
@@ -16600,7 +16684,7 @@ export const DB = [
   },
   {
     "i": 6013,
-    "n": "Beef, Brisket, Flat Half, Boneless, Separable Lean*",
+    "n": "Beef, brisket, flat half, boneless, separable lean and fat, trimmed to 0 fat, select, raw",
     "m": "4 oz",
     "c": 13.6
   },
@@ -16624,7 +16708,7 @@ export const DB = [
   },
   {
     "i": 6021,
-    "n": "Beef, Chuck Eye Roast, Boneless, America'S Beef Roast, Separable Lean*",
+    "n": "Beef, chuck eye roast, boneless, America's Beef Roast, separable lean only, trimmed to 0 fat, all grades, raw",
     "m": "4 oz",
     "c": 20.3
   },
@@ -16642,7 +16726,7 @@ export const DB = [
   },
   {
     "i": 6031,
-    "n": "Beef, Brisket, Flat Half, Separable Lean*",
+    "n": "Beef, brisket, flat half, separable lean and fat, trimmed to 0 fat, select, cooked, braised",
     "m": "3 oz",
     "c": 17
   },
@@ -16852,19 +16936,19 @@ export const DB = [
   },
   {
     "i": 6124,
-    "n": "Beef, Top Sirloin, Steak, Separable Lean*",
+    "n": "Beef, top sirloin, steak, separable lean and fat, trimmed to 0 fat, all grades, cooked, broiled",
     "m": "3 oz",
     "c": 18.7
   },
   {
     "i": 6125,
-    "n": "Beef, Short Loin, Porterhouse Steak, Separable Lean*",
+    "n": "Beef, short loin, porterhouse steak, separable lean and fat, trimmed to 0 fat, all grades, cooked, broiled",
     "m": "3 oz",
     "c": 5.95
   },
   {
     "i": 6127,
-    "n": "Beef, Top Sirloin, Steak, Separable Lean*",
+    "n": "Beef, top sirloin, steak, separable lean and fat, trimmed to 0 fat, choice, cooked, broiled",
     "m": "3 oz",
     "c": 16.2
   },
@@ -16906,7 +16990,7 @@ export const DB = [
   },
   {
     "i": 6139,
-    "n": "Beef, Short Loin, Porterhouse Steak, Separable Lean*",
+    "n": "Beef, short loin, porterhouse steak, separable lean only, trimmed to 1/8 fat, choice, raw",
     "m": "4 oz",
     "c": 20.3
   },
@@ -16918,7 +17002,7 @@ export const DB = [
   },
   {
     "i": 6142,
-    "n": "Beef, Rib, Shortribs, Separable Lean*",
+    "n": "Beef, rib, shortribs, separable lean and fat, choice, raw",
     "m": "4 oz",
     "c": 10.2
   },
@@ -16942,7 +17026,7 @@ export const DB = [
   },
   {
     "i": 6151,
-    "n": "Beef, Flank, Steak, Separable Lean*",
+    "n": "Beef, flank, steak, separable lean and fat, trimmed to 0 fat, choice, raw",
     "m": "1 oz",
     "c": 7.65
   },
@@ -16978,7 +17062,7 @@ export const DB = [
   },
   {
     "i": 6164,
-    "n": "Seeds, Sunflower Seed Kernels, Dry Roasted, With Salt Added*",
+    "n": "Seeds, sunflower seed kernels, dry roasted, with salt added",
     "m": "1 oz",
     "c": 19.8
   },
@@ -16990,7 +17074,7 @@ export const DB = [
   },
   {
     "i": 6167,
-    "n": "Nuts, Chestnuts, Japanese, R*",
+    "n": "Nuts, chestnuts, japanese, raw",
     "m": "1 oz",
     "c": 8.79
   },
@@ -17061,6 +17145,12 @@ export const DB = [
     "c": 12.2
   },
   {
+    "i": 6183,
+    "n": "Broccoli, chinese, raw",
+    "m": "100 g",
+    "c": 105
+  },
+  {
     "i": 6184,
     "n": "Epazote, raw",
     "m": "1 tbsp",
@@ -17071,12 +17161,6 @@ export const DB = [
     "n": "Fireweed, leaves, raw",
     "m": "1 cup, chopped",
     "c": 98.7
-  },
-  {
-    "i": 6186,
-    "n": "Cauliflower, Green*",
-    "m": "0.5 cup (1 pieces)",
-    "c": 19.8
   },
   {
     "i": 6187,
@@ -17097,12 +17181,6 @@ export const DB = [
     "c": 17.4
   },
   {
-    "i": 6190,
-    "n": "Broccoli, Chinese*",
-    "m": "1 cup",
-    "c": 88
-  },
-  {
     "i": 6191,
     "n": "Pickles, chowchow, with cauliflower onion mustard, sweet",
     "m": "1 cup",
@@ -17113,6 +17191,12 @@ export const DB = [
     "n": "Arugula, raw",
     "m": "0.5 cup",
     "c": 16
+  },
+  {
+    "i": 6195,
+    "n": "Cauliflower, green, raw",
+    "m": "1 cup",
+    "c": 21.1
   },
   {
     "i": 6197,
@@ -17295,6 +17379,12 @@ export const DB = [
     "c": 54.4
   },
   {
+    "i": 6271,
+    "n": "Taro, tahitian, raw",
+    "m": "1 cup slices",
+    "c": 161
+  },
+  {
     "i": 6273,
     "n": "Artichokes, (Globe Or French), Cooked, Boiled, Drained, With*",
     "m": "0.5 cup hearts",
@@ -17305,12 +17395,6 @@ export const DB = [
     "n": "Taro, raw",
     "m": "1 cup, sliced",
     "c": 44.7
-  },
-  {
-    "i": 6277,
-    "n": "Taro Shoots*",
-    "m": "1 cup slices",
-    "c": 19.6
   },
   {
     "i": 6279,
@@ -17452,7 +17536,7 @@ export const DB = [
   },
   {
     "i": 6335,
-    "n": "Lettuce, Cos Or Romaine, Raw*",
+    "n": "Lettuce, cos or romaine, raw",
     "m": "1 cup shredded",
     "c": 15.5
   },
@@ -17467,6 +17551,12 @@ export const DB = [
     "n": "Lambsquarters, Cooked, Boiled, Drained, With*",
     "m": "1 cup, chopped",
     "c": 464
+  },
+  {
+    "i": 6338,
+    "n": "Lambsquarters, raw",
+    "m": "100 g",
+    "c": 309
   },
   {
     "i": 6339,
@@ -17524,7 +17614,7 @@ export const DB = [
   },
   {
     "i": 6354,
-    "n": "Eggplant, Raw*",
+    "n": "Eggplant, raw",
     "m": "1 cup, cubes",
     "c": 7.38
   },
@@ -17608,13 +17698,13 @@ export const DB = [
   },
   {
     "i": 6381,
-    "n": "Pork, Fresh, Loin, Country-Style Ribs, Separable Lean*",
+    "n": "Pork, fresh, loin, country-style ribs, separable lean and fat, boneless, cooked, roasted",
     "m": "3 oz",
     "c": 11
   },
   {
     "i": 6382,
-    "n": "Pork, Fresh, Loin, Country-Style Ribs, Separable Lean*",
+    "n": "Pork, fresh, loin, country-style ribs, separable lean and fat, bone-in, cooked, broiled",
     "m": "3 oz",
     "c": 48.4
   },
@@ -17698,7 +17788,7 @@ export const DB = [
   },
   {
     "i": 6405,
-    "n": "Pork, Cured, Ham, Slice, Bone-In, Separable Lean*",
+    "n": "Pork, cured, ham, slice, bone-in, separable lean and fat, unheated",
     "m": "3 oz (3 oz)",
     "c": 10.2
   },
@@ -17710,7 +17800,7 @@ export const DB = [
   },
   {
     "i": 6408,
-    "n": "Pork, Cured, Ham, Rump, Bone-In, Separable Lean*",
+    "n": "Pork, cured, ham, rump, bone-in, separable lean only, heated, roasted",
     "m": "3 oz (3 oz)",
     "c": 6.8
   },
@@ -17745,14 +17835,26 @@ export const DB = [
     "c": 8.5
   },
   {
+    "i": 6419,
+    "n": "Pork, cured, ham and water product, rump, bone-in, separable lean and fat, unheated",
+    "m": "3 oz rump",
+    "c": 7.65
+  },
+  {
     "i": 6421,
     "n": "Pork, cured, ham and water product, shank, bone-in, separable lean and fat, unheated",
     "m": "1 lb shank",
     "c": 27.2
   },
   {
+    "i": 6423,
+    "n": "Pork, cured, ham and water product, slice, bone-in, separable lean and fat, unheated",
+    "m": "3 oz",
+    "c": 6.8
+  },
+  {
     "i": 6424,
-    "n": "Pork, Cured, Ham, Slice, Bone-In, Separable Lean*",
+    "n": "Pork, cured, ham, slice, bone-in, separable lean only, heated, pan-broil",
     "m": "3 oz (3 oz)",
     "c": 12.8
   },
@@ -17775,14 +17877,8 @@ export const DB = [
     "c": 3.4
   },
   {
-    "i": 6429,
-    "n": "Pork, Cured, Ham And Water Product, Rump, Bone-In, Separable Lean*",
-    "m": "1 lb",
-    "c": 45.4
-  },
-  {
-    "i": 6430,
-    "n": "Pork, Cured, Ham And Water Product, Slice, Bone-In, Separable Lean*",
+    "i": 6428,
+    "n": "Pork, cured, ham -- water added, slice, bone-in, separable lean only, unheated",
     "m": "3 oz",
     "c": 7.65
   },
@@ -17799,10 +17895,22 @@ export const DB = [
     "c": 6.8
   },
   {
+    "i": 6434,
+    "n": "Pork, cured, ham and water product, shank, bone-in, separable lean only, heated, roasted",
+    "m": "3 oz (3 oz)",
+    "c": 7.65
+  },
+  {
     "i": 6438,
     "n": "Beets, cooked, boiled, drained",
     "m": "0.5 cup slices",
     "c": 13.6
+  },
+  {
+    "i": 6439,
+    "n": "Beets, raw",
+    "m": "1 cup",
+    "c": 21.8
   },
   {
     "i": 6443,
@@ -17860,7 +17968,7 @@ export const DB = [
   },
   {
     "i": 6459,
-    "n": "Pineapple, Canned, Juice Pack*",
+    "n": "Pineapple, canned, juice pack, solids and liquids",
     "m": "1 cup, crushed, sliced, or chunks",
     "c": 34.9
   },
@@ -17914,7 +18022,7 @@ export const DB = [
   },
   {
     "i": 6478,
-    "n": "Tangerines, (Mandarin Oranges), Canned, Juice Pack*",
+    "n": "Tangerines, (mandarin oranges), canned, juice pack",
     "m": "1 cup",
     "c": 27.4
   },
@@ -18195,12 +18303,6 @@ export const DB = [
     "c": 770
   },
   {
-    "i": 6607,
-    "n": "Agave*",
-    "m": "100 g",
-    "c": 460
-  },
-  {
     "i": 6615,
     "n": "Turnover, filled with egg, meat and cheese, frozen",
     "m": "1 piece turnover 1 serving",
@@ -18339,10 +18441,22 @@ export const DB = [
     "c": 123
   },
   {
+    "i": 6665,
+    "n": "Pasta, whole grain, 51% whole wheat, remaining unenriched semolina, dry",
+    "m": "1 cup spaghetti",
+    "c": 24.6
+  },
+  {
     "i": 6667,
     "n": "Quinoa, cooked",
     "m": "1 cup",
     "c": 31.4
+  },
+  {
+    "i": 6668,
+    "n": "Pasta, whole grain, 51% whole wheat, remaining unenriched semolina, cooked",
+    "m": "1 cup spaghetti not packed",
+    "c": 13.9
   },
   {
     "i": 6669,
@@ -18916,7 +19030,7 @@ export const DB = [
   },
   {
     "i": 6838,
-    "n": "Beef, Chuck Eye Roast, Boneless, America'S Beef Roast, Separable Lean*",
+    "n": "Beef, chuck eye roast, boneless, America's Beef Roast, separable lean only, trimmed to 0 fat, select, raw",
     "m": "4 oz",
     "c": 21.5
   },
@@ -19090,7 +19204,7 @@ export const DB = [
   },
   {
     "i": 6946,
-    "n": "Beef, Top Sirloin, Steak, Separable Lean*",
+    "n": "Beef, top sirloin, steak, separable lean only, trimmed to 0 fat, select, cooked, broiled",
     "m": "3 oz",
     "c": 18.7
   },
@@ -19360,7 +19474,7 @@ export const DB = [
   },
   {
     "i": 7024,
-    "n": "Pickles, Cucumber, Dill Or Kosher Dill*",
+    "n": "Pickles, cucumber, dill or kosher dill",
     "m": "1 slice",
     "c": 3.99
   },
@@ -19455,6 +19569,12 @@ export const DB = [
     "c": 102
   },
   {
+    "i": 7086,
+    "n": "Taro shoots, raw",
+    "m": "0.5 cup slices",
+    "c": 5.16
+  },
+  {
     "i": 7089,
     "n": "Balsam-Pear (Bitter Gourd), Leafy Tips, Cooked, Boiled, Drained, With*",
     "m": "1 cup",
@@ -19491,6 +19611,12 @@ export const DB = [
     "c": 46.2
   },
   {
+    "i": 7107,
+    "n": "Squash, winter, hubbard, raw",
+    "m": "1 cup, cubes",
+    "c": 16.2
+  },
+  {
     "i": 7117,
     "n": "Seaweed, laver, raw",
     "m": "2 tbsp (1/8 cup)",
@@ -19516,7 +19642,7 @@ export const DB = [
   },
   {
     "i": 7122,
-    "n": "Spinach*",
+    "n": "Spinach, raw",
     "m": "1 package (10 oz)",
     "c": 281
   },
@@ -19549,6 +19675,12 @@ export const DB = [
     "n": "Radishes, oriental, raw",
     "m": "1 cup slices",
     "c": 31.3
+  },
+  {
+    "i": 7134,
+    "n": "Pumpkin, raw",
+    "m": "1 cup (1 cubes)",
+    "c": 24.4
   },
   {
     "i": 7135,
@@ -19660,7 +19792,7 @@ export const DB = [
   },
   {
     "i": 7169,
-    "n": "Cucumber, With Peel, Raw*",
+    "n": "Cucumber, with peel, raw",
     "m": "0.5 cup slices",
     "c": 8.32
   },
@@ -19681,6 +19813,12 @@ export const DB = [
     "n": "Cowpeas, young pods with seeds, raw",
     "m": "1 cup",
     "c": 61.1
+  },
+  {
+    "i": 7185,
+    "n": "Lima beans, immature seeds, raw",
+    "m": "1 cup",
+    "c": 53
   },
   {
     "i": 7187,
@@ -19792,7 +19930,7 @@ export const DB = [
   },
   {
     "i": 7214,
-    "n": "Pork, Fresh, Shoulder, (Boston Butt), Blade (Steaks), Separable Lean*",
+    "n": "Pork, fresh, shoulder, (Boston butt), blade (steaks), separable lean and fat,with added solution, raw",
     "m": "4 oz",
     "c": 17
   },
@@ -19815,10 +19953,10 @@ export const DB = [
     "c": 3.4
   },
   {
-    "i": 7230,
-    "n": "Pork, Cured, Ham And Water Product, Shank, Bone-In, Separable Lean*",
-    "m": "1 roast shank",
-    "c": 256
+    "i": 7231,
+    "n": "Pork, cured, ham -- water added, rump, bone-in, separable lean and fat, unheated",
+    "m": "1 lb",
+    "c": 27.2
   },
   {
     "i": 7233,
@@ -19827,14 +19965,8 @@ export const DB = [
     "c": 7.65
   },
   {
-    "i": 7234,
-    "n": "Pork, Cured, Ham -- Water Added, Slice, Bone-In, Separable Lean*",
-    "m": "1 lb",
-    "c": 36.3
-  },
-  {
     "i": 7235,
-    "n": "Pork, Cured, Ham With Natural Juices, Rump, Bone-In, Separable Lean*",
+    "n": "Pork, cured, ham with natural juices, rump, bone-in, separable lean and fat, unheated",
     "m": "3 oz rump",
     "c": 6.8
   },
@@ -19846,7 +19978,7 @@ export const DB = [
   },
   {
     "i": 7238,
-    "n": "Pork, Cured, Ham With Natural Juices, Shank, Bone-In, Separable Lean*",
+    "n": "Pork, cured, ham with natural juices, shank, bone-in, separable lean and fat, unheated",
     "m": "3 oz shank",
     "c": 5.1
   },
@@ -19893,12 +20025,6 @@ export const DB = [
     "c": 6.8
   },
   {
-    "i": 7255,
-    "n": "Pork, Cured, Ham And Water Product, Slice, Bone-In, Separable Lean*",
-    "m": "1 slice",
-    "c": 53.5
-  },
-  {
     "i": 7256,
     "n": "Pork, bacon, rendered fat, cooked",
     "m": "3 oz",
@@ -19909,6 +20035,12 @@ export const DB = [
     "n": "Pork, fresh, variety meats and by-products, stomach, cooked, simmered",
     "m": "3 oz",
     "c": 12.8
+  },
+  {
+    "i": 7258,
+    "n": "Pork, Cured, Ham And Water Product, Slice, Boneless, Separable Lean*",
+    "m": "1 slice",
+    "c": 11
   },
   {
     "i": 7259,
@@ -19924,7 +20056,7 @@ export const DB = [
   },
   {
     "i": 7263,
-    "n": "Pork, Fresh, Composite Of Trimmed Retail Cuts (L*",
+    "n": "Pork, fresh, composite of trimmed retail cuts (loin and shoulder blade), separable lean and fat, raw",
     "m": "1 oz",
     "c": 4.54
   },
@@ -19936,13 +20068,13 @@ export const DB = [
   },
   {
     "i": 7268,
-    "n": "Pork, Fresh, Loin, Tenderloin, Separable Lean*",
+    "n": "Pork, fresh, loin, tenderloin, separable lean and fat, raw",
     "m": "4 oz",
     "c": 6.78
   },
   {
     "i": 7276,
-    "n": "Pork, Fresh, Loin, Country-Style Ribs, Separable Lean*",
+    "n": "Pork, fresh, loin, country-style ribs, separable lean only, raw",
     "m": "4 oz",
     "c": 23.7
   },
@@ -20074,7 +20206,7 @@ export const DB = [
   },
   {
     "i": 7318,
-    "n": "Pork, Fresh, Shoulder, Blade, Boston (Steaks), Separable Lean*",
+    "n": "Pork, fresh, shoulder, blade, boston (steaks), separable lean only, cooked, broiled",
     "m": "3 oz",
     "c": 28
   },
@@ -20086,7 +20218,7 @@ export const DB = [
   },
   {
     "i": 7323,
-    "n": "Pork, Fresh, Shoulder, Arm Picnic, Separable Lean*",
+    "n": "Pork, fresh, shoulder, arm picnic, separable lean only, raw",
     "m": "4 oz",
     "c": 12.4
   },
@@ -20284,7 +20416,7 @@ export const DB = [
   },
   {
     "i": 7428,
-    "n": "Kiwifruit, Green, Raw*",
+    "n": "Kiwifruit, green, raw",
     "m": "1 NLEA serving",
     "c": 50.3
   },
@@ -20895,12 +21027,6 @@ export const DB = [
     "c": 7.65
   },
   {
-    "i": 7658,
-    "n": "Pork, Cured, Ham -- Water Added, Rump, Bone-In, Separable Lean*",
-    "m": "3 oz",
-    "c": 5.95
-  },
-  {
     "i": 7659,
     "n": "Pork, Cured, Ham -- Water Added, Slice, Bone-In, Separable Lean*",
     "m": "3 oz (3 oz)",
@@ -20926,7 +21052,7 @@ export const DB = [
   },
   {
     "i": 7693,
-    "n": "Pork, Cured, Shoulder, Arm Picnic, Separable Lean*",
+    "n": "Pork, cured, shoulder, arm picnic, separable lean and fat, roasted",
     "m": "3 oz",
     "c": 8.5
   },
@@ -21142,7 +21268,7 @@ export const DB = [
   },
   {
     "i": 7809,
-    "n": "Strawberries, Raw*",
+    "n": "Strawberries, raw",
     "m": "1 NLEA serving",
     "c": 23.5
   },
@@ -21555,12 +21681,6 @@ export const DB = [
     "c": 138
   },
   {
-    "i": 7992,
-    "n": "Ice Creams, Vanilla*",
-    "m": "1 serving 1/2 cup",
-    "c": 84.5
-  },
-  {
     "i": 7993,
     "n": "Ice creams, vanilla, rich",
     "m": "0.5 cup",
@@ -21855,6 +21975,12 @@ export const DB = [
     "c": 23
   },
   {
+    "i": 8056,
+    "n": "Bison, ground, raw",
+    "m": "100 g",
+    "c": 6.83
+  },
+  {
     "i": 8066,
     "n": "Juice, tart cherry, from concentrate, shelf-stable",
     "m": "100 g",
@@ -21997,6 +22123,12 @@ export const DB = [
     "n": "Nuts, brazilnuts, raw",
     "m": "100 g",
     "c": 168
+  },
+  {
+    "i": 8164,
+    "n": "Nuts, hazelnuts or filberts, raw",
+    "m": "100 g",
+    "c": 135
   },
   {
     "i": 8165,
@@ -22275,12 +22407,6 @@ export const DB = [
     "c": 98
   },
   {
-    "i": 8295,
-    "n": "Broccoli, Raw*",
-    "m": "1 cup, chopped",
-    "c": 35
-  },
-  {
     "i": 8296,
     "n": "Beans, Dry, Small Red (0% moisture)",
     "m": "100 g",
@@ -22365,58 +22491,16 @@ export const DB = [
     "c": 81.3
   },
   {
-    "i": 8314,
-    "n": "Milk, Whole, 3.25% Milkfat, With Added Vitamin D*",
-    "m": "1 cup",
-    "c": 306
-  },
-  {
-    "i": 8317,
-    "n": "Sausage, Breakfast Sausage, Beef, Pre-Cooked, Unprepared*",
-    "m": "1 link",
-    "c": 6.51
-  },
-  {
-    "i": 8318,
-    "n": "Sauce, Salsa, Ready-To-Serve*",
-    "m": "2 tablespoon",
-    "c": 10
-  },
-  {
-    "i": 8319,
-    "n": "Milk, Nonfat, Fluid*",
-    "m": "1 cup",
-    "c": 325
-  },
-  {
     "i": 8320,
     "n": "Salt, table, iodized",
     "m": "1 teaspoon",
     "c": 3.05
   },
   {
-    "i": 8321,
-    "n": "Milk, Reduced Fat, Fluid, 2% Milkfat*",
-    "m": "1 cup",
-    "c": 309
-  },
-  {
     "i": 8323,
-    "n": "Pears, Raw, Bartlett*",
+    "n": "Pears, raw, bartlett",
     "m": "1 cup, slices",
     "c": 11.2
-  },
-  {
-    "i": 8324,
-    "n": "Milk, Lowfat, Fluid, 1% Milkfat*",
-    "m": "1 cup",
-    "c": 310
-  },
-  {
-    "i": 8327,
-    "n": "Cheese, Ricotta, Whole Milk*",
-    "m": "0.5 cup",
-    "c": 289
   },
   {
     "i": 8328,
@@ -22429,12 +22513,6 @@ export const DB = [
     "n": "Cheese, Dry White, Queso Seco*",
     "m": "1 cup, grated",
     "c": 643
-  },
-  {
-    "i": 8339,
-    "n": "Bread, Whole-Wheat, Commercially Prepared*",
-    "m": "1 slice",
-    "c": 52.3
   },
   {
     "i": 8344,
@@ -22473,22 +22551,10 @@ export const DB = [
     "c": 146
   },
   {
-    "i": 8356,
-    "n": "Egg, Yolk, Dried*",
-    "m": "1 oz",
-    "c": 76.7
-  },
-  {
-    "i": 8357,
-    "n": "Egg, Yolk, Raw, Frozen*",
-    "m": "1 oz",
-    "c": 33.8
-  },
-  {
-    "i": 8359,
-    "n": "Egg, Whole, Dried*",
-    "m": "1 oz",
-    "c": 62.5
+    "i": 8361,
+    "n": "Cheese, cheddar",
+    "m": "1 slice",
+    "c": 120
   },
   {
     "i": 8369,
@@ -22503,34 +22569,16 @@ export const DB = [
     "c": 15.6
   },
   {
-    "i": 8376,
-    "n": "Egg, White, Raw, Frozen, Pasteurized*",
-    "m": "1 oz",
-    "c": 2.56
-  },
-  {
     "i": 8377,
     "n": "Kale, Raw*",
     "m": "1 cup, pieces of ~1",
     "c": 52.3
   },
   {
-    "i": 8379,
-    "n": "Frankfurter, Beef, Unheated*",
-    "m": "1 piece",
-    "c": 7.29
-  },
-  {
     "i": 8381,
     "n": "Tomatoes, grape, raw",
     "m": "1 cup",
     "c": 16.7
-  },
-  {
-    "i": 8382,
-    "n": "Hummus, Commercial*",
-    "m": "2 tablespoon",
-    "c": 13.9
   }
 ];
 
@@ -22544,7 +22592,7 @@ export const DATABASE_METADATA = {
   "name": "USDA FoodData Central - Foundation & SR Legacy",
   "description": "Comprehensive food database combining USDA FoodData Central (Foundation and SR Legacy sources) with calcium content data for nutrition tracking",
   "version": "2025.2",
-  "created": "2025-09-05",
+  "created": "2025-09-06",
   "author": "USDA Agricultural Research Service",
   "sourceUrls": [
     {
@@ -22556,6 +22604,6 @@ export const DATABASE_METADATA = {
       "url": "https://www.nal.usda.gov/sites/default/files/page-files/calcium.pdf"
     }
   ],
-  "notes": "Generated from curated-abridged.json using data-module-generator.cjs",
-  "recordCount": 3753
+  "notes": "This database was curated from USDA FoodData Central, combining multiple raw data files into a simplified format optimized for calcium tracking. The curation process assigned unique identifiers to each food, selected the most practical serving sizes, and merged nutritionally similar foods (those with identical calcium content) under single representative entries. To optimize app performance, branded foods were filtered out (except essential staples), cooking method variations were simplified, and foods with very low calcium content that only had technical 100-gram measurements (rather than practical serving sizes) were removed, while preserving nutritional accuracy through developer-maintained keep and exclusion lists.\n\nCustom curation lists applied:\n• Foods explicitly preserved: almonds, bison, ground, cheese, swiss, milk, whole, spinach, yogurt, plain\n• Foods explicitly excluded: alaska native, apache, babyfood, elk, emu, fast food, game meat, gluten free, hopi, kiwano, klamath, mcdonald, mcdonalds, navajo, northern plains indians, ostrich, shoshone bannock",
+  "recordCount": 3761
 };

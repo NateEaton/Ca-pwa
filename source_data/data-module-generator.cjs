@@ -171,9 +171,7 @@ function generateDatabaseMetadata(data, inputFile, sourceMetadata) {
       version: sourceMetadata.version || "4.0",
       created: now.toISOString().split("T")[0],
       recordCount: data.length,
-      notes: `Generated from ${path.basename(
-        inputFile
-      )} using data-module-generator.cjs`,
+      // Preserve the curator-generated notes instead of overriding
     };
   }
 
@@ -187,9 +185,7 @@ function generateDatabaseMetadata(data, inputFile, sourceMetadata) {
     created: now.toISOString().split("T")[0],
     recordCount: data.length,
     author: "Ca PWA Data Pipeline",
-    notes: `Generated from ${path.basename(
-      inputFile
-    )} using data-module-generator.cjs`,
+    notes: `Basic food database generated from ${path.basename(inputFile)}`,
     sourceUrls: [
       {
         name: "USDA Food Data Central",

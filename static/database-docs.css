@@ -238,6 +238,25 @@ body {
   color: white;
 }
 
+/* Toggle notes button styling to match source links */
+.toggle-notes-btn {
+  color: var(--primary);
+  background: transparent;
+  text-decoration: none;
+  padding: var(--spacing-xs) var(--spacing-md);
+  border: 1px solid var(--primary);
+  border-radius: 16px;
+  font-size: 0.9em;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
+}
+
+.toggle-notes-btn:hover {
+  background: var(--primary);
+  color: white;
+}
+
 /* Explanation section */
 .explanation-section {
   padding: var(--spacing-xl);

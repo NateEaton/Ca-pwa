@@ -222,7 +222,15 @@ function generateSourceSection(metadata) {
             ? `
         <div class="notes-section">
           <span class="metadata-label">Processing Notes</span>
-          <p class="processing-notes">${escapeHtml(metadata.notes)}</p>
+          <div class="processing-notes">
+            <div class="notes-preview" id="notes-preview">
+              ${escapeHtml(metadata.notes.split('. ').slice(0, 2).join('. ') + '.')}
+            </div>
+            <div class="notes-full" id="notes-full" style="display: none;">
+              ${escapeHtml(metadata.notes).replace(/\n/g, '<br>')}
+            </div>
+            <button class="toggle-notes-btn" id="toggle-notes" onclick="toggleNotes()">Read more</button>
+          </div>
         </div>`
             : ""
         }
@@ -270,7 +278,7 @@ function generateHtmlDocument(bodyContent, totalRows, generatedDate, metadata) {
       <div class="explanation-grid">
         <div class="explanation-item">
           <h5>Representative Foods</h5>
-          <p>Foods shown with <span style="color: var(--secondary); font-weight: 600;">*</span> represent groups of nutritionally similar foods. All foods in a group have calcium values within 20% of each other.</p>
+          <p>Foods shown with <span style="color: var(--secondary); font-weight: 600;">*</span> represent groups of nutritionally similar foods. All foods in a group have identical calcium values.</p>
         </div>
         <div class="explanation-item">
           <h5>Collapsed Foods</h5>
@@ -437,6 +445,23 @@ ${bodyContent}
         document.documentElement.setAttribute('data-theme', savedTheme);
         let button = document.querySelector('.theme-toggle');
         button.textContent = savedTheme === 'dark' ? '☀️ Light Mode' : '🌙 Dark Mode';
+      }
+    }
+
+    // Toggle notes expansion
+    function toggleNotes() {
+      let preview = document.getElementById('notes-preview');
+      let full = document.getElementById('notes-full');
+      let button = document.getElementById('toggle-notes');
+      
+      if (full.style.display === 'none') {
+        preview.style.display = 'none';
+        full.style.display = 'block';
+        button.textContent = 'Show less';
+      } else {
+        preview.style.display = 'block';
+        full.style.display = 'none';
+        button.textContent = 'Read more';
       }
     }
 

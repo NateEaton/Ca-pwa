@@ -617,14 +617,40 @@ abridged = abridged.map((food) => {
 full.forEach((f) => delete f.id);
 abridged.forEach((f) => delete f.id);
 
-// Create output objects with metadata
+// Generate standardized processing notes for both outputs
+let curatedNotes = "This database was curated from USDA FoodData Central, combining multiple raw data files into a simplified format optimized for calcium tracking. The curation process assigned unique identifiers to each food, selected the most practical serving sizes, and merged nutritionally similar foods (those with identical calcium content) under single representative entries. To optimize app performance, branded foods were filtered out (except essential staples), cooking method variations were simplified, and foods with very low calcium content that only had technical 100-gram measurements (rather than practical serving sizes) were removed, while preserving nutritional accuracy through developer-maintained keep and exclusion lists.";
+
+// Add keep and exclude list information if provided
+if (keepListFile || excludeListFile) {
+  curatedNotes += "\n\nCustom curation lists applied:";
+  if (keepListFile && keepSet.size > 0) {
+    const keepList = Array.from(keepSet).sort().join(", ");
+    curatedNotes += `\n• Foods explicitly preserved: ${keepList}`;
+  }
+  if (excludeListFile && excludeSet.size > 0) {
+    const excludeList = Array.from(excludeSet).sort().join(", ");
+    curatedNotes += `\n• Foods explicitly excluded: ${excludeList}`;
+  }
+}
+
+// Create output objects with updated metadata
+const updatedMetadata = metadata ? {
+  ...metadata,
+  notes: curatedNotes
+} : {
+  source: "USDA-FDC",
+  name: "Curated Food Database",
+  description: "Curated food database optimized for calcium tracking",
+  notes: curatedNotes
+};
+
 const fullOutput = {
-  metadata: metadata,
+  metadata: updatedMetadata,
   foods: full,
 };
 
 const abridgedOutput = {
-  metadata: metadata,
+  metadata: updatedMetadata,
   foods: abridged,
 };
 
