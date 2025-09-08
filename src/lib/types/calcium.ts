@@ -68,11 +68,19 @@ export interface CalciumState {
   isLoading: boolean;
 }
 
+export interface MeasureSet {
+  measure: string;
+  calcium: number;
+}
+
 export interface USDAFood {
   id: number;
   name: string;
-  calcium: number;
-  measure: string;
+  // Legacy single measure format (for backward compatibility)
+  calcium?: number;
+  measure?: string;
+  // New multi-measure format
+  measures?: MeasureSet[];
   isFavorite?: boolean;
 }
 

@@ -19,7 +19,7 @@
 import { get } from 'svelte/store';
 import { calciumState, showToast } from '$lib/stores/calcium';
 import type { FoodEntry, CustomFood, CalciumSettings, UserServingPreference } from '$lib/types/calcium';
-import { DEFAULT_FOOD_DATABASE } from '$lib/data/foodDatabase';
+import { DEFAULT_FOOD_DATABASE, getPrimaryMeasure } from '$lib/data/foodDatabase';
 import { SyncService } from '$lib/services/SyncService';
 import { SyncTrigger } from '$lib/utils/syncTrigger';
 import { getBuildInfo } from '$lib/utils/buildInfo';
@@ -363,7 +363,10 @@ export class CalciumService {
           comparison = a.name.localeCompare(b.name);
           break;
         case 'calcium':
-          comparison = a.calcium - b.calcium;
+          // Use getPrimaryMeasure for compatibility with both formats
+          const aPrimary = getPrimaryMeasure(a);
+          const bPrimary = getPrimaryMeasure(b);
+          comparison = aPrimary.calcium - bPrimary.calcium;
           break;
       }
 
@@ -1047,7 +1050,11 @@ private async clearAllData(): Promise<void> {
     }
 
     try {
-      const totalCalcium = foods.reduce((sum, food) => sum + food.calcium, 0);
+      const totalCalcium = foods.reduce((sum, food) => {
+        // Use getPrimaryMeasure for compatibility with both formats
+        const primaryMeasure = getPrimaryMeasure(food);
+        return sum + primaryMeasure.calcium;
+      }, 0);
 
       const journalEntry = {
         date: dateString,

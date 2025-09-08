@@ -19,7 +19,7 @@
 <script>
   import { onMount, onDestroy } from "svelte";
   import { calciumState, showToast, calciumService } from "$lib/stores/calcium";
-  import { DEFAULT_FOOD_DATABASE } from "$lib/data/foodDatabase";
+  import { DEFAULT_FOOD_DATABASE, getPrimaryMeasure, getAllMeasures, hasMultipleMeasures } from "$lib/data/foodDatabase";
   import { SearchService } from "$lib/services/SearchService";
   import { goto } from "$app/navigation";
 
@@ -236,9 +236,20 @@
     }
   })();
 
+  let docsWindowRef = null;
+
   function openFoodDocs(food) {
     const docsUrl = `/database-docs.html#food-${food.id}`;
-    window.open(docsUrl, "_blank", "noopener,noreferrer");
+    
+    // Check if we already have a docs window open
+    if (docsWindowRef && !docsWindowRef.closed) {
+      // Reuse existing window
+      docsWindowRef.location.href = docsUrl;
+      docsWindowRef.focus();
+    } else {
+      // Open new window and store reference
+      docsWindowRef = window.open(docsUrl, "calcium_database_docs");
+    }
   }
 
   function handleFilterClick(filter) {
@@ -384,7 +395,8 @@
   function passesCalciumFilter(food) {
     if (calciumFilter.type === "all") return true;
 
-    const calcium = Math.round(food.calcium);
+    // Use getPrimaryMeasure for compatibility with both formats
+    const calcium = Math.round(getPrimaryMeasure(food).calcium);
 
     if (calciumFilter.type === "preset") {
       switch (calciumFilter.preset) {
@@ -784,11 +796,16 @@
             {/if}
             <div class="food-info">
               <div class="food-name">{food.name}</div>
-              <div class="food-measure">{food.measure}</div>
+              <div class="food-measure">
+                {getPrimaryMeasure(food).measure}
+                {#if hasMultipleMeasures(food)}
+                  <span class="measure-count">({getAllMeasures(food).length} servings)</span>
+                {/if}
+              </div>
             </div>
             <div class="food-calcium">
-              <div class="calcium-amount" title="{food.calcium}mg">
-                {Math.round(food.calcium)}mg
+              <div class="calcium-amount" title="{getPrimaryMeasure(food).calcium}mg">
+                {Math.round(getPrimaryMeasure(food).calcium)}mg
               </div>
               <div class="food-type">
                 {food.isCustom ? "User" : "Database"}
@@ -1594,5 +1611,13 @@
 
   .docs-link-btn .material-icons {
     font-size: 18px;
+  }
+
+  /* Multi-measure styles */
+  .measure-count {
+    color: var(--text-tertiary);
+    font-size: var(--font-size-xs);
+    font-style: italic;
+    margin-left: var(--spacing-xs);
   }
 </style>

@@ -19,7 +19,7 @@
 <script>
   import { createEventDispatcher, onMount } from "svelte";
   import { calciumState, calciumService } from "$lib/stores/calcium";
-  import { DEFAULT_FOOD_DATABASE } from "$lib/data/foodDatabase";
+  import { DEFAULT_FOOD_DATABASE, getPrimaryMeasure, getAllMeasures, hasMultipleMeasures } from "$lib/data/foodDatabase";
   import { SearchService } from "$lib/services/SearchService";
   import UnitConverter from "$lib/services/UnitConverter.js";
   import ConfirmDialog from "./ConfirmDialog.svelte";
@@ -54,6 +54,10 @@
   let isSelectedFromSearch = false;
   let usingPreference = false;
   let hasResetToOriginal = false;
+
+  // Multi-measure selection
+  let selectedMeasureIndex = 0;
+  let availableMeasures = [];
 
   // Unit conversion
   const unitConverter = new UnitConverter();
@@ -125,6 +129,10 @@
     searchResults = [];
     showSearchResults = false;
     hasResetToOriginal = false;
+    
+    // Clear multi-measure state
+    selectedMeasureIndex = 0;
+    availableMeasures = [];
 
     if (!editingFood) {
       parsedFoodMeasure = null;
@@ -204,7 +212,14 @@
     currentFoodData = food;
     isSelectedFromSearch = true;
     foodName = food.name;
-    calcium = food.calcium.toString();
+    
+    // Set up available measures for multi-measure selection
+    availableMeasures = getAllMeasures(food);
+    selectedMeasureIndex = 0; // Default to first measure
+    
+    // Get selected measure (initially primary/first measure)
+    const selectedMeasure = availableMeasures[selectedMeasureIndex];
+    calcium = selectedMeasure.calcium.toString();
 
     // If this is a custom food, switch to custom mode
     if (food.isCustom) {
@@ -212,7 +227,7 @@
     }
 
     // Parse food measure using UnitConverter for better parsing
-    parsedFoodMeasure = unitConverter.parseUSDAMeasure(food.measure);
+    parsedFoodMeasure = unitConverter.parseUSDAMeasure(selectedMeasure.measure);
 
     // Check for saved serving preferences for database foods
     usingPreference = false;
@@ -243,8 +258,35 @@
     showSearchResults = false;
   }
 
+  function handleMeasureSelection() {
+    if (availableMeasures.length > 0) {
+      const selectedMeasure = availableMeasures[selectedMeasureIndex];
+      calcium = selectedMeasure.calcium.toString();
+      
+      // Parse the new measure for unit conversion
+      parsedFoodMeasure = unitConverter.parseUSDAMeasure(selectedMeasure.measure);
+      
+      // Update serving fields to match the selected measure
+      servingQuantity = 1; // Reset to 1 unit of the selected measure
+      servingUnit = selectedMeasure.measure;
+      
+      // Recalculate calcium for the new serving size
+      updateCalcium();
+    }
+  }
+
   function updateCalcium() {
     if (currentFoodData && servingQuantity && parsedFoodMeasure) {
+      // For multi-measure foods, get calcium from the currently selected measure
+      let baseCalcium;
+      if (availableMeasures.length > 0 && selectedMeasureIndex < availableMeasures.length) {
+        // Use calcium from the currently selected measure
+        baseCalcium = availableMeasures[selectedMeasureIndex].calcium;
+      } else {
+        // Fall back to currentFoodData.calcium for legacy foods or when no measures available
+        baseCalcium = currentFoodData.calcium;
+      }
+
       // For descriptive measures or unknown unit types, use simple proportional calculation
       if (
         parsedFoodMeasure.isDescriptive ||
@@ -252,7 +294,7 @@
       ) {
         const newCalcium = parseFloat(
           (
-            (currentFoodData.calcium * servingQuantity) /
+            (baseCalcium * servingQuantity) /
             parsedFoodMeasure.originalQuantity
           ).toFixed(2)
         );
@@ -266,7 +308,7 @@
           // For compound units, user quantity changes are simple proportional
           const newCalcium = parseFloat(
             (
-              (currentFoodData.calcium * servingQuantity) /
+              (baseCalcium * servingQuantity) /
               parsedFoodMeasure.originalQuantity
             ).toFixed(2)
           );
@@ -274,7 +316,7 @@
         } else {
           // Use UnitConverter for regular convertible units
           const newCalcium = unitConverter.calculateCalciumForConvertedUnits(
-            currentFoodData.calcium,
+            baseCalcium,
             parsedFoodMeasure.originalQuantity,
             parsedFoodMeasure.detectedUnit,
             servingQuantity,
@@ -286,7 +328,7 @@
         // Fallback to simple calculation if unit conversion fails
         const newCalcium = parseFloat(
           (
-            (currentFoodData.calcium * servingQuantity) /
+            (baseCalcium * servingQuantity) /
             parsedFoodMeasure.originalQuantity
           ).toFixed(2)
         );
@@ -618,9 +660,14 @@
                   tabindex="0"
                 >
                   <div class="search-item-content">
-                    <div class="search-item-name">{food.name}</div>
+                    <div class="search-item-name">
+                      {food.name}
+                    </div>
                     <div class="search-item-details">
-                      {Math.round(food.calcium)}mg per {food.measure}
+                      {Math.round(getPrimaryMeasure(food).calcium)}mg per {getPrimaryMeasure(food).measure}
+                      {#if hasMultipleMeasures(food)}
+                        <span class="measure-count">({getAllMeasures(food).length} servings)</span>
+                      {/if}
                     </div>
                   </div>
                   {#if !food.isCustom && food.id && $calciumState.favorites.has(food.id)}
@@ -633,6 +680,28 @@
             </div>
           {/if}
         </div>
+
+        <!-- Multi-measure selection dropdown -->
+        {#if !isCustomMode && isSelectedFromSearch && availableMeasures.length > 1}
+          <div class="form-group">
+            <label class="form-label" for="measureSelect">Available Serving Sizes</label>
+            <select 
+              id="measureSelect"
+              class="form-input" 
+              bind:value={selectedMeasureIndex}
+              on:change={handleMeasureSelection}
+            >
+              {#each availableMeasures as measure, index}
+                <option value={index}>
+                  {Math.round(measure.calcium)}mg per {measure.measure}
+                </option>
+              {/each}
+            </select>
+            <div class="measure-help-text">
+              Choose from {availableMeasures.length} available serving sizes
+            </div>
+          </div>
+        {/if}
 
         <div class="form-group">
           <label class="form-label" for="calcium">Calcium (mg)</label>
@@ -1255,6 +1324,30 @@
       width: 100%;
       text-align: center;
     }
+  }
+
+  /* Multi-measure styles */
+  .measure-count {
+    color: var(--text-tertiary);
+    font-size: var(--font-size-xs);
+    font-style: italic;
+    margin-left: var(--spacing-xs);
+  }
+
+  .measure-help-text {
+    font-size: var(--font-size-xs);
+    color: var(--text-secondary);
+    margin-top: var(--spacing-xs);
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+  }
+
+  .measure-help-text::before {
+    content: "ⓘ";
+    color: var(--primary-color);
+    font-weight: bold;
+    font-size: var(--font-size-sm);
   }
 
   /* Loading state styles */

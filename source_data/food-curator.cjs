@@ -3,16 +3,15 @@
 /**
  * food-curator.cjs
  *
- * **VERSION 4 - Simplified Parameter Structure**
- * Enhanced version with collapsed food metadata generation for HTML documentation.
- * Removed --include-sources, --include-collapsed, and --minimal flags per new requirements.
- * - Collapsed food metadata is now always included for HTML doc generation
- * - Asterisk (*) is added to names in abridged output when foods are collapsed
- * - Full output preserves original names without asterisk for documentation
+ * **VERSION 5 - Multi-Measure Implementation**
+ * Enhanced version supporting multiple serving sizes per food item.
+ * - Collects all unique measures instead of selecting single "best" serving
+ * - Groups by sourceKey to preserve measure variations per food
+ * - Asterisk (*) only added for collapsed foods, not multi-measure foods
+ * - Maintains backward compatibility with existing pipeline
  */
 
 const fs = require("fs");
-const path = require("path");
 
 // --- Argument Parsing ---
 const args = process.argv.slice(2);
@@ -25,14 +24,26 @@ for (let i = 0; i < args.length; i++) {
   switch (arg) {
     case "--keep-list":
     case "--keep":
+      if (i + 1 >= args.length) {
+        console.error(`❌ Error: ${arg} requires a file path`);
+        process.exit(1);
+      }
       keepListFile = args[++i];
       break;
     case "--exclude-list":
     case "--exclude":
+      if (i + 1 >= args.length) {
+        console.error(`❌ Error: ${arg} requires a file path`);
+        process.exit(1);
+      }
       excludeListFile = args[++i];
       break;
     default:
-      if (!arg.startsWith("--")) {
+      if (arg.startsWith("--") || arg.startsWith("-")) {
+        console.error(`❌ Error: Unknown parameter '${arg}'`);
+        console.error(`Valid parameters: --keep-list <file>, --exclude-list <file>`);
+        process.exit(1);
+      } else {
         fileArgs.push(arg);
       }
       break;
@@ -52,6 +63,7 @@ if (!inputJson) {
 // --- Helper Functions & Data Loading ---
 // **Heavily revised, multi-stage normalization function from original script**
 function normalizeName(originalName) {
+  if (!originalName) return ""; // Added safety check for null/undefined names
   let norm = originalName.toLowerCase();
 
   // Stage 1: Handle alcoholic beverages FIRST, before removing parentheses
@@ -272,11 +284,118 @@ function chooseBestServing(group) {
   });
 }
 
+// --- ENHANCED BRAND FILTERING ---
+function containsBrand(foodName, keepSet) {
+  // The normalized name is now ONLY used for the keep set check.
+  if (keepSet.has(normalizeName(foodName))) {
+    return false; // Always keep if it's on the explicit keep list.
+  }
+
+  // Expanded list of known brands identified from names.txt
+  const knownBrandBases = new Set([
+    "Vitasoy",
+    "Nabisco",
+    "Archway",
+    "Mission Foods",
+    "Kraft",
+    "Pillsbury",
+    "Hormel",
+    "Lean Pockets",
+    "Hot Pockets",
+    "Campbell's",
+    "DiGiorno",
+    "KFC",
+    "McDonald's",
+    "Burger King",
+    "Taco Bell",
+    "Pizza Hut",
+    "Arby's",
+    "Denny's",
+    "Subway",
+    "Domino's",
+    "Papa John's",
+    "Little Caesars",
+    "Wendy's",
+    "Olive Garden",
+    "Cracker Barrel",
+    "Applebee's",
+    "Chick-fil-A",
+    "Oscar Mayer",
+    "Pepperidge Farm",
+    "Martha White",
+    "Silk",
+    "Nestle",
+    "Snackwell",
+    "York",
+    "Reddi Wip",
+    "Schar",
+    "Rudi's",
+    "Heinz",
+    "Clif Z",
+  ]);
+
+  // A powerful, direct check against the known brand list.
+  // This will catch brands regardless of their capitalization.
+  for (const brand of knownBrandBases) {
+    // Use regex with word boundaries (\b) to match whole words only.
+    // This prevents "ham" from matching in "chamomile".
+    // The 'i' flag makes it case-insensitive.
+    const brandRegex = new RegExp(`\\b${brand}\\b`, "i");
+    if (brandRegex.test(foodName)) {
+      return true;
+    }
+  }
+
+  // All-caps check now runs on the ORIGINAL food name, not the normalized one.
+  const allCapsRegex = /\b([A-Z]{3,})\b/;
+  const nonBrandAllCaps = new Set([
+    "NEW",
+    "YORK",
+    "USA",
+    "US",
+    "UK",
+    "GRADE",
+    "PRIME",
+    "CHOICE",
+    "SELECT",
+    "ORGANIC",
+    "NATURAL",
+    "FRESH",
+    "FROZEN",
+    "RAW",
+    "COOKED",
+    "LARGE",
+    "SMALL",
+    "MEDIUM",
+    "EXTRA",
+    "SUPER",
+    "LIGHT",
+    "HEAVY",
+    "LEAN",
+    "FAT",
+  ]);
+
+  const allCapsMatches = foodName.match(allCapsRegex);
+  if (allCapsMatches) {
+    for (const match of allCapsMatches) {
+      if (!nonBrandAllCaps.has(match)) {
+        return true;
+      }
+    }
+  }
+
+  // Keep other checks for corporate suffixes and possessives as they are still useful.
+  const corporateRegex = /\b(Inc|Corp|LLC|Ltd|GmbH|Co\.|& Co\.|Pty)\b/i;
+  if (corporateRegex.test(foodName)) return true;
+
+  return false;
+}
+
 // --- CORE DATA PROCESSING ---
-// **Step 1: Group by appId and select best serving per food**
-function deduplicateByAppId(recs) {
+// **Step 1: Group by sourceKey to collect all measures per food**
+function groupBySourceKey(recs) {
   console.log(
-    `[DEDUPE] Starting appId deduplication with ${
+    `[GROUP] Starting sourceKey grouping with ${
       recs?.length || "undefined"
     } records`
   );
@@ -284,10 +403,73 @@ function deduplicateByAppId(recs) {
   // Add safety check
   if (!recs || !Array.isArray(recs)) {
     console.error(
-      `❌ [DEDUPE] Invalid input: recs is ${typeof recs}, expected array`
+      `❌ [GROUP] Invalid input: recs is ${typeof recs}, expected array`
     );
     process.exit(1);
   }
+
+  const groupedBySourceKey = {};
+  recs.forEach((r) => {
+    // Use sourceId as the primary key for grouping
+    const key = r.sourceId || r.appId; // fallback to appId if no sourceId
+    if (!groupedBySourceKey[key]) groupedBySourceKey[key] = [];
+    groupedBySourceKey[key].push(r);
+  });
+
+  const groupedRecords = [];
+  let measuresCollected = 0;
+
+  for (const [sourceKey, variations] of Object.entries(groupedBySourceKey)) {
+    // Deduplicate identical measure/calcium pairs within the group
+    const uniqueMeasures = deduplicateMeasures(variations);
+    
+    if (variations.length > 1) {
+      console.log(
+        `[GROUP] SourceKey ${sourceKey}: ${variations.length} variations → ${uniqueMeasures.length} unique measures`
+      );
+      measuresCollected += uniqueMeasures.length - 1;
+    }
+
+    // Create food entry with measures array
+    const baseFood = variations[0]; // Use first variation as template
+    const processedFood = {
+      ...baseFood,
+      measures: uniqueMeasures.map(variation => ({
+        measure: variation.measure,
+        calcium: parseFloat(variation.calcium)
+      }))
+    };
+
+    groupedRecords.push(processedFood);
+  }
+
+  console.log(
+    `[GROUP] Collected ${measuresCollected} additional measures, ${groupedRecords.length} unique foods`
+  );
+  return groupedRecords;
+}
+
+// Helper function to deduplicate identical measure/calcium pairs
+function deduplicateMeasures(variations) {
+  const uniqueMeasures = [];
+  const seen = new Set();
+  
+  for (const variation of variations) {
+    const key = `${variation.measure}:${variation.calcium}`;
+    if (!seen.has(key)) {
+      seen.add(key);
+      uniqueMeasures.push(variation);
+    }
+  }
+  
+  return uniqueMeasures;
+}
+
+// **Step 1B: Handle duplicate appIds with different sourceIds (merge measures arrays)**
+function deduplicateByAppId(recs) {
+  console.log(
+    `[DEDUPE] Starting appId deduplication with ${recs.length} records`
+  );
 
   const groupedByAppId = {};
   recs.forEach((r) => {
@@ -298,17 +480,42 @@ function deduplicateByAppId(recs) {
   const deduplicatedRecords = [];
   let duplicatesFound = 0;
 
-  for (const [appId, servingVariations] of Object.entries(groupedByAppId)) {
-    if (servingVariations.length > 1) {
+  for (const [appId, foodVariations] of Object.entries(groupedByAppId)) {
+    if (foodVariations.length > 1) {
       console.log(
-        `[DEDUPE] AppId ${appId}: ${servingVariations.length} serving variations`
+        `[DEDUPE] AppId ${appId}: ${foodVariations.length} food variations`
       );
-      duplicatesFound += servingVariations.length - 1;
+      duplicatesFound += foodVariations.length - 1;
     }
 
-    // Choose the best serving size for this appId
-    const bestServing = chooseBestServing(servingVariations);
-    deduplicatedRecords.push(bestServing);
+    if (foodVariations.length === 1) {
+      // Single food, use as-is
+      deduplicatedRecords.push(foodVariations[0]);
+    } else {
+      // Multiple foods with same appId - merge their measures arrays
+      const primaryFood = chooseBestServing(foodVariations);
+      const allMeasures = [];
+      
+      // Collect all measures from all variations
+      for (const food of foodVariations) {
+        if (food.measures && Array.isArray(food.measures)) {
+          allMeasures.push(...food.measures);
+        }
+      }
+      
+      // Deduplicate measures and create merged food
+      const uniqueMeasures = deduplicateMeasures(allMeasures.map(m => ({
+        measure: m.measure,
+        calcium: m.calcium
+      })));
+      
+      const mergedFood = {
+        ...primaryFood,
+        measures: uniqueMeasures
+      };
+      
+      deduplicatedRecords.push(mergedFood);
+    }
   }
 
   console.log(
@@ -385,17 +592,13 @@ function collapseDuplicates(recs) {
 
     for (const bucket of buckets) {
       const chosen = chooseBestServing(bucket);
-      const measureString = chosen.measure || "";
-      let servingAmount = 1;
-      let servingUnit = measureString;
-      const measureParts = measureString.match(/^(\d*\.?\d+)\s*(.*)$/);
-      if (measureParts && measureParts.length === 3) {
-        servingAmount = parseFloat(measureParts[1]);
-        servingUnit = measureParts[2].trim();
-      }
-
+      
+      // Determine if this bucket represents collapsed foods (multiple different sourceIds)
+      const uniqueSourceIds = new Set(bucket.map(item => item.sourceId));
+      const hasCollapsedFoods = uniqueSourceIds.size > 1;
+      
       let appName = chosen.name; // Start with the chosen representative name
-      if (bucket.length > 1) {
+      if (hasCollapsedFoods) {
         // 1. Find the common starting substring from all names in the bucket
         const names = bucket.map((f) => f.name);
         let commonPrefix = names.reduce((a, b) => {
@@ -412,19 +615,40 @@ function collapseDuplicates(recs) {
           .toLowerCase()
           .replace(/\b\w/g, (char) => char.toUpperCase()); // Capitalize each word
 
-        // 4. Add an asterisk to indicate it's a grouped item
+        // 4. Add an asterisk ONLY for collapsed foods (different names)
         appName += "*";
       }
 
-      // Create base entry structure - always include full metadata for both outputs
+      // Use ONLY measures from the chosen representative food (not from collapsed foods)
+      let measures = [];
+      if (chosen.measures && Array.isArray(chosen.measures)) {
+        // Food already has measures array - use as-is
+        measures = [...chosen.measures];
+      } else {
+        // Food has single measure format - convert to array
+        measures = [{
+          measure: chosen.measure || "",
+          calcium: parseFloat(chosen.calcium)
+        }];
+      }
+
+      // Parse serving info from first measure for backward compatibility
+      const primaryMeasure = measures[0];
+      const measureString = primaryMeasure.measure || "";
+      let servingAmount = 1;
+      let servingUnit = measureString;
+      const measureParts = measureString.match(/^(\d*\.?\d+)\s*(.*)$/);
+      if (measureParts && measureParts.length === 3) {
+        servingAmount = parseFloat(measureParts[1]);
+        servingUnit = measureParts[2].trim();
+      }
+
+      // Create base entry structure with measures array
       const entry = {
         appId: chosen.appId,
         name: chosen.name,
-        // The normalization process is not necessarily providing user-friendly names so need to revisit this
-        //appName: normalizeName(chosen.name),
         appName: appName,
-        measure: measureString,
-        calcium: parseFloat(chosen.calcium),
+        measures: measures, // New measures array structure
         calciumPer100g: chosen.calciumPer100g
           ? parseFloat(chosen.calciumPer100g)
           : null,
@@ -438,28 +662,40 @@ function collapseDuplicates(recs) {
         subset: chosen.subset,
       };
 
-      // Always include collapsed food metadata for HTML documentation
-      if (bucket.length > 1) {
-        // Only include foods that were collapsed, exclude the chosen one
+      // Include collapsed food metadata ONLY when foods were actually collapsed (different names)
+      if (hasCollapsedFoods) {
         const collapsed = bucket.filter((r) => r.sourceId !== chosen.sourceId);
         if (collapsed.length > 0) {
-          entry.collapsedFrom = collapsed.map((r) => ({
-            sourceId: r.sourceId,
-            name: r.name,
-            measure: r.measure,
-            calcium: parseFloat(r.calcium),
-            calciumPer100g: r.calciumPer100g
-              ? parseFloat(r.calciumPer100g)
-              : null,
-            defaultServing: r.defaultServing
-              ? {
-                  amount: r.defaultServing.amount,
-                  unit: r.defaultServing.unit,
-                  gramWeight: r.defaultServing.gramWeight,
-                }
-              : null,
-            subset: r.subset,
-          }));
+          entry.collapsedFrom = collapsed.map((r) => {
+            // Preserve measures array format in collapsedFrom
+            let collapsedMeasures;
+            if (r.measures && Array.isArray(r.measures)) {
+              collapsedMeasures = r.measures;
+            } else {
+              // Convert single measure format to array
+              collapsedMeasures = [{
+                measure: r.measure || "",
+                calcium: parseFloat(r.calcium)
+              }];
+            }
+            
+            return {
+              sourceId: r.sourceId,
+              name: r.name,
+              measures: collapsedMeasures, // Use measures array instead of single measure/calcium
+              calciumPer100g: r.calciumPer100g
+                ? parseFloat(r.calciumPer100g)
+                : null,
+              defaultServing: r.defaultServing
+                ? {
+                    amount: r.defaultServing.amount,
+                    unit: r.defaultServing.unit,
+                    gramWeight: r.defaultServing.gramWeight,
+                  }
+                : null,
+              subset: r.subset,
+            };
+          });
         }
       }
 
@@ -477,16 +713,8 @@ function applyAbridge(data) {
   };
   const stapleFoodRegex =
     /\b(milk|cheese|yogurt|fruit|vegetable|juice|melon|bread|egg|butter)\b/i;
-  const brandRegex = /\b([A-Z]{3,})\b/;
-  const knownBrands =
-    /\b(Kraft|Kellogg's|Nestle|Heinz|Campbell's|Pepsi|Coca-Cola|General Mills)\b/i;
-  let before = filtered.length;
-  filtered = filtered.filter(
-    (f) =>
-      keepSet.has(normalizeName(f.name)) ||
-      (!brandRegex.test(f.name) && !knownBrands.test(f.name))
-  );
-  logStep("Remove brands", before, filtered.length);
+
+  // Brand filtering moved to main process flow to run *before* abridgement.
   const methodWords =
     /\b(roasted|boiled|fried|grilled|braised|steamed|baked|cooked|broiled|raw|pan-fried|not breaded|breaded)\b/gi;
   before = filtered.length;
@@ -572,8 +800,11 @@ function applyAbridge(data) {
 // --- Main Execution ---
 console.log(`[PROCESS] Starting with ${records.length} mastered records`);
 
-// Step 1: Deduplicate by appId (remove serving size variations)
-const dedupedRecords = deduplicateByAppId(records);
+// Step 1A: Group by sourceKey to collect all measures per food
+const groupedRecords = groupBySourceKey(records);
+
+// Step 1B: Handle duplicate appIds with different sourceIds
+const dedupedRecords = deduplicateByAppId(groupedRecords);
 
 // Step 2: Apply name-based collapsing and nutritional bucketing
 let full = collapseDuplicates(dedupedRecords);
@@ -594,6 +825,15 @@ if (excludeSet.size > 0) {
   );
 }
 
+// Apply enhanced brand filtering before abridgement for better effectiveness
+const beforeBrandFilter = full.length;
+full = full.filter((food) => !containsBrand(food.name, keepSet));
+console.log(
+  `[PROCESS] Applied brand filter: ${beforeBrandFilter} → ${full.length} (-${
+    beforeBrandFilter - full.length
+  })`
+);
+
 console.log(`[PROCESS] Starting abridgement process with ${full.length} foods`);
 let abridged = applyAbridge(full);
 console.log(`[PROCESS] After abridgement: ${abridged.length} foods`);
@@ -602,13 +842,15 @@ console.log(`[PROCESS] After abridgement: ${abridged.length} foods`);
 full.sort((a, b) => a.appId - b.appId);
 abridged.sort((a, b) => a.appId - b.appId);
 
-// Add asterisk to abridged output names where foods were collapsed
+// Add asterisk to abridged output names where foods were collapsed.
+// Note: 'name' remains original, 'appName' gets the asterisk to prevent duplicates
 abridged = abridged.map((food) => {
-  if (food.collapsedFrom && food.collapsedFrom.length > 0) {
-    return {
-      ...food,
-      name: food.name + "*",
-    };
+  if (
+    food.collapsedFrom &&
+    food.collapsedFrom.length > 0 &&
+    !food.appName.endsWith("*")
+  ) {
+    return { ...food, appName: food.appName + "*" };
   }
   return food;
 });

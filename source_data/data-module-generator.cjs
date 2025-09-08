@@ -3,13 +3,14 @@
 /**
  * data-module-generator.cjs
  *
- * **NEW SCRIPT - Data Module Generator**
+ * **VERSION 2 - Multi-Measure Support**
  * Generates app-ready database modules from curated JSON data.
- * Replaces the merge functionality with clean module generation.
+ * Now supports both single-measure and multi-measure data formats.
  *
  * Features:
  * - Accepts single curated JSON input (no merging)
  * - Generates ready-to-use JS modules with exports
+ * - Handles measures arrays for multi-serving foods
  * - Optional name minification with rehydration mapping
  * - Minimal output option (strips metadata for app bundle)
  * - Clean, stable appId-based data structure
@@ -38,7 +39,11 @@ for (let i = 0; i < args.length; i++) {
       minimal = true;
       break;
     default:
-      if (!arg.startsWith("--")) {
+      if (arg.startsWith("--") || arg.startsWith("-")) {
+        console.error(`❌ Error: Unknown parameter '${arg}'`);
+        console.error(`Valid parameters: --module, --minify, --minimal`);
+        process.exit(1);
+      } else {
         fileArgs.push(arg);
       }
       break;
@@ -63,8 +68,7 @@ const KEY_MAPPINGS = {
   // Essential fields always present
   id: "i",
   name: "n",
-  measure: "m",
-  calcium: "c",
+  measures: "ms",     // New measures array field
   // Metadata fields (present unless --minimal)
   calciumPer100g: "c100",
   defaultServing: "ds",
@@ -72,6 +76,12 @@ const KEY_MAPPINGS = {
   sourceName: "sn",
   subset: "sub",
   collapsedFrom: "cf",
+};
+
+// --- Measure object minification mapping ---
+const MEASURE_MAPPINGS = {
+  measure: "s",  // s = serving
+  calcium: "c",  // c = calcium
 };
 
 // --- Utility Functions ---
@@ -119,9 +129,22 @@ function processDataForOutput(foods, isMinimal) {
     let processedFood = {
       id: food.appId,
       name: food.appName || food.name,
-      measure: food.measure,
-      calcium: parseFloat(food.calcium),
     };
+
+    // Handle both new measures array format and legacy single measure format
+    if (food.measures && Array.isArray(food.measures)) {
+      // New multi-measure format
+      processedFood.measures = food.measures.map(measure => ({
+        measure: measure.measure,
+        calcium: parseFloat(measure.calcium)
+      }));
+    } else {
+      // Legacy single measure format - convert to measures array
+      processedFood.measures = [{
+        measure: food.measure || "",
+        calcium: parseFloat(food.calcium || 0)
+      }];
+    }
 
     // Include metadata unless minimal mode
     if (!isMinimal) {
@@ -154,7 +177,20 @@ function minifyData(data) {
     const minified = {};
     for (const [originalKey, minifiedKey] of Object.entries(KEY_MAPPINGS)) {
       if (item[originalKey] !== undefined) {
-        minified[minifiedKey] = item[originalKey];
+        // Special handling for measures array
+        if (originalKey === 'measures' && Array.isArray(item[originalKey])) {
+          minified[minifiedKey] = item[originalKey].map(measure => {
+            const minifiedMeasure = {};
+            for (const [measureKey, measureMinKey] of Object.entries(MEASURE_MAPPINGS)) {
+              if (measure[measureKey] !== undefined) {
+                minifiedMeasure[measureMinKey] = measure[measureKey];
+              }
+            }
+            return minifiedMeasure;
+          });
+        } else {
+          minified[minifiedKey] = item[originalKey];
+        }
       }
     }
     return minified;
@@ -221,9 +257,21 @@ function generateModuleOutput(data, metadata, isMinified) {
       keyMappingReverse[minified] = original;
     }
 
+    // Add measure object rehydration keys
+    const measureMappingReverse = {};
+    for (const [original, minified] of Object.entries(MEASURE_MAPPINGS)) {
+      measureMappingReverse[minified] = original;
+    }
+
     output += "// Key mappings for rehydration\n";
     output += `export const KEYS = ${JSON.stringify(
       keyMappingReverse,
+      null,
+      2
+    )};\n\n`;
+    output += "// Measure object key mappings for rehydration\n";
+    output += `export const MEASURE_KEYS = ${JSON.stringify(
+      measureMappingReverse,
       null,
       2
     )};\n\n`;

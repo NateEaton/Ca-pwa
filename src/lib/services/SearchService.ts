@@ -21,6 +21,8 @@
  * across the application with context-aware results and false positive elimination.
  */
 
+import { getPrimaryMeasure } from '../data/foodDatabase.js';
+
 export interface SearchOptions {
   mode?: 'add_food' | 'database';
   favorites?: Set<number>;
@@ -221,8 +223,9 @@ export class SearchService {
       score += this.SCORING.CUSTOM_FOOD_BONUS;
     }
 
-    // Boost score for foods with higher calcium content
-    score += Math.log(food.calcium + 1) * this.SCORING.CALCIUM_BONUS_MULTIPLIER;
+    // Boost score for foods with higher calcium content (use primary measure for compatibility)
+    const primaryMeasure = getPrimaryMeasure(food);
+    score += Math.log(primaryMeasure.calcium + 1) * this.SCORING.CALCIUM_BONUS_MULTIPLIER;
 
     return score;
   }

@@ -29,11 +29,13 @@ let _metadataCache = null;
 
 /**
  * Rehydrates minified food data back to full object structure
+ * Handles both legacy single-measure and new multi-measure formats
  * @param {Array} minifiedData - Array of minified food objects
  * @param {Object} keyMapping - Mapping from minified keys to full keys
+ * @param {Object} measureKeyMapping - Mapping for measure object keys (if available)
  * @returns {Array} Array of fully rehydrated food objects
  */
-function rehydrateDatabase(minifiedData, keyMapping) {
+function rehydrateDatabase(minifiedData, keyMapping, measureKeyMapping) {
   return minifiedData.map((minifiedFood) => {
     const rehydratedFood = {};
 
@@ -41,12 +43,36 @@ function rehydrateDatabase(minifiedData, keyMapping) {
     for (const [minifiedKey, value] of Object.entries(minifiedFood)) {
       const fullKey = keyMapping[minifiedKey];
       if (fullKey) {
-        rehydratedFood[fullKey] = value;
+        // Special handling for measures arrays
+        if (fullKey === 'measures' && Array.isArray(value) && measureKeyMapping) {
+          rehydratedFood[fullKey] = value.map(minifiedMeasure => {
+            const rehydratedMeasure = {};
+            for (const [minMeasureKey, measureValue] of Object.entries(minifiedMeasure)) {
+              const fullMeasureKey = measureKeyMapping[minMeasureKey];
+              if (fullMeasureKey) {
+                rehydratedMeasure[fullMeasureKey] = measureValue;
+              } else {
+                rehydratedMeasure[minMeasureKey] = measureValue;
+              }
+            }
+            return rehydratedMeasure;
+          });
+        } else {
+          rehydratedFood[fullKey] = value;
+        }
       } else {
         // Fallback: if key not in mapping, use as-is (shouldn't happen in normal operation)
         console.warn(`Unknown minified key: ${minifiedKey}`);
         rehydratedFood[minifiedKey] = value;
       }
+    }
+
+    // Ensure backward compatibility: if no measures array, create from legacy fields
+    if (!rehydratedFood.measures && (rehydratedFood.measure || rehydratedFood.calcium)) {
+      rehydratedFood.measures = [{
+        measure: rehydratedFood.measure || "",
+        calcium: parseFloat(rehydratedFood.calcium || 0)
+      }];
     }
 
     return rehydratedFood;
@@ -68,7 +94,7 @@ async function loadFoodDatabase() {
     // Check if we have minified data (has KEYS export)
     if (module.KEYS && module.DB) {
       console.log("Loading minified food database with rehydration...");
-      _databaseCache = rehydrateDatabase(module.DB, module.KEYS);
+      _databaseCache = rehydrateDatabase(module.DB, module.KEYS, module.MEASURE_KEYS);
       _metadataCache = module.DATABASE_METADATA;
     }
     // Check if we have standard format (has DEFAULT_FOOD_DATABASE export)
@@ -270,6 +296,55 @@ export function searchFoods(
     })
     .slice(0, 50)
     .map((result) => result.food);
+}
+
+/**
+ * Helper function to get the primary (first) measure from a food
+ * Provides backward compatibility for existing code expecting single measure/calcium
+ * @param {Object} food - The food object (with measures array or legacy format)
+ * @returns {Object} Object with { measure, calcium } for primary serving
+ */
+export function getPrimaryMeasure(food) {
+  // New format: use first measure from array
+  if (food.measures && Array.isArray(food.measures) && food.measures.length > 0) {
+    return {
+      measure: food.measures[0].measure,
+      calcium: food.measures[0].calcium
+    };
+  }
+  
+  // Legacy format: use direct properties
+  return {
+    measure: food.measure || "",
+    calcium: food.calcium || 0
+  };
+}
+
+/**
+ * Helper function to get all measures from a food
+ * @param {Object} food - The food object
+ * @returns {Array} Array of { measure, calcium } objects
+ */
+export function getAllMeasures(food) {
+  // New format: return measures array
+  if (food.measures && Array.isArray(food.measures)) {
+    return food.measures;
+  }
+  
+  // Legacy format: convert to array
+  return [{
+    measure: food.measure || "",
+    calcium: food.calcium || 0
+  }];
+}
+
+/**
+ * Helper function to check if a food has multiple serving options
+ * @param {Object} food - The food object
+ * @returns {boolean} True if food has multiple measures
+ */
+export function hasMultipleMeasures(food) {
+  return food.measures && Array.isArray(food.measures) && food.measures.length > 1;
 }
 
 // For legacy compatibility, maintain the original loadFoodDatabase export

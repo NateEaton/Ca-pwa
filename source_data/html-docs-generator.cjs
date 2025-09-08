@@ -13,8 +13,23 @@ const path = require("path");
 
 // --- Argument Parsing ---
 const args = process.argv.slice(2);
-const inputFile = args[0];
-const outputFile = args[1] || path.join("static", "database-docs.html");
+const fileArgs = [];
+
+// Validate arguments and reject any flags
+for (let i = 0; i < args.length; i++) {
+  const arg = args[i];
+  if (arg.startsWith("--") || arg.startsWith("-")) {
+    console.error(`❌ Error: Unknown parameter '${arg}'`);
+    console.error(`This script does not accept any flags or parameters`);
+    console.error(`Usage: node html-docs-generator.cjs <curated-abridged.json> [output.html]`);
+    process.exit(1);
+  } else {
+    fileArgs.push(arg);
+  }
+}
+
+const inputFile = fileArgs[0];
+const outputFile = fileArgs[1] || path.join("static", "database-docs.html");
 
 if (!inputFile) {
   console.error(
@@ -82,71 +97,147 @@ function generateFoodRows(food) {
   const displayNameHasAsterisk = appDisplayName.endsWith('*');
   const cleanDisplayName = displayNameHasAsterisk ? appDisplayName.slice(0, -1) : appDisplayName;
 
-  // Main food row
-  html += `          <tr class="included-row" id="food-${
-    food.appId
-  }" data-app-name="${escapeHtml(
-    cleanDisplayName.toLowerCase()
-  )}" data-original-name="${escapeHtml(originalName.toLowerCase())}">
-            <td class="app-id">${food.appId}</td>
-            <td class="app-name">
-              ${escapeHtml(cleanDisplayName)}${
-    hasCollapsed ? '<span class="group-indicator">*</span>' : ""
+  // Handle both new measures array format and legacy single measure format
+  let measures = [];
+  if (food.measures && Array.isArray(food.measures)) {
+    // New multi-measure format
+    measures = food.measures;
+  } else {
+    // Legacy single measure format
+    measures = [{
+      measure: food.measure || "",
+      calcium: parseFloat(food.calcium || 0)
+    }];
   }
-            </td>
-            <td class="original-name">${escapeHtml(originalName)}</td>
-            <td class="calcium">${food.calcium} mg</td>
-            <td class="measure">${escapeHtml(food.measure)}</td>
-            <td class="calcium-per-100g">${
-              food.calciumPer100g !== null && food.calciumPer100g !== undefined
-                ? food.calciumPer100g + " mg"
-                : "N/A"
-            }</td>
-            <td class="source-info">
+
+  // Generate rows for each measure
+  measures.forEach((measureData, index) => {
+    const isFirstMeasure = index === 0;
+    const hasMultipleMeasures = measures.length > 1;
+    const measureRowspan = isFirstMeasure ? measures.length : 0;
+    
+    html += `          <tr class="included-row${isFirstMeasure ? '' : ' measure-continuation'}" id="${isFirstMeasure ? `food-${food.appId}` : ''}" data-app-name="${escapeHtml(
+      cleanDisplayName.toLowerCase()
+    )}" data-original-name="${escapeHtml(originalName.toLowerCase())}">\n`;
+    
+    // App ID column - only show on first measure row
+    if (isFirstMeasure) {
+      html += `            <td class="app-id" rowspan="${measureRowspan}">${food.appId}</td>\n`;
+    }
+    
+    // App Name column - only show on first measure row  
+    if (isFirstMeasure) {
+      html += `            <td class="app-name" rowspan="${measureRowspan}">
+              ${escapeHtml(cleanDisplayName)}${
+        hasCollapsed ? '<span class="group-indicator">*</span>' : ""
+      }
+            </td>\n`;
+    }
+    
+    // Original Name column - only show on first measure row
+    if (isFirstMeasure) {
+      html += `            <td class="original-name" rowspan="${measureRowspan}">${escapeHtml(originalName)}</td>\n`;
+    }
+    
+    // Calcium and Measure columns - show for each measure
+    html += `            <td class="calcium">${measureData.calcium} mg</td>\n`;
+    html += `            <td class="measure">${escapeHtml(measureData.measure)}</td>\n`;
+    
+    // Calcium per 100g column - only show on first measure row
+    if (isFirstMeasure) {
+      html += `            <td class="calcium-per-100g" rowspan="${measureRowspan}">${
+        food.calciumPer100g !== null && food.calciumPer100g !== undefined
+          ? food.calciumPer100g + " mg"
+          : "N/A"
+      }</td>\n`;
+    }
+    
+    // Source info column - only show on first measure row
+    if (isFirstMeasure) {
+      html += `            <td class="source-info" rowspan="${measureRowspan}">
               <span class="subset-badge">${escapeHtml(
                 food.subset || "N/A"
               )}</span>
               <a href="${generateFdcLink(
                 food.sourceId
               )}" target="_blank" class="source-link">${
-    food.sourceId || "N/A"
-  }</a>
-            </td>
-          </tr>\n`;
+        food.sourceId || "N/A"
+      }</a>
+            </td>\n`;
+    }
+    
+    html += `          </tr>\n`;
+  });
 
   // Collapsed food rows
   if (hasCollapsed) {
     for (const collapsed of food.collapsedFrom) {
-      html += `          <tr class="collapsed-row" data-original-name="${escapeHtml(
-        collapsed.name.toLowerCase()
-      )}">
-            <td class="collapsed-connector">
+      // Handle both new measures array format and legacy single measure format for collapsed foods
+      let collapsedMeasures = [];
+      if (collapsed.measures && Array.isArray(collapsed.measures)) {
+        // New multi-measure format
+        collapsedMeasures = collapsed.measures;
+      } else {
+        // Legacy single measure format
+        collapsedMeasures = [{
+          measure: collapsed.measure || "",
+          calcium: parseFloat(collapsed.calcium || 0)
+        }];
+      }
+
+      // Display all measures for collapsed food (similar to main food handling)
+      collapsedMeasures.forEach((measureData, index) => {
+        const isFirstMeasure = index === 0;
+        const hasMultipleMeasures = collapsedMeasures.length > 1;
+        const measureRowspan = isFirstMeasure ? collapsedMeasures.length : 0;
+        
+        html += `          <tr class="collapsed-row${isFirstMeasure ? '' : ' measure-continuation'}" data-original-name="${escapeHtml(
+          collapsed.name.toLowerCase()
+        )}">\n`;
+        
+        // Collapsed connector - only show on first measure row
+        if (isFirstMeasure) {
+          html += `            <td class="collapsed-connector" rowspan="${measureRowspan}">
               <div class="tree-line"></div>
-            </td>
-            <td></td>
-            <td class="collapsed-name">${escapeHtml(collapsed.name)}</td>
-            <td class="collapsed-calcium">${
-              collapsed.calcium ? collapsed.calcium + " mg" : ""
-            }</td>
-            <td class="collapsed-measure">${escapeHtml(
-              collapsed.measure || ""
-            )}</td>
-            <td class="collapsed-calcium-per-100g">${
-              collapsed.calciumPer100g !== null && collapsed.calciumPer100g !== undefined
-                ? collapsed.calciumPer100g + " mg"
-                : "N/A"
-            }</td>
-            <td class="source-info">
+            </td>\n`;
+        }
+        
+        html += `            <td></td>\n`; // Empty column
+        
+        // Collapsed name - only show on first measure row
+        if (isFirstMeasure) {
+          html += `            <td class="collapsed-name" rowspan="${measureRowspan}">${escapeHtml(collapsed.name)}</td>\n`;
+        }
+        
+        // Calcium and Measure columns - show for each measure
+        html += `            <td class="collapsed-calcium">${measureData.calcium} mg</td>\n`;
+        html += `            <td class="collapsed-measure">${escapeHtml(measureData.measure)}</td>\n`;
+        
+        // Calcium per 100g - only show on first measure row
+        if (isFirstMeasure) {
+          html += `            <td class="collapsed-calcium-per-100g" rowspan="${measureRowspan}">${
+            collapsed.calciumPer100g !== null && collapsed.calciumPer100g !== undefined
+              ? collapsed.calciumPer100g + " mg"
+              : "N/A"
+          }</td>\n`;
+        }
+        
+        // Source info - only show on first measure row
+        if (isFirstMeasure) {
+          html += `            <td class="source-info" rowspan="${measureRowspan}">
               <span class="subset-badge">${escapeHtml(
                 collapsed.subset || food.subset || "N/A"
               )}</span>
               <a href="${generateFdcLink(
                 collapsed.sourceId
               )}" target="_blank" class="source-link">${
-        collapsed.sourceId || "N/A"
-      }</a>
-            </td>
-          </tr>\n`;
+            collapsed.sourceId || "N/A"
+          }</a>
+            </td>\n`;
+        }
+        
+        html += `          </tr>\n`;
+      });
     }
   }
 
@@ -281,6 +372,10 @@ function generateHtmlDocument(bodyContent, totalRows, generatedDate, metadata) {
           <p>Foods shown with <span style="color: var(--secondary); font-weight: 600;">*</span> represent groups of nutritionally similar foods. All foods in a group have identical calcium values.</p>
         </div>
         <div class="explanation-item">
+          <h5>Multiple Serving Sizes</h5>
+          <p>Foods marked with "(multiple servings)" show all available serving size options from the USDA source data, displayed as multiple rows with different calcium values per serving.</p>
+        </div>
+        <div class="explanation-item">
           <h5>Collapsed Foods</h5>
           <p>Indented foods with tree connectors show which items were grouped under representative foods to simplify the database while maintaining accuracy.</p>
         </div>
@@ -319,7 +414,7 @@ function generateHtmlDocument(bodyContent, totalRows, generatedDate, metadata) {
             <th>Name (in app)</th>
             <th>Original Source Name</th>
             <th>Calcium</th>
-            <th>Measure</th>
+            <th>Serving Size</th>
             <th>Ca per 100g</th>
             <th>Source & ID</th>
           </tr>
