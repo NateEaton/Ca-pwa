@@ -528,6 +528,11 @@ tbody td {
   display: none !important;
 }
 
+/* Hash navigation scroll offset to account for sticky search header */
+:target {
+  scroll-margin-top: 120px; /* Adjust for sticky search section height */
+}
+
 /* Mobile responsive */
 @media (max-width: 768px) {
   .header {
