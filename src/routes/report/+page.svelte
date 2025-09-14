@@ -329,9 +329,7 @@
 
   onMount(async () => {
     try {
-      // console.log('Calcium state on report page:', $calciumState);
       reportData = await generateReportData();
-      // console.log('Report data generated:', reportData);
     } catch (error) {
       console.error("Error generating report:", error);
     } finally {

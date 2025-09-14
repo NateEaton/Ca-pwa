@@ -21,7 +21,7 @@
   import { calciumState, calciumService } from "$lib/stores/calcium";
   import { DEFAULT_FOOD_DATABASE, getPrimaryMeasure, getAllMeasures, hasMultipleMeasures } from "$lib/data/foodDatabase";
   import { SearchService } from "$lib/services/SearchService";
-  import UnitConverter from "$lib/services/UnitConverter.js";
+  import UnitConverter from "$lib/services/UnitConverter";
   import ConfirmDialog from "./ConfirmDialog.svelte";
 
   /** Whether the modal is visible */

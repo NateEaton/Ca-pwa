@@ -16,8 +16,6 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-// src/lib/utils/dateUtils.js
-
 /**
  * Date utility functions for handling date operations in the local timezone.
  * All functions work with YYYY-MM-DD date strings and ensure consistent
@@ -26,10 +24,10 @@
 
 /**
  * Get today's date in YYYY-MM-DD format using local timezone.
- * 
- * @returns {string} Today's date in YYYY-MM-DD format
+ *
+ * @returns Today's date in YYYY-MM-DD format
  */
-export function getTodayString() {
+export function getTodayString(): string {
   const now = new Date();
   const year = now.getFullYear();
   const month = String(now.getMonth() + 1).padStart(2, "0");
@@ -40,11 +38,11 @@ export function getTodayString() {
 /**
  * Format a date string for display with localized formatting.
  * Shows weekday, month, and day. Year is only shown if different from current year.
- * 
- * @param {string} dateString - Date string in YYYY-MM-DD format
- * @returns {string} Formatted date string (e.g., "Mon, Jan 15" or "Mon, Jan 15, 2024")
+ *
+ * @param dateString - Date string in YYYY-MM-DD format
+ * @returns Formatted date string (e.g., "Mon, Jan 15" or "Mon, Jan 15, 2024")
  */
-export function formatDate(dateString) {
+export function formatDate(dateString: string): string {
   if (!dateString) return getTodayString();
 
   const date = new Date(dateString + "T00:00:00"); // Force local timezone interpretation
@@ -60,12 +58,12 @@ export function formatDate(dateString) {
 
 /**
  * Add a specified number of days to a date string, keeping it in local timezone.
- * 
- * @param {string} dateString - Date string in YYYY-MM-DD format
- * @param {number} days - Number of days to add (can be negative to subtract)
- * @returns {string} New date string in YYYY-MM-DD format
+ *
+ * @param dateString - Date string in YYYY-MM-DD format
+ * @param days - Number of days to add (can be negative to subtract)
+ * @returns New date string in YYYY-MM-DD format
  */
-export function addDays(dateString, days) {
+export function addDays(dateString: string, days: number): string {
   const date = new Date(dateString + "T00:00:00"); // Force local timezone
   date.setDate(date.getDate() + days);
 
@@ -77,10 +75,10 @@ export function addDays(dateString, days) {
 
 /**
  * Check if a date string represents today's date.
- * 
- * @param {string} dateString - Date string in YYYY-MM-DD format
- * @returns {boolean} True if the date string represents today, false otherwise
+ *
+ * @param dateString - Date string in YYYY-MM-DD format
+ * @returns True if the date string represents today, false otherwise
  */
-export function isToday(dateString) {
+export function isToday(dateString: string): boolean {
   return dateString === getTodayString();
 }

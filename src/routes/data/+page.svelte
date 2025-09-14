@@ -100,13 +100,10 @@
     calciumFilter;
     let foods = [];
 
-    // Apply filter
+    // Apply filter - let SearchService handle hidden foods filtering consistently
     if (selectedFilter === "available") {
-      // Show all addable foods: database foods (excluding hidden ones) + custom foods + favorites
-      const visibleDatabaseFoods = [...foodDatabase].filter(
-        (food) => !$calciumState.hiddenFoods.has(food.id)
-      );
-      foods = [...visibleDatabaseFoods, ...$calciumState.customFoods];
+      // Show all addable foods: all database foods + custom foods (SearchService will filter hidden)
+      foods = [...foodDatabase, ...$calciumState.customFoods];
     } else if (selectedFilter === "database") {
       // Show all database foods for management (including hidden and favorites)
       foods = [...foodDatabase];
@@ -115,16 +112,21 @@
       foods = [...$calciumState.customFoods];
     }
 
-    // Apply enhanced search
+    // Apply enhanced search and filtering
     if (searchQuery.trim()) {
+      const hiddenFoodsForSearch = selectedFilter === "database" ? new Set() : $calciumState.hiddenFoods;
       const results = SearchService.searchFoods(searchQuery, foods, {
         mode: "database",
         favorites: $calciumState.favorites,
-        hiddenFoods:
-          selectedFilter === "database" ? new Set() : $calciumState.hiddenFoods, // Don't filter hidden foods in database mode
-        // No maxResults - show all matching foods for complete bulk operations
+        hiddenFoods: hiddenFoodsForSearch, // Don't filter hidden foods in database mode
+        maxResults: 1000, // Show all matching foods for complete bulk operations
       });
       foods = results.map((result) => result.food);
+    } else {
+      // Apply hidden foods filtering when NOT searching (SearchService handles it when searching)
+      if (selectedFilter === "available") {
+        foods = foods.filter((food) => food.isCustom || !$calciumState.hiddenFoods.has(food.id));
+      }
     }
 
     // Apply calcium filter
@@ -197,7 +199,7 @@
   $: {
     let totalCount = 0;
     if (selectedFilter === "available") {
-      const visibleDatabaseFoods = [...foodDatabase].filter(
+      const visibleDatabaseFoods = foodDatabase.filter(
         (food) => !$calciumState.hiddenFoods.has(food.id)
       );
       totalCount =
@@ -215,7 +217,7 @@
     let filterLabel = "";
 
     if (selectedFilter === "available") {
-      const visibleDatabaseFoods = [...foodDatabase].filter(
+      const visibleDatabaseFoods = foodDatabase.filter(
         (food) => !$calciumState.hiddenFoods.has(food.id)
       );
       totalCount =

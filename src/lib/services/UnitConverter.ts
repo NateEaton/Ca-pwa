@@ -20,7 +20,44 @@
  * A comprehensive unit conversion system for calcium tracking app.
  * Handles volume, weight, and count-based measurements with USDA measure parsing.
  */
+
+export type UnitType = 'volume' | 'weight' | 'count' | 'unknown';
+
+export interface ParsedMeasure {
+  originalQuantity: number;
+  originalUnit: string;
+  detectedUnit: string;
+  unitType: UnitType;
+  isDescriptive?: boolean;
+  isCompound?: boolean;
+  containerType?: string;
+  innerMeasure?: string;
+  cleanedUnit?: string;
+}
+
+export interface AlternativeUnit {
+  unit: string;
+  quantity: number;
+  display: string;
+  practical: boolean;
+  sizeOrder: number;
+}
+
+export interface ConversionTable {
+  [unit: string]: number;
+}
+
+export interface ConversionTables {
+  volume: ConversionTable;
+  weight: ConversionTable;
+  count: ConversionTable;
+}
+
 export class UnitConverter {
+  private nonConvertiblePatterns: RegExp[];
+  private conversions: ConversionTables;
+  private unitDisplayNames: Record<string, string>;
+
   constructor() {
     // Patterns for non-convertible measurements
     this.nonConvertiblePatterns = [
@@ -151,30 +188,18 @@ export class UnitConverter {
   }
 
   /**
-   * Check if a measure is non-convertible (descriptive)
-   */
-  /**
    * Checks if a measure string contains non-convertible descriptors.
-   * @param {string} measureString The measure string to check
-   * @returns {boolean} True if the measure is non-convertible
    */
-  isNonConvertible(measureString) {
+  isNonConvertible(measureString: string): boolean {
     return this.nonConvertiblePatterns.some((pattern) =>
       pattern.test(measureString)
     );
   }
 
   /**
-   * Parse USDA measure string to extract quantity and unit
-   * @param {string} measureString - The USDA measure string to parse
-   * @returns {Object} Parsed measure information
-   */
-  /**
    * Parses a USDA measure string into components for unit conversion.
-   * @param {string} measureString The USDA measure string to parse
-   * @returns {Object} Parsed measure object with quantity, unit, and type information
    */
-  parseUSDAMeasure(measureString) {
+  parseUSDAMeasure(measureString: string): ParsedMeasure {
     // Clean the string
     let cleaned = measureString.toLowerCase().trim();
 
@@ -239,218 +264,121 @@ export class UnitConverter {
   }
 
   /**
-   * Helper method for parsing simple measures
-   * @param {string} unitString - The unit string to parse
-   * @returns {Object} Parsed unit information
-   */
-  /**
    * Parses a simple measure string for basic unit detection.
-   * @param {string} unitString The unit string to parse
-   * @returns {Object} Parsed measure object
    */
-  parseSimpleMeasure(unitString) {
-    // Remove common descriptors that don't affect measurement
-    const descriptorsToRemove = [
-      ", diced",
-      ", chopped",
-      ", sliced",
-      ", shredded",
-      ", crumbled",
-      ", whole kernels",
-      ", sections",
-      ", pieces",
-      ", halves",
-      "cooked",
-      "raw",
-      "fresh",
-      "frozen",
-      "canned",
-      "dried",
-      "boneless",
-      "with skin",
-      "without skin",
-      "trimmed",
-    ];
+  parseSimpleMeasure(unitString: string): Pick<ParsedMeasure, 'detectedUnit' | 'unitType'> {
+    let cleaned = unitString.toLowerCase().trim();
 
-    let cleanUnit = unitString;
-    descriptorsToRemove.forEach((descriptor) => {
-      cleanUnit = cleanUnit.replace(descriptor, "");
-    });
+    // Remove common measurement prefixes/suffixes
+    cleaned = cleaned.replace(/^(of\s+)/, ""); // "of cups" -> "cups"
 
-    cleanUnit = cleanUnit.trim();
+    // Detect unit type and clean unit
+    const unitType = this.getUnitType(cleaned);
+    let detectedUnit = cleaned;
 
-    // Try to match known units
-    const detectedUnit = this.detectUnitType(cleanUnit);
+    if (unitType !== "unknown") {
+      // For known units, use the canonical form
+      detectedUnit = this.getCanonicalUnit(cleaned, unitType);
+    }
 
     return {
-      detectedUnit: detectedUnit,
-      unitType: this.getUnitType(detectedUnit),
+      detectedUnit,
+      unitType,
     };
   }
 
   /**
-   * Check if a word exactly matches a unit (avoiding substring false positives)
+   * Determines the unit type (volume, weight, count, or unknown).
    */
-  isExactUnitMatch(word, unit) {
-    // For single character units like 'l' or 'g', require exact match
-    if (unit.length === 1) {
-      return word === unit;
+  getUnitType(unit: string): UnitType {
+    const cleanUnit = unit.toLowerCase().trim();
+
+    if (this.conversions.volume[cleanUnit] !== undefined) {
+      return "volume";
+    }
+    if (this.conversions.weight[cleanUnit] !== undefined) {
+      return "weight";
+    }
+    if (this.conversions.count[cleanUnit] !== undefined) {
+      return "count";
     }
 
-    // For longer units, allow the word to contain the unit if it's at word boundaries
-    const regex = new RegExp(`\\b${unit}\\b`, "i");
-    return regex.test(word);
-  }
-
-  /**
-   * Detect the actual unit from a string
-   * @param {string} unitString - The unit string to analyze
-   * @returns {string} The detected unit
-   */
-  /**
-   * Detects the type of unit (volume, weight, count, etc.).
-   * @param {string} unitString The unit string to analyze
-   * @returns {string} The detected unit type
-   */
-  detectUnitType(unitString) {
-    // Split into words and check each one
-    const words = unitString.toLowerCase().split(/\s+/);
-
-    // Check all conversion tables for exact word matches
-    for (const [category, units] of Object.entries(this.conversions)) {
-      for (const unit of Object.keys(units)) {
-        // Check if any word is an exact match for this unit
-        for (const word of words) {
-          if (this.isExactUnitMatch(word, unit)) {
-            return unit;
-          }
-        }
-      }
-    }
-
-    // Fallback: return the original string
-    return unitString;
-  }
-
-  /**
-   * Get the category of a unit (volume, weight, count)
-   * @param {string} unit - The unit to categorize
-   * @returns {string} The unit category or 'unknown'
-   */
-  /**
-   * Gets the unit type for a specific unit.
-   * @param {string} unit The unit to get the type for
-   * @returns {string} The unit type or 'unknown'
-   */
-  getUnitType(unit) {
-    for (const [category, units] of Object.entries(this.conversions)) {
-      if (units.hasOwnProperty(unit)) {
-        return category;
-      }
-    }
     return "unknown";
   }
 
   /**
-   * Convert between units of the same type
-   * FIXED: Using original algorithm that matches the conversion ratios
-   * @param {number} fromQuantity - The quantity to convert
-   * @param {string} fromUnit - The source unit
-   * @param {string} toUnit - The target unit
-   * @returns {number} The converted quantity
+   * Gets the canonical unit name for a given unit within its type.
    */
+  getCanonicalUnit(unit: string, unitType: UnitType): string {
+    const cleanUnit = unit.toLowerCase().trim();
+
+    if (unitType === "unknown") {
+      return cleanUnit;
+    }
+
+    // Check if the unit exists in the conversion table for this type
+    if (this.conversions[unitType][cleanUnit] !== undefined) {
+      return cleanUnit;
+    }
+
+    // Return as-is if not found
+    return cleanUnit;
+  }
+
   /**
    * Converts a quantity from one unit to another.
-   * @param {number} fromQuantity The original quantity
-   * @param {string} fromUnit The original unit
-   * @param {string} toUnit The target unit
-   * @returns {number} The converted quantity
-   * @throws {Error} If units are incompatible or unknown
    */
-  convertUnits(fromQuantity, fromUnit, toUnit) {
+  convertUnits(quantity: number, fromUnit: string, toUnit: string): number {
     const fromType = this.getUnitType(fromUnit);
     const toType = this.getUnitType(toUnit);
 
+    // Can't convert between different unit types
     if (fromType !== toType || fromType === "unknown") {
-      throw new Error(`Cannot convert between ${fromUnit} and ${toUnit}`);
+      throw new Error(`Cannot convert from ${fromUnit} to ${toUnit}`);
     }
 
-    const conversions = this.conversions[fromType];
+    const fromConversion = this.conversions[fromType][fromUnit.toLowerCase()];
+    const toConversion = this.conversions[toType][toUnit.toLowerCase()];
 
-    // Convert from source unit to base unit
-    const baseQuantity = fromQuantity / conversions[fromUnit];
+    if (!fromConversion || !toConversion) {
+      throw new Error(`Conversion not found for ${fromUnit} or ${toUnit}`);
+    }
 
-    // Convert from base unit to target unit
-    const targetQuantity = baseQuantity * conversions[toUnit];
-
-    return parseFloat(targetQuantity.toFixed(4));
+    // Convert to base unit, then to target unit
+    const baseQuantity = quantity / fromConversion;
+    return baseQuantity * toConversion;
   }
 
   /**
-   * Calculate calcium for converted units
-   * @param {number} originalCalcium - Original calcium amount
-   * @param {number} originalQuantity - Original quantity
-   * @param {string} originalUnit - Original unit
-   * @param {number} newQuantity - New quantity
-   * @param {string} newUnit - New unit
-   * @returns {number} Calculated calcium amount
+   * Checks if two units are equivalent (same unit, different forms).
    */
-  /**
-   * Calculates calcium content when converting between units.
-   * @param {number} originalCalcium The original calcium amount
-   * @param {number} originalQuantity The original quantity
-   * @param {string} originalUnit The original unit
-   * @param {number} newQuantity The new quantity
-   * @param {string} newUnit The new unit
-   * @returns {number} The calculated calcium amount for the new units
-   */
-  calculateCalciumForConvertedUnits(
-    originalCalcium,
-    originalQuantity,
-    originalUnit,
-    newQuantity,
-    newUnit
-  ) {
-    try {
-      // Convert the new quantity back to the original unit system
-      const equivalentOriginalQuantity = this.convertUnits(
-        newQuantity,
-        newUnit,
-        originalUnit
-      );
+  areUnitsEquivalent(unit1: string, unit2: string): boolean {
+    const clean1 = unit1.toLowerCase().trim();
+    const clean2 = unit2.toLowerCase().trim();
 
-      // Calculate the ratio and apply it to calcium
-      const ratio = equivalentOriginalQuantity / originalQuantity;
+    if (clean1 === clean2) return true;
 
-      return Math.round(originalCalcium * ratio);
-    } catch (error) {
-      console.error("Calcium calculation error:", error);
-      return originalCalcium; // Fallback to original
-    }
-  }
+    // Check for equivalent forms
+    const equivalents: Record<string, string[]> = {
+      cup: ["cups", "c"],
+      tablespoon: ["tablespoons", "tbsp", "tbs"],
+      teaspoon: ["teaspoons", "tsp"],
+      "fluid ounce": ["fluid ounces", "fl oz", "floz"],
+      milliliter: ["milliliters", "ml"],
+      liter: ["liters", "l"],
+      gram: ["grams", "g"],
+      kilogram: ["kilograms", "kg"],
+      ounce: ["ounces", "oz"],
+      pound: ["pounds", "lb", "lbs"],
+      piece: ["pieces"],
+      slice: ["slices"],
+      serving: ["servings"],
+    };
 
-  /**
-   * Check if two units are equivalent (handle aliases)
-   * @param {string} unit1 - First unit
-   * @param {string} unit2 - Second unit
-   * @returns {boolean} Whether the units are equivalent
-   */
-  /**
-   * Checks if two units are equivalent (same base unit).
-   * @param {string} unit1 First unit to compare
-   * @param {string} unit2 Second unit to compare
-   * @returns {boolean} True if units are equivalent
-   */
-  areUnitsEquivalent(unit1, unit2) {
-    if (unit1 === unit2) return true;
-
-    // Check if both units exist in the same conversion table with same ratio
-    for (const [category, conversions] of Object.entries(this.conversions)) {
-      if (
-        conversions[unit1] !== undefined &&
-        conversions[unit2] !== undefined
-      ) {
-        return conversions[unit1] === conversions[unit2];
+    for (const [base, variants] of Object.entries(equivalents)) {
+      const allForms = [base, ...variants];
+      if (allForms.includes(clean1) && allForms.includes(clean2)) {
+        return true;
       }
     }
 
@@ -458,27 +386,24 @@ export class UnitConverter {
   }
 
   /**
-   * Get suggestions for common unit alternatives
-   * @param {string} unitType - The type of unit (volume, weight, count)
-   * @returns {Array} Array of suggested units
+   * Gets suggested units for a given unit type.
    */
-  getUnitSuggestions(unitType) {
-    const suggestions = {
-      volume: ["cup", "tablespoon", "teaspoon", "fl oz", "ml"],
-      weight: ["oz", "gram", "lb", "kg"],
-      count: ["piece", "slice", "serving", "each"],
+  getUnitSuggestions(unitType: UnitType): string[] {
+    const suggestions: Record<UnitType, string[]> = {
+      volume: ["tsp", "tbsp", "fl oz", "cup", "ml", "l"],
+      weight: ["g", "oz", "lb", "kg"],
+      count: ["piece", "slice", "serving", "whole", "each"],
+      unknown: [],
     };
 
     return suggestions[unitType] || [];
   }
 
   /**
-   * Get unit size order for logical sorting (smallest to largest)
-   * @param {string} unit - The unit to get size order for
-   * @returns {number} Size order (lower = smaller unit)
+   * Gets a size order for units (for sorting suggestions).
    */
-  getUnitSizeOrder(unit) {
-    const sizeOrders = {
+  getUnitSizeOrder(unit: string): number {
+    const sizeOrders: Record<string, number> = {
       // Volume (smallest to largest)
       tsp: 1,
       teaspoon: 1,
@@ -540,18 +465,9 @@ export class UnitConverter {
   }
 
   /**
-   * Smart unit detection for better UX - FIXED: Now uses current serving quantity
-   * @param {string} originalUnit - The original unit
-   * @param {number} currentQuantity - The CURRENT quantity (not original)
-   * @returns {Array} Array of alternative units with conversion info
-   */
-  /**
    * Detects the best alternative units for a given quantity and unit.
-   * @param {string} originalUnit The original unit
-   * @param {number} currentQuantity The current quantity
-   * @returns {Array} Array of alternative unit suggestions
    */
-  detectBestAlternativeUnits(originalUnit, currentQuantity) {
+  detectBestAlternativeUnits(originalUnit: string, currentQuantity: number): AlternativeUnit[] {
     const unitType = this.getUnitType(originalUnit);
     const suggestions = this.getUnitSuggestions(unitType);
 
@@ -578,7 +494,7 @@ export class UnitConverter {
           return null;
         }
       })
-      .filter((item) => item !== null)
+      .filter((item): item is AlternativeUnit => item !== null)
       .sort((a, b) => {
         // First, prioritize practical quantities
         if (a.practical && !b.practical) return -1;
@@ -591,19 +507,15 @@ export class UnitConverter {
 
   /**
    * Determine if a quantity is practical for everyday use
-   * @param {number} quantity - The quantity to evaluate
-   * @returns {boolean} Whether the quantity is practical
    */
-  isPracticalQuantity(quantity) {
+  isPracticalQuantity(quantity: number): boolean {
     return quantity >= 0.1 && quantity <= 100;
   }
 
   /**
    * Format quantity for display
-   * @param {number} quantity - The quantity to format
-   * @returns {string} Formatted quantity string
    */
-  formatQuantity(quantity) {
+  formatQuantity(quantity: number): string {
     if (quantity % 1 === 0) {
       return quantity.toString();
     } else if (quantity >= 1) {

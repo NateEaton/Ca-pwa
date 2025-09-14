@@ -93,13 +93,11 @@ async function loadFoodDatabase() {
 
     // Check if we have minified data (has KEYS export)
     if (module.KEYS && module.DB) {
-      console.log("Loading minified food database with rehydration...");
       _databaseCache = rehydrateDatabase(module.DB, module.KEYS, module.MEASURE_KEYS);
       _metadataCache = module.DATABASE_METADATA;
     }
     // Check if we have standard format (has DEFAULT_FOOD_DATABASE export)
     else if (module.DEFAULT_FOOD_DATABASE) {
-      console.log("Loading standard food database...");
       _databaseCache = module.DEFAULT_FOOD_DATABASE;
       _metadataCache = module.DATABASE_METADATA;
     }
@@ -118,8 +116,6 @@ async function loadFoodDatabase() {
       }
       _metadataCache = module.DATABASE_METADATA || getDefaultMetadata();
     }
-
-    console.log(`Food database loaded: ${_databaseCache.length} foods`);
     return _databaseCache;
   } catch (error) {
     console.error("Error loading food database:", error);
