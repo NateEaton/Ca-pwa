@@ -22,6 +22,53 @@ const MATCH_TYPES = {
   NONE: "NONE",
 };
 
+// Multi-measure data access helpers (compatible with both legacy and new formats)
+function getPrimaryMeasure(food) {
+  if (food.measures && Array.isArray(food.measures) && food.measures.length > 0) {
+    // New multi-measure format - return first measure
+    return {
+      measure: food.measures[0].measure,
+      calcium: food.measures[0].calcium
+    };
+  } else if (food.m && food.c !== undefined) {
+    // Legacy minified format
+    return {
+      measure: food.m,
+      calcium: parseFloat(food.c)
+    };
+  } else if (food.measure && food.calcium !== undefined) {
+    // Legacy full format
+    return {
+      measure: food.measure,
+      calcium: parseFloat(food.calcium)
+    };
+  } else {
+    // Fallback
+    return {
+      measure: "",
+      calcium: 0
+    };
+  }
+}
+
+function getAllMeasures(food) {
+  if (food.measures && Array.isArray(food.measures)) {
+    // New multi-measure format
+    return food.measures.map(m => ({
+      measure: m.measure,
+      calcium: parseFloat(m.calcium)
+    }));
+  } else {
+    // Legacy format - return single measure as array
+    const primary = getPrimaryMeasure(food);
+    return [primary];
+  }
+}
+
+function hasMultipleMeasures(food) {
+  return food.measures && Array.isArray(food.measures) && food.measures.length > 1;
+}
+
 // Fuzzy string matching for food names
 function calculateSimilarity(str1, str2) {
   const s1 = str1.toLowerCase().trim();
@@ -236,21 +283,28 @@ function findFoodMatch(targetFood, curatedFoods, options = {}) {
     // Strategy 1: Exact match (name + measure + calcium) - for favorites and hidden foods
     for (const food of curatedFoods) {
       const foodName = normalizeString(food.n || food.name || "");
-      const foodMeasure = normalizeMeasure(food.m || food.measure || "");
-      const foodCalcium = parseFloat(food.c || food.calcium || 0);
+      
+      // Check all measures for exact match (supports both legacy and multi-measure)
+      const allMeasures = getAllMeasures(food);
+      for (const measureInfo of allMeasures) {
+        const foodMeasure = normalizeMeasure(measureInfo.measure || "");
+        const foodCalcium = parseFloat(measureInfo.calcium || 0);
 
-      if (
-        foodName === targetName &&
-        foodMeasure === targetMeasure &&
-        calciumMatches(targetCalcium, foodCalcium)
-      ) {
-        return {
-          food: food,
-          appId: food.i || food.id || food.appId,
-          matchType: MATCH_TYPES.EXACT,
-          score: 1.0,
-          details: "Perfect match on name, measure, and calcium",
-        };
+        if (
+          foodName === targetName &&
+          foodMeasure === targetMeasure &&
+          calciumMatches(targetCalcium, foodCalcium)
+        ) {
+          return {
+            food: food,
+            appId: food.i || food.id || food.appId,
+            matchType: MATCH_TYPES.EXACT,
+            score: 1.0,
+            details: hasMultipleMeasures(food) 
+              ? `Perfect match on name, measure, and calcium (${allMeasures.length} measures available)`
+              : "Perfect match on name, measure, and calcium",
+          };
+        }
       }
     }
   }
@@ -260,24 +314,27 @@ function findFoodMatch(targetFood, curatedFoods, options = {}) {
     if (food.collapsedFrom && Array.isArray(food.collapsedFrom)) {
       for (const collapsed of food.collapsedFrom) {
         const collapsedName = normalizeString(collapsed.name || "");
-        const collapsedMeasure = normalizeMeasure(collapsed.measure || "");
-        const collapsedCalcium = parseFloat(
-          collapsed.calcium || collapsed.calciumPer100g || 0
-        );
+        
+        // Handle collapsed foods with measures arrays
+        const allCollapsedMeasures = getAllMeasures(collapsed);
+        for (const measureInfo of allCollapsedMeasures) {
+          const collapsedMeasure = normalizeMeasure(measureInfo.measure || "");
+          const collapsedCalcium = parseFloat(measureInfo.calcium || 0);
 
-        if (
-          collapsedName === targetName &&
-          collapsedMeasure === targetMeasure &&
-          calciumMatches(targetCalcium, collapsedCalcium)
-        ) {
-          return {
-            food: food,
-            appId: food.i || food.id || food.appId,
-            matchType: MATCH_TYPES.COLLAPSED,
-            score: 1.0,
-            details: `Found in collapsed foods under "${food.n || food.name}"`,
-            originalFood: collapsed,
-          };
+          if (
+            collapsedName === targetName &&
+            collapsedMeasure === targetMeasure &&
+            calciumMatches(targetCalcium, collapsedCalcium)
+          ) {
+            return {
+              food: food,
+              appId: food.i || food.id || food.appId,
+              matchType: MATCH_TYPES.COLLAPSED,
+              score: 1.0,
+              details: `Found in collapsed foods under "${food.n || food.name}"`,
+              originalFood: collapsed,
+            };
+          }
         }
       }
     }
@@ -292,8 +349,10 @@ function findFoodMatch(targetFood, curatedFoods, options = {}) {
       const score = calculateSimilarity(targetName, foodName);
 
       if (score > bestScore && score >= nameThreshold) {
-        const foodMeasure = normalizeMeasure(food.m || food.measure || "");
-        const foodCalcium = parseFloat(food.c || food.calcium || 0);
+        // Use primary measure for partial matching
+        const primaryMeasure = getPrimaryMeasure(food);
+        const foodMeasure = normalizeMeasure(primaryMeasure.measure || "");
+        const foodCalcium = parseFloat(primaryMeasure.calcium || 0);
 
         const measureMatch = foodMeasure === targetMeasure;
         const calciumMatch = calciumMatches(targetCalcium, foodCalcium);
@@ -306,10 +365,12 @@ function findFoodMatch(targetFood, curatedFoods, options = {}) {
           score: score,
           details: `Name match (${Math.round(score * 100)}%) with ${
             measureMatch ? "same" : "different"
-          } measure, ${calciumMatch ? "same" : "different"} calcium`,
+          } measure, ${calciumMatch ? "same" : "different"} calcium${
+            hasMultipleMeasures(food) ? ` (${getAllMeasures(food).length} measures available)` : ""
+          }`,
           measureMatch: measureMatch,
           calciumMatch: calciumMatch,
-          measureDiff: `"${targetFood.measure}" → "${food.m || food.measure}"`,
+          measureDiff: `"${targetFood.measure}" → "${primaryMeasure.measure}"`,
           calciumDiff: `${targetCalcium}mg → ${foodCalcium}mg`,
         };
       }
@@ -322,6 +383,52 @@ function findFoodMatch(targetFood, curatedFoods, options = {}) {
       details: "No suitable match found",
     }
   );
+}
+
+// Validate and analyze database structure
+function analyzeDatabase(database, filePath) {
+  if (!Array.isArray(database) || database.length === 0) {
+    throw new Error(`Invalid database structure in ${filePath}: not an array or empty`);
+  }
+
+  const sample = database[0];
+  const hasLegacyFormat = (sample.m || sample.measure) && (sample.c !== undefined || sample.calcium !== undefined);
+  const hasMultiMeasureFormat = sample.measures && Array.isArray(sample.measures);
+  
+  let multiMeasureFoods = 0;
+  let legacyFoods = 0;
+  
+  for (const food of database.slice(0, Math.min(100, database.length))) {
+    if (food.measures && Array.isArray(food.measures)) {
+      multiMeasureFoods++;
+    } else if ((food.m || food.measure) && (food.c !== undefined || food.calcium !== undefined)) {
+      legacyFoods++;
+    }
+  }
+
+  const analysisInfo = {
+    totalFoods: database.length,
+    hasLegacyFormat,
+    hasMultiMeasureFormat,
+    multiMeasureFoods,
+    legacyFoods,
+    isPrimarylyMultiMeasure: multiMeasureFoods > legacyFoods,
+    isMixedFormat: multiMeasureFoods > 0 && legacyFoods > 0
+  };
+
+  console.log(`📊 Database analysis (${path.basename(filePath)}):`);
+  console.log(`   • Total foods: ${analysisInfo.totalFoods}`);
+  if (analysisInfo.hasMultiMeasureFormat) {
+    console.log(`   • Multi-measure foods: ${analysisInfo.multiMeasureFoods} (${Math.round(multiMeasureFoods/analysisInfo.totalFoods*100)}%)`);
+  }
+  if (analysisInfo.hasLegacyFormat) {
+    console.log(`   • Legacy format foods: ${analysisInfo.legacyFoods} (${Math.round(legacyFoods/analysisInfo.totalFoods*100)}%)`);
+  }
+  if (analysisInfo.isMixedFormat) {
+    console.log(`   • Mixed format detected - using compatibility mode`);
+  }
+  
+  return analysisInfo;
 }
 
 // Load and parse database files
@@ -345,12 +452,15 @@ async function loadDatabase(filePath) {
             const module = await import(fileUrl + '?t=' + Date.now()); // Add cache busting
             if (module.DEFAULT_FOOD_DATABASE) {
               console.log(`✅ Loaded ${module.DEFAULT_FOOD_DATABASE.length} items via ES module import`);
+              analyzeDatabase(module.DEFAULT_FOOD_DATABASE, filePath);
               return module.DEFAULT_FOOD_DATABASE;
             } else if (module.foodDatabase) {
               console.log(`✅ Loaded ${module.foodDatabase.length} items via ES module import`);
+              analyzeDatabase(module.foodDatabase, filePath);
               return module.foodDatabase;
             } else if (module.default && Array.isArray(module.default)) {
               console.log(`✅ Loaded ${module.default.length} items via ES module import`);
+              analyzeDatabase(module.default, filePath);
               return module.default;
             } else {
               throw new Error("Could not find exported food database in ES module");
@@ -358,12 +468,16 @@ async function loadDatabase(filePath) {
           } catch (importError) {
             console.log(`ES module import failed (${importError.message}), falling back to text parsing...`);
             // Fall back to text parsing
-            return parseJavaScriptFile(content, filePath);
+            const parsed = parseJavaScriptFile(content, filePath);
+            analyzeDatabase(parsed, filePath);
+            return parsed;
           }
         } else {
           // Handle CommonJS format
           const content = fs.readFileSync(filePath, "utf8");
-          return parseJavaScriptFile(content, filePath);
+          const parsed = parseJavaScriptFile(content, filePath);
+          analyzeDatabase(parsed, filePath);
+          return parsed;
         }
       }
     } else if (filePath.endsWith(".json")) {
@@ -383,16 +497,19 @@ async function loadDatabase(filePath) {
         // Handle both direct array and {metadata, foods} structure
         if (Array.isArray(data)) {
           console.log(`Loaded ${data.length} items from JSON array`);
+          analyzeDatabase(data, filePath);
           return data;
         } else if (data.foods && Array.isArray(data.foods)) {
           console.log(
             `Loaded ${data.foods.length} items from {metadata, foods} structure`
           );
+          analyzeDatabase(data.foods, filePath);
           return data.foods;
         } else if (data.metadata && data.foods && Array.isArray(data.foods)) {
           console.log(
             `Loaded ${data.foods.length} items from {metadata, foods} structure with metadata`
           );
+          analyzeDatabase(data.foods, filePath);
           return data.foods;
         } else {
           throw new Error(
