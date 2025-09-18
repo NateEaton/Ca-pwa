@@ -1,11 +1,13 @@
 // USDA FoodData Central API Service for UPC lookup
 import { FDC_CONFIG } from '$lib/config/fdc.js';
+import { UnitConversionService } from './UnitConversionService.js';
 
 export class FDCService {
   constructor(apiKey) {
     this.apiKey = apiKey;
     this.baseUrl = FDC_CONFIG.API_BASE_URL;
     this.searchEndpoint = FDC_CONFIG.SEARCH_ENDPOINT;
+    this.unitConverter = new UnitConversionService();
   }
 
   /**
@@ -129,11 +131,23 @@ export class FDCService {
       let servingSize = '';
       let servingCount = 1;
       let servingUnit = '';
+      let smartServingResult = null;
 
       if (product.servingSize && product.servingSizeUnit) {
         servingCount = product.servingSize;
         servingUnit = product.servingSizeUnit;
-        servingSize = `${product.servingSize} ${product.servingSizeUnit}`;
+
+        // Generate smart serving size using household measure if available
+        smartServingResult = this.unitConverter.generateSmartServingSize(
+          product.servingSize,
+          product.servingSizeUnit,
+          product.householdServingFullText,
+          productName
+        );
+
+        servingSize = smartServingResult.text;
+        console.log('FDC: Smart serving size result:', smartServingResult);
+
       } else if (product.householdServingFullText) {
         servingSize = product.householdServingFullText;
         // Try to parse count and unit from text like "11 g" or "1 cup"
@@ -233,6 +247,7 @@ export class FDCService {
         servingCount: servingCount,
         servingUnit: servingUnit,
         householdServingFullText: product.householdServingFullText,
+        smartServing: smartServingResult, // Include smart serving analysis
         calcium: calcium,
         calciumValue: calciumValue,
         calciumPercentDV: calciumPercentDV,

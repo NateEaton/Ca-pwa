@@ -571,8 +571,14 @@
         foodName = scanData.productName || 'Scanned Product';
       }
 
-      // Use parsed serving data if available
-      if (scanData.servingCount && scanData.servingUnit) {
+      // Use smart serving size if available, otherwise fall back to parsed data
+      if (scanData.smartServing && scanData.smartServing.isEnhanced) {
+        // Use the enhanced serving size (e.g., "2 tbsp (11g)")
+        servingUnit = scanData.smartServing.text;
+        servingQuantity = 1; // Set to 1 since the text already contains the full measure
+        console.log(`UPC: Using smart serving size: ${servingUnit}`);
+        console.log(`UPC: Smart serving validation:`, scanData.smartServing.validation);
+      } else if (scanData.servingCount && scanData.servingUnit) {
         servingQuantity = scanData.servingCount;
         servingUnit = scanData.servingUnit;
         console.log(`UPC: Setting serving - count: ${servingQuantity}, unit: ${servingUnit}`);

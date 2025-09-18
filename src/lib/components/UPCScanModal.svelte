@@ -478,11 +478,31 @@
                   {#if productResult.servingSize}
                     <tr>
                       <td class="label">Serving Size</td>
-                      <td class="value">{productResult.servingSize}</td>
+                      <td class="value serving-size-info">
+                        {productResult.servingSize}
+                        {#if productResult.smartServing && productResult.smartServing.isEnhanced}
+                          <br><span class="smart-serving-note">✓ Smart format: household measure + weight</span>
+                        {/if}
+                      </td>
                     </tr>
                   {/if}
 
-                  {#if productResult.householdServingFullText}
+                  {#if productResult.smartServing && productResult.smartServing.validation}
+                    <tr>
+                      <td class="label">Measure Validation</td>
+                      <td class="value validation-info">
+                        <span class="confidence-{productResult.smartServing.validation.confidence}">
+                          {productResult.smartServing.validation.confidence} confidence
+                        </span>
+                        <br>
+                        <span class="validation-details">
+                          {productResult.smartServing.validation.reason}
+                        </span>
+                      </td>
+                    </tr>
+                  {/if}
+
+                  {#if productResult.householdServingFullText && !productResult.smartServing?.isEnhanced}
                     <tr>
                       <td class="label">Household Serving</td>
                       <td class="value">{productResult.householdServingFullText}</td>
@@ -1068,6 +1088,39 @@
     color: var(--text-hint);
     font-family: monospace;
     line-height: 1.3;
+  }
+
+  /* Smart serving size styles */
+  .smart-serving-note {
+    font-size: 0.8rem;
+    color: var(--success);
+    font-style: italic;
+  }
+
+  .validation-info {
+    font-size: 0.9rem;
+  }
+
+  .confidence-high {
+    color: var(--success);
+    font-weight: 500;
+  }
+
+  .confidence-medium {
+    color: var(--warning);
+    font-weight: 500;
+  }
+
+  .confidence-low,
+  .confidence-very-low {
+    color: var(--error);
+    font-weight: 500;
+  }
+
+  .validation-details {
+    font-size: 0.8rem;
+    color: var(--text-hint);
+    font-family: monospace;
   }
 
   .result-actions {
