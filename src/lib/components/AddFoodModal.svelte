@@ -23,7 +23,7 @@
   import { SearchService } from "$lib/services/SearchService";
   import UnitConverter from "$lib/services/UnitConverter";
   import ConfirmDialog from "./ConfirmDialog.svelte";
-  import OCRScanModal from './OCRScanModal.svelte';
+  import SmartScanModal from './SmartScanModal.svelte';
 
   /** Whether the modal is visible */
   export let show = false;
@@ -66,8 +66,8 @@
   let unitSuggestions = [];
   let showUnitSuggestions = false;
 
-  // OCR Scanning
-  let showOCRModal = false;
+  // Smart Scanning (UPC → OCR → Manual)
+  let showSmartScanModal = false;
 
   // Initialize component on mount
   onMount(async () => {
@@ -550,46 +550,81 @@
     }
   }
 
-  function handleOCRScan() {
-    showOCRModal = true;
+  function handleSmartScan() {
+    showSmartScanModal = true;
   }
 
-  function handleOCRComplete(event) {
-    const { servingSize, calcium: ocrCalcium, confidence, rawText } = event.detail;
-    
+  function handleScanComplete(event) {
+    const scanData = event.detail;
+    console.log('AddFood: Scan completed:', scanData);
+
     // Switch to custom mode and populate the fields
     isCustomMode = true;
-    
-    // Set the food name field - prompt user for food name
-    foodName = 'Scanned Food Item'; // Placeholder - user should edit this
 
-    // Set serving size if detected - put in serving unit field
-    if (servingSize) {
-      servingUnit = servingSize;
-    }
-
-    // Set calcium if detected - parse out just the number
-    if (ocrCalcium) {
-      const calciumNumber = ocrCalcium.match(/[\d\.]+/)?.[0];
-      if (calciumNumber) {
-        calcium = parseFloat(calciumNumber).toString();
+    // Handle different scan methods
+    if (scanData.method === 'UPC') {
+      // UPC scan - we have rich product data
+      // Combine brandName and description for better food name
+      if (scanData.brandName && scanData.productName) {
+        foodName = `${scanData.brandName} ${scanData.productName}`;
+      } else {
+        foodName = scanData.productName || 'Scanned Product';
       }
+
+      // Use parsed serving data if available
+      if (scanData.servingCount && scanData.servingUnit) {
+        servingQuantity = scanData.servingCount;
+        servingUnit = scanData.servingUnit;
+        console.log(`UPC: Setting serving - count: ${servingQuantity}, unit: ${servingUnit}`);
+      } else if (scanData.servingSize) {
+        servingUnit = scanData.servingSize;
+        console.log(`UPC: Using fallback servingSize: ${servingUnit}`);
+      }
+
+      // Use calculated per-serving calcium if available, otherwise fall back to raw API value
+      if (scanData.calciumPerServing) {
+        calcium = scanData.calciumPerServing.toString();
+        console.log(`UPC: Using calculated per-serving calcium: ${scanData.calciumPerServing}mg`);
+      } else if (scanData.calciumValue) {
+        calcium = scanData.calciumValue.toString();
+        console.log(`UPC: Using raw API calcium value: ${scanData.calciumValue}mg`);
+      }
+
+      console.log(`UPC scan: ${scanData.productName} - ${scanData.calcium}`);
+
+    } else if (scanData.method === 'OCR') {
+      // OCR scan - nutrition label data
+      foodName = scanData.productName || 'Scanned Food Item';
+
+      if (scanData.servingSize) {
+        servingUnit = scanData.servingSize;
+      }
+
+      if (scanData.calciumValue) {
+        calcium = scanData.calciumValue.toString();
+      }
+
+      console.log(`OCR scan with ${scanData.confidence} confidence: ${scanData.calcium}`);
+
+    } else if (scanData.method === 'Manual') {
+      // User chose manual entry - just set custom mode and clear fields
+      foodName = '';
+      servingUnit = 'serving';
+      calcium = '';
+
+      console.log('User chose manual entry');
     }
-    
+
     // Focus on the food name field so user can immediately start typing
     setTimeout(() => {
       const nameInput = document.querySelector('input[placeholder*="food name"], input[placeholder*="Food name"]');
       if (nameInput) {
         nameInput.focus();
-        nameInput.select(); // Select the placeholder text for easy replacement
+        if (scanData.method !== 'Manual') {
+          nameInput.select(); // Select the placeholder text for easy replacement
+        }
       }
     }, 100);
-    
-    // Show success message based on confidence
-    console.log(`OCR completed with ${confidence} confidence:`, { servingSize, calcium: ocrCalcium });
-    
-    // Optional: You could add a toast notification here
-    // showToast(`OCR scan ${confidence} confidence: ${calcium ? 'Calcium detected' : 'No calcium found'}`);
   }
 </script>
 
@@ -638,14 +673,14 @@
               <span class="material-icons">delete</span>
             </button>
           {:else}
-            <!-- OCR Camera Button -->
+            <!-- Smart Scan Button -->
             <button
-              class="ocr-scan-btn"
-              on:click={handleOCRScan}
+              class="smart-scan-btn"
+              on:click={handleSmartScan}
               disabled={isSubmitting}
-              title="Scan Nutrition Label"
+              title="Scan Product Barcode or Nutrition Label"
             >
-              <span class="material-icons">camera_alt</span>
+              <span class="material-icons">qr_code_scanner</span>
             </button>
             
             <button
@@ -891,7 +926,7 @@
   on:cancel={handleDeleteCancel}
 />
 
-<OCRScanModal bind:show={showOCRModal} on:ocrComplete={handleOCRComplete} />
+<SmartScanModal bind:show={showSmartScanModal} on:scanComplete={handleScanComplete} />
 
 <style>
   .modal-backdrop {
@@ -1433,7 +1468,7 @@
     100% { transform: rotate(360deg); }
   }
 
-  .ocr-scan-btn {
+  .smart-scan-btn {
     background: none;
     border: none;
     color: var(--text-secondary);
@@ -1447,12 +1482,12 @@
     font-size: var(--icon-size-lg);
   }
 
-  .ocr-scan-btn:hover:not(:disabled) {
+  .smart-scan-btn:hover:not(:disabled) {
     background: var(--divider);
-    color: var(--primary);
+    color: var(--primary-color);
   }
 
-  .ocr-scan-btn:disabled {
+  .smart-scan-btn:disabled {
     opacity: 0.5;
     cursor: not-allowed;
   }

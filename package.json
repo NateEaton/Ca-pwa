@@ -19,6 +19,7 @@
     "vite-plugin-pwa": "^0.20.0"
   },
   "dependencies": {
+    "@zxing/browser": "^0.1.5",
     "csv-parse": "^6.1.0",
     "dotenv": "^17.2.1",
     "fs-extra": "^11.3.1",

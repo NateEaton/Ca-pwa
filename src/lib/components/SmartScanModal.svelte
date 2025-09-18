@@ -1,16 +1,23 @@
 <!--
- * OCR Scan Modal for Calcium Tracker PWA
- * Allows users to capture nutrition labels and extract calcium information
+ * Smart Scan Modal for Calcium Tracker PWA
+ * Progressive workflow: UPC Barcode → OCR Nutrition Label → Manual Entry
 -->
 <script>
   import { createEventDispatcher } from 'svelte';
+  import UPCScanModal from './UPCScanModal.svelte';
   import { OCRService } from '$lib/services/OCRService.js';
   import { OCR_CONFIG } from '$lib/config/ocr.js';
-  
+
   export let show = false;
-  
+
   const dispatch = createEventDispatcher();
-  
+
+  // Workflow state
+  let currentStep = 'upc'; // 'upc', 'ocr', 'manual'
+  let showUPCModal = false;
+  let showOCRModal = false;
+
+  // OCR functionality (preserved from original)
   let imagePreview = null;
   let ocrResult = null;
   let isLoading = false;
@@ -18,15 +25,51 @@
   let fileInput;
   let cameraInput;
   let loadingState = ''; // 'compressing', 'processing', ''
-  
+
   // Initialize OCR service with API key from config
   const ocrService = new OCRService(OCR_CONFIG.API_KEY);
 
+  // Handle UPC scan completion
+  function handleUPCComplete(event) {
+    console.log('SmartScan: UPC scan completed:', event.detail);
+
+    // Forward the UPC result to parent
+    dispatch('scanComplete', {
+      ...event.detail,
+      method: 'UPC'
+    });
+
+    closeModal();
+  }
+
+  // Handle UPC scan skip - move to OCR step
+  function handleSkipToOCR() {
+    console.log('SmartScan: Skipping to OCR step');
+    currentStep = 'ocr';
+    showUPCModal = false;
+    showOCRModal = true;
+  }
+
+  // Start workflow with UPC scanning
+  function startUPCStep() {
+    currentStep = 'upc';
+    showUPCModal = true;
+    showOCRModal = false;
+  }
+
+  // Start OCR scanning (can be called directly or from UPC skip)
+  function startOCRStep() {
+    currentStep = 'ocr';
+    showUPCModal = false;
+    showOCRModal = true;
+  }
+
+  // OCR functionality (preserved from original implementation)
   async function handleFileSelect(event) {
     const file = event.target.files[0];
     if (!file) return;
 
-    console.log('File selected:', file);
+    console.log('SmartScan: File selected for OCR:', file);
     error = null;
     imagePreview = URL.createObjectURL(file);
     await processImage(file);
@@ -42,7 +85,7 @@
       // Show compression state if file is large
       if (file.size > 1024 * 1024) {
         loadingState = 'compressing';
-        console.log('Large file detected, will compress:', file.size, 'bytes');
+        console.log('SmartScan: Large file detected, will compress:', file.size, 'bytes');
       }
 
       // Brief delay to show compression state
@@ -53,9 +96,9 @@
       // Switch to OCR processing state
       loadingState = 'processing';
       ocrResult = await ocrService.processImage(file);
-      console.log('OCR completed successfully:', ocrResult);
+      console.log('SmartScan: OCR completed successfully:', ocrResult);
     } catch (err) {
-      console.error('OCR processing failed:', err);
+      console.error('SmartScan: OCR processing failed:', err);
       error = err.message || 'Failed to process image';
     } finally {
       isLoading = false;
@@ -75,12 +118,48 @@
     }
   }
 
+  function handleOCRSaveResults() {
+    if (ocrResult) {
+      dispatch('scanComplete', {
+        source: 'OCR',
+        productName: 'Scanned Food Item', // Default name for OCR
+        servingSize: ocrResult.servingSize,
+        calcium: ocrResult.calcium,
+        calciumValue: ocrResult.calcium ? parseFloat(ocrResult.calcium.match(/[\d\.]+/)?.[0]) : null,
+        confidence: ocrResult.confidence,
+        rawText: ocrResult.rawText,
+        method: 'OCR'
+      });
+    }
+    closeModal();
+  }
+
+  function handleManualEntry() {
+    console.log('SmartScan: User chose manual entry');
+
+    // Send empty scan result to indicate manual entry
+    dispatch('scanComplete', {
+      source: 'Manual',
+      method: 'Manual',
+      confidence: 'user-entered'
+    });
+
+    closeModal();
+  }
+
   function closeModal() {
+    showUPCModal = false;
+    showOCRModal = false;
     show = false;
+    currentStep = 'upc';
+
+    // Reset OCR state
     imagePreview = null;
     ocrResult = null;
     error = null;
     isLoading = false;
+    loadingState = '';
+
     if (fileInput) {
       fileInput.value = '';
     }
@@ -101,22 +180,23 @@
     }
   }
 
-  function handleSaveResults() {
-    if (ocrResult) {
-      dispatch('ocrComplete', {
-        servingSize: ocrResult.servingSize,
-        calcium: ocrResult.calcium,
-        confidence: ocrResult.confidence,
-        rawText: ocrResult.rawText
-      });
-    }
-    closeModal();
+  // Auto-start UPC scanning when modal opens
+  $: if (show && currentStep === 'upc') {
+    startUPCStep();
   }
 </script>
 
-{#if show}
-  <div 
-    class="modal-backdrop" 
+<!-- UPC Scanning Modal -->
+<UPCScanModal
+  bind:show={showUPCModal}
+  on:upcComplete={handleUPCComplete}
+  on:skipToOCR={handleSkipToOCR}
+/>
+
+<!-- OCR Scanning Modal (only show when in OCR step) -->
+{#if showOCRModal && currentStep === 'ocr'}
+  <div
+    class="modal-backdrop"
     on:click={handleBackdropClick}
     on:keydown={handleBackdropKeydown}
     role="button"
@@ -162,7 +242,7 @@
             <div class="instruction-icon">
               <span class="material-icons">photo_camera</span>
             </div>
-            <h3>Capture Nutrition Label</h3>
+            <h3>Scan Nutrition Label</h3>
             <p>Take a photo of the nutrition facts panel or upload an existing image. We'll automatically extract the serving size and calcium content.</p>
           </div>
         {/if}
@@ -244,13 +324,13 @@
           </div>
         {/if}
 
-        <!-- Results -->
+        <!-- OCR Results -->
         {#if ocrResult}
           <div class="results-section">
             <!-- Confidence Indicator -->
             <div class="confidence-indicator confidence-{ocrResult.confidence}">
               <span class="material-icons">
-                {ocrResult.confidence === 'high' ? 'check_circle' : 
+                {ocrResult.confidence === 'high' ? 'check_circle' :
                  ocrResult.confidence === 'medium' ? 'info' : 'warning'}
               </span>
               <span>
@@ -263,21 +343,21 @@
             <div class="parsed-results">
               <div class="result-field">
                 <label for="ocr-serving-size">Serving Size</label>
-                <input 
+                <input
                   id="ocr-serving-size"
-                  type="text" 
-                  bind:value={ocrResult.servingSize} 
+                  type="text"
+                  bind:value={ocrResult.servingSize}
                   class="result-input"
                   placeholder="Not detected - enter manually"
                 />
               </div>
-              
+
               <div class="result-field">
                 <label for="ocr-calcium">Calcium</label>
-                <input 
+                <input
                   id="ocr-calcium"
-                  type="text" 
-                  bind:value={ocrResult.calcium} 
+                  type="text"
+                  bind:value={ocrResult.calcium}
                   class="result-input"
                   placeholder="Not detected - enter manually"
                 />
@@ -291,9 +371,19 @@
             </details>
 
             <!-- Action Button -->
-            <button class="save-btn" on:click={handleSaveResults}>
+            <button class="save-btn" on:click={handleOCRSaveResults}>
               <span class="material-icons">check</span>
               Use These Results
+            </button>
+          </div>
+        {/if}
+
+        <!-- Manual Entry Option -->
+        {#if !ocrResult && !isLoading}
+          <div class="manual-section">
+            <button class="manual-btn" on:click={handleManualEntry}>
+              <span class="material-icons">edit</span>
+              Enter Food Information Manually
             </button>
           </div>
         {/if}
@@ -396,7 +486,7 @@
 
   .instructions {
     text-align: center;
-    padding: var(--spacing-xl) 0;
+    padding: 1.5rem 0;
   }
 
   .instruction-icon {
@@ -498,7 +588,7 @@
     width: 2rem;
     height: 2rem;
     border: 3px solid var(--divider);
-    border-top: 3px solid var(--primary);
+    border-top: 3px solid var(--primary-color);
     border-radius: 50%;
     animation: spin 1s linear infinite;
   }
@@ -612,7 +702,7 @@
 
   .result-input:focus {
     outline: none;
-    border-color: var(--primary);
+    border-color: var(--primary-color);
     box-shadow: 0 0 0 2px var(--primary-alpha-10);
   }
 
@@ -666,33 +756,47 @@
     transform: translateY(1px);
   }
 
-  .file-input-section {
-    display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
+  .manual-section {
+    text-align: center;
+    margin-top: 1rem;
   }
 
-  .input-buttons {
+  .manual-btn {
     display: flex;
+    align-items: center;
+    justify-content: center;
     gap: 0.5rem;
+    background: var(--surface);
+    color: var(--text-secondary);
+    border: 2px solid var(--divider);
+    padding: 0.75rem var(--spacing-lg);
+    border-radius: 0.25rem;
+    cursor: pointer;
+    font-weight: 500;
+    font-size: var(--font-size-base);
+    transition: all 0.2s;
     width: 100%;
-  }  
+  }
+
+  .manual-btn:hover {
+    color: var(--text-primary);
+    border-color: var(--text-secondary);
+  }
 
   /* Responsive adjustments */
   @media (max-width: 480px) {
     .modal-content {
       max-width: 100vw;
-      max-height: 95vh;  /* Changed from 100vh */
-      /* Removed: height: 100vh; */
-      border-radius: 0.25rem;  /* Keep some border radius */
-      margin: 0.5rem;  /* Add small margin */
+      max-height: 95vh;
+      border-radius: 0.25rem;
+      margin: 0.5rem;
     }
-    
+
     .modal-body {
-      max-height: calc(95vh - 120px);  /* Account for header */
+      max-height: calc(95vh - 120px);
       overflow-y: auto;
     }
-    
+
     .input-buttons {
       flex-direction: column;
       gap: 0.5rem;
