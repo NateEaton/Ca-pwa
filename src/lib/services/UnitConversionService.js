@@ -3,6 +3,66 @@
 
 export class UnitConversionService {
   constructor() {
+    // USDA unit standardization mapping - normalize inconsistent API units
+    this.unitStandardization = {
+      // Weight units
+      'GRM': 'g',
+      'grm': 'g',
+      'GR': 'g',
+      'gr': 'g',
+      'GM': 'g',
+      'gm': 'g',
+      'GRAM': 'g',
+      'gram': 'g',
+      'GRAMS': 'g',
+      'grams': 'g',
+
+      // Volume units
+      'MLT': 'ml',
+      'mlt': 'ml',
+      'ML': 'ml',
+      'MILLILITER': 'ml',
+      'milliliter': 'ml',
+      'MILLILITERS': 'ml',
+      'milliliters': 'ml',
+      'MLS': 'ml',
+      'mls': 'ml',
+
+      // Common volume measures
+      'TSP': 'tsp',
+      'TEASPOON': 'tsp',
+      'teaspoon': 'tsp',
+      'TEASPOONS': 'tsp',
+      'teaspoons': 'tsp',
+      'TBSP': 'tbsp',
+      'TABLESPOON': 'tbsp',
+      'tablespoon': 'tbsp',
+      'TABLESPOONS': 'tbsp',
+      'tablespoons': 'tbsp',
+      'CUP': 'cup',
+      'CUPS': 'cup',
+      'cups': 'cup',
+      'FL OZ': 'fl oz',
+      'FLUID OUNCE': 'fl oz',
+      'fluid ounce': 'fl oz',
+      'FLUID OUNCES': 'fl oz',
+      'fluid ounces': 'fl oz',
+
+      // Weight measures
+      'OZ': 'oz',
+      'OUNCE': 'oz',
+      'ounce': 'oz',
+      'OUNCES': 'oz',
+      'ounces': 'oz',
+      'LB': 'lb',
+      'LBS': 'lb',
+      'lbs': 'lb',
+      'POUND': 'lb',
+      'pound': 'lb',
+      'POUNDS': 'lb',
+      'pounds': 'lb'
+    };
+
     // Generalized density factors by product category (grams per tablespoon)
     // Using conservative middle-range values to maximize compatibility
     this.categoryDensities = {
@@ -288,7 +348,13 @@ export class UnitConversionService {
 
     // Only use household measure if validation passes
     if (validation.isValid && validation.confidence !== 'very-low') {
-      const enhancedText = `${parsedMeasure.original} (${servingCount}${servingUnit || 'g'})`;
+      // Remove count from household measure if it's 1 (e.g., "1 cup" → "cup")
+      let householdMeasure = parsedMeasure.original;
+      if (parsedMeasure.amount === 1) {
+        householdMeasure = parsedMeasure.unit;
+      }
+
+      const enhancedText = `${householdMeasure} (${servingCount}${servingUnit || 'g'})`;
       console.log('UnitConversion: Using enhanced text:', enhancedText);
 
       return {
@@ -324,5 +390,26 @@ export class UnitConversionService {
   isWeightUnit(unit) {
     if (!unit) return false;
     return this.weightConversions.hasOwnProperty(unit.toLowerCase().trim());
+  }
+
+  /**
+   * Standardize USDA API units to consistent, user-friendly format
+   * @param {string} unit - Raw unit from USDA API (e.g., "MLT", "GRM")
+   * @returns {string} Standardized unit (e.g., "ml", "g")
+   */
+  standardizeUnit(unit) {
+    if (!unit || typeof unit !== 'string') {
+      return unit;
+    }
+
+    const cleaned = unit.trim();
+
+    // Check for direct mapping first
+    if (this.unitStandardization.hasOwnProperty(cleaned)) {
+      return this.unitStandardization[cleaned];
+    }
+
+    // If no mapping found, return lowercase version
+    return cleaned.toLowerCase();
   }
 }

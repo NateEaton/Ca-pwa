@@ -135,18 +135,31 @@ export class FDCService {
 
       if (product.servingSize && product.servingSizeUnit) {
         servingCount = product.servingSize;
-        servingUnit = product.servingSizeUnit;
+        // Standardize the unit from USDA API (MLT → ml, GRM → g, etc.)
+        servingUnit = this.unitConverter.standardizeUnit(product.servingSizeUnit);
 
         // Generate smart serving size using household measure if available
         smartServingResult = this.unitConverter.generateSmartServingSize(
           product.servingSize,
-          product.servingSizeUnit,
+          servingUnit, // Use standardized unit
           product.householdServingFullText,
           productName
         );
 
-        servingSize = smartServingResult.text;
+        // Set servingSize based on whether smart serving was enhanced or not
+        if (smartServingResult.isEnhanced) {
+          servingSize = smartServingResult.text; // e.g., "cup (240ml)"
+        } else {
+          // Use standardized format for fallback, omit count if it's 1
+          if (servingCount === 1) {
+            servingSize = servingUnit; // e.g., "ml" instead of "1 ml"
+          } else {
+            servingSize = `${servingCount} ${servingUnit}`; // e.g., "240 ml"
+          }
+        }
+
         console.log('FDC: Smart serving size result:', smartServingResult);
+        console.log(`FDC: Unit standardization: "${product.servingSizeUnit}" → "${servingUnit}"`);
 
       } else if (product.householdServingFullText) {
         servingSize = product.householdServingFullText;

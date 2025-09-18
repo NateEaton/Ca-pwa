@@ -578,13 +578,16 @@
         servingQuantity = 1; // Set to 1 since the text already contains the full measure
         console.log(`UPC: Using smart serving size: ${servingUnit}`);
         console.log(`UPC: Smart serving validation:`, scanData.smartServing.validation);
+      } else if (scanData.servingSize) {
+        // Use the processed servingSize which includes standardized units
+        servingUnit = scanData.servingSize;
+        servingQuantity = 1; // Set to 1 since servingSize is the complete description
+        console.log(`UPC: Using processed servingSize: ${servingUnit}`);
       } else if (scanData.servingCount && scanData.servingUnit) {
+        // Fallback to individual components (should be rare)
         servingQuantity = scanData.servingCount;
         servingUnit = scanData.servingUnit;
-        console.log(`UPC: Setting serving - count: ${servingQuantity}, unit: ${servingUnit}`);
-      } else if (scanData.servingSize) {
-        servingUnit = scanData.servingSize;
-        console.log(`UPC: Using fallback servingSize: ${servingUnit}`);
+        console.log(`UPC: Using individual serving components - count: ${servingQuantity}, unit: ${servingUnit}`);
       }
 
       // Use calculated per-serving calcium if available, otherwise fall back to raw API value
