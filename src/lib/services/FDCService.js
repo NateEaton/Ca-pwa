@@ -151,7 +151,7 @@ export class FDCService {
         householdServingFullText: product.householdServingFullText
       });
 
-      // Extract calcium from labelNutrients
+      // Extract calcium from labelNutrients and foodNutrients
       let calcium = '';
       let calciumValue = null;
 
@@ -162,11 +162,27 @@ export class FDCService {
         servingSizeUnit: product.servingSizeUnit
       });
 
+      // First try labelNutrients
       if (product.labelNutrients && product.labelNutrients.calcium) {
         calciumValue = product.labelNutrients.calcium.value;
         if (calciumValue !== null && calciumValue !== undefined) {
           calcium = `${calciumValue} mg`;
           console.log('FDC: Found calcium in labelNutrients:', calcium);
+        }
+      }
+
+      // If no calcium in labelNutrients, check foodNutrients array
+      if (!calciumValue && product.foodNutrients) {
+        const calciumNutrient = product.foodNutrients.find(
+          nutrient => nutrient.nutrientNumber === "301" || // Calcium nutrient number
+                      nutrient.nutrientId === 301 || // Fallback to nutrientId
+                      (nutrient.nutrientName && nutrient.nutrientName.toLowerCase().includes('calcium'))
+        );
+
+        if (calciumNutrient && calciumNutrient.value) {
+          calciumValue = calciumNutrient.value;
+          calcium = `${calciumValue} mg`;
+          console.log('FDC: Found calcium in foodNutrients:', calcium);
         }
       }
 
@@ -204,21 +220,6 @@ export class FDCService {
         if (!calciumValue) console.log('    Missing calciumValue');
         if (!servingCount) console.log('    Missing servingCount');
         if (!this.isVolumeOrMassUnit(servingUnit)) console.log(`    Invalid servingUnit: "${servingUnit}"`);
-      }
-
-      // If no calcium in labelNutrients, check foodNutrients array
-      if (!calciumValue && product.foodNutrients) {
-        const calciumNutrient = product.foodNutrients.find(
-          nutrient => nutrient.nutrientNumber === "301" || // Calcium nutrient number
-                      nutrient.nutrientId === 301 || // Fallback to nutrientId
-                      (nutrient.nutrientName && nutrient.nutrientName.toLowerCase().includes('calcium'))
-        );
-
-        if (calciumNutrient && calciumNutrient.value) {
-          calciumValue = calciumNutrient.value;
-          calcium = `${calciumValue} mg`;
-          console.log('FDC: Found calcium in foodNutrients:', calcium);
-        }
       }
 
       const result = {
@@ -265,26 +266,47 @@ export class FDCService {
       return false;
     }
 
-    const normalizedUnit = unit.toLowerCase().trim();
-    console.log(`FDC: Normalized unit: "${normalizedUnit}"`);
+    // Enhanced unit cleaning - handle multiple formats and edge cases
+    let cleanedUnit = unit.toString().trim();
 
-    // Gram variations (common USDA formats)
-    const gramUnits = ['g', 'gr', 'grm', 'grams', 'gram', 'gm', 'gms', 'gram.', 'gr.', 'grm.'];
+    // Remove common prefixes/suffixes and normalize
+    cleanedUnit = cleanedUnit.replace(/^[\s\d\.\-]+/, ''); // Remove leading numbers/spaces/dots/dashes
+    cleanedUnit = cleanedUnit.replace(/[\s\.\-]+$/, '');   // Remove trailing spaces/dots/dashes
+    cleanedUnit = cleanedUnit.toLowerCase();
 
-    // Milliliter variations (common USDA formats)
-    const mlUnits = ['ml', 'mlt', 'milliliter', 'milliliters', 'ml.', 'mls', 'millilitre', 'millilitres', 'mlt.'];
+    console.log(`FDC: Original unit: "${unit}" → Cleaned: "${cleanedUnit}"`);
 
-    // Additional common variations that should be treated as grams/ml
-    const additionalUnits = ['fluid ounce', 'fl oz', 'fl. oz.', 'fl oz.', 'ounce', 'oz', 'oz.'];
+    // Explicit handling for problematic USDA formats
+    const unitMappings = {
+      'grm': 'g',
+      'gm': 'g',
+      'gms': 'g',
+      'gram': 'g',
+      'grams': 'g',
+      'gr': 'g',
+      'mlt': 'ml',
+      'milliliter': 'ml',
+      'milliliters': 'ml',
+      'millilitre': 'ml',
+      'millilitres': 'ml',
+      'mls': 'ml'
+    };
 
-    const isValidUnit = gramUnits.includes(normalizedUnit) || mlUnits.includes(normalizedUnit) || additionalUnits.includes(normalizedUnit);
-    console.log(`FDC: Unit "${normalizedUnit}" is ${isValidUnit ? 'valid' : 'invalid'} for calculation`);
+    // Apply mapping if exists
+    if (unitMappings[cleanedUnit]) {
+      console.log(`FDC: Mapped "${cleanedUnit}" → "${unitMappings[cleanedUnit]}"`);
+      cleanedUnit = unitMappings[cleanedUnit];
+    }
+
+    // Core valid units (simplified after mapping)
+    const validUnits = ['g', 'ml', 'oz', 'fl oz', 'fluid ounce', 'ounce'];
+
+    const isValidUnit = validUnits.includes(cleanedUnit);
+    console.log(`FDC: Final unit "${cleanedUnit}" is ${isValidUnit ? 'VALID' : 'INVALID'} for calculation`);
 
     if (!isValidUnit) {
-      console.log(`FDC: Available units:`);
-      console.log(`  - Grams: [${gramUnits.join(', ')}]`);
-      console.log(`  - Milliliters: [${mlUnits.join(', ')}]`);
-      console.log(`  - Additional: [${additionalUnits.join(', ')}]`);
+      console.log(`FDC: Valid units after mapping: [${validUnits.join(', ')}]`);
+      console.log(`FDC: Available mappings:`, unitMappings);
     }
 
     return isValidUnit;

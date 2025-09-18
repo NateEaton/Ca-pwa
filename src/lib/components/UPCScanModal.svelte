@@ -522,16 +522,13 @@
                         <span class="calculation-note">Not calculated</span>
                         <br>
                         <span class="calculation-debug">
-                          {#if productResult.calciumValue && productResult.servingCount}
-                            Raw: {productResult.calciumValue}mg/100g × {productResult.servingCount}{productResult.servingUnit || '?'}
-                            {#if !productResult.servingUnit}
-                              (missing unit)
-                            {:else}
-                              (unit not supported)
-                            {/if}
+                          {#if productResult.calciumValue && productResult.servingCount && productResult.servingUnit}
+                            Raw: {productResult.calciumValue}mg/100g × {productResult.servingCount}{productResult.servingUnit}
+                            (calculation failed - check logs)
                           {:else}
                             {#if !productResult.calciumValue}Missing calcium data{/if}
                             {#if !productResult.servingCount}Missing serving size{/if}
+                            {#if !productResult.servingUnit}Missing unit{/if}
                           {/if}
                         </span>
                       </td>
