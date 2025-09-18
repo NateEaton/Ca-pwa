@@ -23,6 +23,7 @@
   import { SearchService } from "$lib/services/SearchService";
   import UnitConverter from "$lib/services/UnitConverter";
   import ConfirmDialog from "./ConfirmDialog.svelte";
+  import OCRScanModal from './OCRScanModal.svelte';
 
   /** Whether the modal is visible */
   export let show = false;
@@ -64,6 +65,9 @@
   let parsedFoodMeasure = null;
   let unitSuggestions = [];
   let showUnitSuggestions = false;
+
+  // OCR Scanning
+  let showOCRModal = false;
 
   // Initialize component on mount
   onMount(async () => {
@@ -545,6 +549,48 @@
       selectFood(food);
     }
   }
+
+  function handleOCRScan() {
+    showOCRModal = true;
+  }
+
+  function handleOCRComplete(event) {
+    const { servingSize, calcium: ocrCalcium, confidence, rawText } = event.detail;
+    
+    // Switch to custom mode and populate the fields
+    isCustomMode = true;
+    
+    // Set the food name field - prompt user for food name
+    foodName = 'Scanned Food Item'; // Placeholder - user should edit this
+
+    // Set serving size if detected - put in serving unit field
+    if (servingSize) {
+      servingUnit = servingSize;
+    }
+
+    // Set calcium if detected - parse out just the number
+    if (ocrCalcium) {
+      const calciumNumber = ocrCalcium.match(/[\d\.]+/)?.[0];
+      if (calciumNumber) {
+        calcium = parseFloat(calciumNumber).toString();
+      }
+    }
+    
+    // Focus on the food name field so user can immediately start typing
+    setTimeout(() => {
+      const nameInput = document.querySelector('input[placeholder*="food name"], input[placeholder*="Food name"]');
+      if (nameInput) {
+        nameInput.focus();
+        nameInput.select(); // Select the placeholder text for easy replacement
+      }
+    }, 100);
+    
+    // Show success message based on confidence
+    console.log(`OCR completed with ${confidence} confidence:`, { servingSize, calcium: ocrCalcium });
+    
+    // Optional: You could add a toast notification here
+    // showToast(`OCR scan ${confidence} confidence: ${calcium ? 'Calcium detected' : 'No calcium found'}`);
+  }
 </script>
 
 {#if show}
@@ -592,6 +638,16 @@
               <span class="material-icons">delete</span>
             </button>
           {:else}
+            <!-- OCR Camera Button -->
+            <button
+              class="ocr-scan-btn"
+              on:click={handleOCRScan}
+              disabled={isSubmitting}
+              title="Scan Nutrition Label"
+            >
+              <span class="material-icons">camera_alt</span>
+            </button>
+            
             <button
               class="custom-food-toggle"
               class:active={isCustomMode}
@@ -600,7 +656,7 @@
               title={isCustomMode ? "Switch to Search Mode" : "Add Custom Food"}
             >
               <span class="material-icons">
-                {isCustomMode ? "search" : "add_circle"}
+                {isCustomMode ? "search" : "add"}
               </span>
             </button>
           {/if}
@@ -834,6 +890,8 @@
   on:confirm={handleDeleteConfirm}
   on:cancel={handleDeleteCancel}
 />
+
+<OCRScanModal bind:show={showOCRModal} on:ocrComplete={handleOCRComplete} />
 
 <style>
   .modal-backdrop {
@@ -1374,4 +1432,29 @@
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
   }
+
+  .ocr-scan-btn {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: var(--spacing-sm);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    font-size: var(--icon-size-lg);
+  }
+
+  .ocr-scan-btn:hover:not(:disabled) {
+    background: var(--divider);
+    color: var(--primary);
+  }
+
+  .ocr-scan-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
 </style>
