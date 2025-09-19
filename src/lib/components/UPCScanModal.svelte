@@ -6,6 +6,7 @@
   import { createEventDispatcher, onMount, onDestroy } from 'svelte';
   import { BrowserMultiFormatReader } from '@zxing/browser';
   import { FDCService } from '$lib/services/FDCService';
+  import { OpenFoodFactsService } from '$lib/services/OpenFoodFactsService';
   import { FDC_CONFIG } from '$lib/config/fdc.js';
 
   export let show = false;
@@ -24,14 +25,23 @@
   let isProcessingBarcode = false; // Prevent multiple simultaneous detections
   let showDebugJson = false; // For collapsed JSON debug section
   let manualUPC = ''; // Manual UPC input field
+  let selectedSource = 'usda'; // 'usda' or 'openfoodfacts'
 
+  // Initialize both services
   // Initialize FDC service with API key from config
   console.log('UPC: FDC_CONFIG.API_KEY:', FDC_CONFIG.API_KEY ? `${FDC_CONFIG.API_KEY.substring(0, 8)}...` : 'undefined');
   console.log('UPC: import.meta.env.VITE_FDC_API_KEY:', import.meta.env.VITE_FDC_API_KEY ? `${import.meta.env.VITE_FDC_API_KEY.substring(0, 8)}...` : 'undefined');
   const fdcService = new FDCService(FDC_CONFIG.API_KEY);
+  const openFoodFactsService = new OpenFoodFactsService();
 
   onMount(() => {
     codeReader = new BrowserMultiFormatReader();
+
+    // Load sticky preference for data source
+    const savedSource = localStorage.getItem('upc-data-source');
+    if (savedSource && (savedSource === 'usda' || savedSource === 'openfoodfacts')) {
+      selectedSource = savedSource;
+    }
   });
 
   onDestroy(() => {
@@ -49,6 +59,12 @@
       productResult = null;
 
       console.log('UPC: Starting barcode scanner...');
+
+      // Recreate codeReader for fresh start (fixes reopen issues)
+      if (!codeReader) {
+        codeReader = new BrowserMultiFormatReader();
+        console.log('UPC: Created new code reader');
+      }
 
       // Get available video devices
       const videoInputDevices = await BrowserMultiFormatReader.listVideoInputDevices();
@@ -134,16 +150,26 @@
       scannerControls = null;
     }
 
-    // Reset the code reader
-    if (codeReader && typeof codeReader.reset === 'function') {
-      try {
-        codeReader.reset();
-        console.log('UPC: Code reader reset');
-      } catch (e) {
-        console.warn('UPC: Error resetting code reader:', e);
+    // Stop all video tracks to release camera
+    if (videoElement && videoElement.srcObject) {
+      const stream = videoElement.srcObject;
+      if (stream && stream.getTracks) {
+        stream.getTracks().forEach(track => {
+          track.stop();
+          console.log('UPC: Camera track stopped');
+        });
       }
-    } else if (codeReader) {
-      console.log('UPC: Code reader exists but no reset method available');
+      videoElement.srcObject = null;
+    }
+
+    // BrowserMultiFormatReader doesn't have reset(), but we can reinitialize it
+    if (codeReader) {
+      try {
+        // The reader should be recreated fresh each time
+        console.log('UPC: Code reader will be recreated on next scan');
+      } catch (e) {
+        console.warn('UPC: Error with code reader:', e);
+      }
     }
   }
 
@@ -171,14 +197,20 @@
     loadingState = 'processing';
 
     try {
-      console.log('UPC: Looking up product in USDA FDC...');
-      productResult = await fdcService.searchByUPC(code);
+      console.log(`UPC: Looking up product in ${selectedSource === 'usda' ? 'USDA FDC' : 'OpenFoodFacts'}...`);
+
+      if (selectedSource === 'usda') {
+        productResult = await fdcService.searchByUPC(code);
+      } else {
+        productResult = await openFoodFactsService.searchByUPC(code);
+      }
 
       if (productResult) {
         console.log('UPC: Product found:', productResult.productName);
       } else {
         console.log('UPC: No product found for UPC:', code);
-        error = `Product not found in USDA database for UPC: ${FDCService.formatUPC(code)}`;
+        const sourceName = selectedSource === 'usda' ? 'USDA' : 'OpenFoodFacts';
+        error = `Product not found in ${sourceName} database for UPC: ${FDCService.formatUPC(code)}`;
       }
 
     } catch (err) {
@@ -192,15 +224,31 @@
   }
 
   function closeModal() {
+    console.log('UPC: Closing modal and cleaning up...');
     stopScanning();
+
+    // Reset all state completely
     show = false;
     error = null;
     scannedCode = '';
     productResult = null;
-    manualUPC = ''; // Clear manual input
+    manualUPC = '';
     isLoading = false;
     loadingState = '';
-    isProcessingBarcode = false; // Reset processing flag
+    isProcessingBarcode = false;
+    scanningActive = false;
+
+    // Clear codeReader to force recreation on next open
+    codeReader = null;
+
+    console.log('UPC: Modal cleanup complete');
+  }
+
+  function handleSourceChange(event) {
+    selectedSource = event.target.value;
+    // Save sticky preference
+    localStorage.setItem('upc-data-source', selectedSource);
+    console.log('UPC: Source changed to:', selectedSource);
   }
 
   function handleBackdropClick(event) {
@@ -247,11 +295,25 @@
   }
 
   function retryScanning() {
+    console.log('UPC: Retrying scan...');
+
+    // Stop current scanning first
+    stopScanning();
+
+    // Reset state
     error = null;
     scannedCode = '';
     productResult = null;
-    manualUPC = ''; // Clear manual input
-    isProcessingBarcode = false; // Reset processing flag
+    manualUPC = '';
+    isProcessingBarcode = false;
+    scanningActive = false;
+    isLoading = false;
+    loadingState = '';
+
+    // Clear and recreate codeReader for fresh start
+    codeReader = null;
+
+    // Start fresh scan
     startScanning();
   }
 
@@ -266,8 +328,12 @@
       return;
     }
 
-    // Validate UPC format
-    if (!FDCService.isValidUPCFormat(manualUPC)) {
+    // Validate UPC format using the selected service
+    const isValid = selectedSource === 'usda'
+      ? FDCService.isValidUPCFormat(manualUPC)
+      : OpenFoodFactsService.isValidUPCFormat(manualUPC);
+
+    if (!isValid) {
       error = 'Please enter a valid UPC code (8-14 digits)';
       return;
     }
@@ -318,7 +384,8 @@
   }
 
   // Auto-start scanning when modal opens
-  $: if (show && !scanningActive && !isLoading && !productResult && !error) {
+  $: if (show && !scanningActive && !isLoading && !productResult && !error && !scannedCode) {
+    console.log('UPC: Auto-starting scanner on modal open');
     startScanning();
   }
 </script>
@@ -331,7 +398,7 @@
     role="button"
     tabindex="0"
   >
-    <div class="modal-content" on:click|stopPropagation on:keydown|stopPropagation role="dialog">
+    <div class="modal-content" on:click|stopPropagation on:keydown|stopPropagation role="dialog" tabindex="-1">
       <div class="modal-header">
         <div class="modal-header-left">
           <button class="modal-back" on:click={closeModal}>
@@ -343,6 +410,40 @@
         </div>
       </div>
 
+      <!-- Data Source Selection -->
+      <div class="source-selection">
+        <div class="source-selection-header">
+          <span class="material-icons">database</span>
+          <span>Data Source</span>
+        </div>
+        <div class="source-options">
+          <label class="source-option">
+            <input
+              type="radio"
+              bind:group={selectedSource}
+              value="usda"
+              on:change={handleSourceChange}
+            />
+            <div class="source-info">
+              <span class="source-name">USDA FoodData Central</span>
+              <span class="source-description">US government nutrition database</span>
+            </div>
+          </label>
+          <label class="source-option">
+            <input
+              type="radio"
+              bind:group={selectedSource}
+              value="openfoodfacts"
+              on:change={handleSourceChange}
+            />
+            <div class="source-info">
+              <span class="source-name">OpenFoodFacts</span>
+              <span class="source-description">Global community database</span>
+            </div>
+          </label>
+        </div>
+      </div>
+
       <div class="modal-body">
         <!-- Instructions -->
         {#if !scannedCode && !isLoading && !error && !productResult}
@@ -351,7 +452,7 @@
               <span class="material-icons">qr_code_scanner</span>
             </div>
             <h3>Scan UPC Barcode</h3>
-            <p>Point your camera at the product's UPC barcode. We'll automatically look up nutrition information from the USDA database.</p>
+            <p>Point your camera at the product's UPC barcode. We'll automatically look up nutrition information from your selected data source.</p>
           </div>
         {/if}
 
@@ -462,7 +563,7 @@
             <!-- Success Indicator -->
             <div class="success-indicator">
               <span class="material-icons">check_circle</span>
-              <span>Product found in USDA database</span>
+              <span>Product found in {selectedSource === 'usda' ? 'USDA' : 'OpenFoodFacts'} database</span>
             </div>
 
             <!-- Product Information -->
@@ -560,6 +661,30 @@
                       </td>
                     </tr>
                   {/if}
+
+                  <tr>
+                    <td class="label">Data Source</td>
+                    <td class="value data-source-info">
+                      <div class="source-badge {selectedSource}">
+                        <span class="source-icon">
+                          {#if selectedSource === 'usda'}
+                            🏛️
+                          {:else}
+                            🌐
+                          {/if}
+                        </span>
+                        <span class="source-text">
+                          {selectedSource === 'usda' ? 'USDA FoodData Central' : 'OpenFoodFacts'}
+                        </span>
+                      </div>
+                      <div class="quality-indicator">
+                        <span class="quality-label">Data Quality:</span>
+                        <span class="confidence-{productResult.confidence}">
+                          {productResult.confidence}
+                        </span>
+                      </div>
+                    </td>
+                  </tr>
 
                   <tr>
                     <td class="label">UPC Code</td>
@@ -696,6 +821,87 @@
     font-weight: 500;
     color: var(--text-primary);
     margin: 0;
+  }
+
+  /* Source Selection */
+  .source-selection {
+    padding: 1rem 1.5rem;
+    background: var(--surface-secondary);
+    border-bottom: 1px solid var(--divider);
+  }
+
+  .source-selection-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+    color: var(--text-primary);
+  }
+
+  .source-selection-header .material-icons {
+    font-size: 1.1rem;
+    color: var(--text-secondary);
+  }
+
+  .source-options {
+    display: flex;
+    gap: 0.75rem;
+  }
+
+  @media (max-width: 480px) {
+    .source-options {
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+  }
+
+  .source-option {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem;
+    background: var(--surface);
+    border: 2px solid var(--border);
+    border-radius: 0.5rem;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .source-option:hover {
+    border-color: var(--primary-color);
+    background: var(--primary-alpha-5);
+  }
+
+  .source-option input[type="radio"] {
+    margin: 0;
+    cursor: pointer;
+  }
+
+  .source-option:has(input:checked) {
+    border-color: var(--primary-color);
+    background: var(--primary-alpha-10);
+  }
+
+  .source-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    flex: 1;
+  }
+
+  .source-name {
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+    color: var(--text-primary);
+  }
+
+  .source-description {
+    font-size: var(--font-size-xs);
+    color: var(--text-secondary);
+    line-height: 1.3;
   }
 
   .modal-body {
@@ -1127,6 +1333,54 @@
     font-size: 0.8rem;
     color: var(--text-hint);
     font-family: monospace;
+  }
+
+  /* Data source and quality indicators */
+  .data-source-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .source-badge {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.375rem 0.75rem;
+    border-radius: 0.25rem;
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+  }
+
+  .source-badge.usda {
+    background: var(--primary-alpha-10);
+    color: var(--primary-color);
+    border: 1px solid var(--primary-alpha-20);
+  }
+
+  .source-badge.openfoodfacts {
+    background: var(--success-alpha-10);
+    color: var(--success-color);
+    border: 1px solid var(--success-alpha-20);
+  }
+
+  .source-icon {
+    font-size: 1rem;
+  }
+
+  .source-text {
+    font-weight: 500;
+  }
+
+  .quality-indicator {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: var(--font-size-sm);
+  }
+
+  .quality-label {
+    color: var(--text-secondary);
   }
 
   .result-actions {

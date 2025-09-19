@@ -202,7 +202,7 @@
     role="button"
     tabindex="0"
   >
-    <div class="modal-content" on:click|stopPropagation on:keydown|stopPropagation role="dialog">
+    <div class="modal-content" on:click|stopPropagation on:keydown|stopPropagation role="dialog" tabindex="-1">
       <div class="modal-header">
         <div class="modal-header-left">
           <button class="modal-back" on:click={closeModal} disabled={isLoading}>

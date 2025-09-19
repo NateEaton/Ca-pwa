@@ -69,6 +69,11 @@
   // Smart Scanning (UPC → OCR → Manual)
   let showSmartScanModal = false;
 
+  // Debug: Track modal state changes
+  $: {
+    console.log('AddFood: showSmartScanModal changed to:', showSmartScanModal);
+  }
+
   // Initialize component on mount
   onMount(async () => {
     // Database is already available via static import
@@ -551,12 +556,26 @@
   }
 
   function handleSmartScan() {
+    console.log('🎯 AddFood: Smart scan button clicked!');
+    console.log('   - isSubmitting:', isSubmitting);
+    console.log('   - showSmartScanModal before:', showSmartScanModal);
     showSmartScanModal = true;
+    console.log('   - showSmartScanModal after:', showSmartScanModal);
   }
 
   function handleScanComplete(event) {
     const scanData = event.detail;
     console.log('AddFood: Scan completed:', scanData);
+
+    // Explicitly close the smart scan modal to ensure clean state
+    console.log('AddFood: Before closing modal - showSmartScanModal:', showSmartScanModal);
+    showSmartScanModal = false;
+    console.log('AddFood: After closing modal - showSmartScanModal:', showSmartScanModal);
+
+    // Add a small delay to ensure DOM updates
+    setTimeout(() => {
+      console.log('AddFood: After timeout - showSmartScanModal:', showSmartScanModal);
+    }, 100);
 
     // Switch to custom mode and populate the fields
     isCustomMode = true;
