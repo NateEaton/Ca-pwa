@@ -1,21 +1,71 @@
 // USDA FoodData Central API Service for UPC lookup
 import { FDC_CONFIG } from '$lib/config/fdc.js';
-import { UnitConversionService } from './UnitConversionService.js';
+import { HouseholdMeasureService } from './HouseholdMeasureService';
+
+interface FDCProduct {
+  fdcId: number;
+  description: string;
+  brandOwner?: string;
+  brandName?: string;
+  servingSize?: number;
+  servingSizeUnit?: string;
+  householdServingFullText?: string;
+  ingredients?: string;
+  labelNutrients?: any;
+  foodNutrients?: any[];
+  publishedDate?: string;
+}
+
+interface ParsedProduct {
+  source: string;
+  upcCode: string;
+  fdcId: number;
+  productName: string;
+  brandOwner: string;
+  brandName: string;
+
+  // Clean final data for AddFoodModal (centralized decision result)
+  finalServingQuantity: number;
+  finalServingUnit: string;
+  servingDisplayText: string;
+  servingSource: 'enhanced' | 'standard';
+
+  // Legacy fields (for backward compatibility)
+  servingSize: string;
+  servingCount: number;
+  servingUnit: string;
+  householdServingFullText?: string;
+  smartServing?: any;
+
+  calcium: string;
+  calciumValue: number | null;
+  calciumPercentDV?: number | null;
+  calciumFromPercentDV?: number | null;
+  calciumPerServing?: number | null;
+  ingredients: string;
+  confidence: string;
+  rawData: FDCProduct;
+}
 
 export class FDCService {
-  constructor(apiKey) {
+  private apiKey: string;
+  private baseUrl: string;
+  private searchEndpoint: string;
+  private householdMeasureService: HouseholdMeasureService;
+
+  constructor(apiKey: string) {
     this.apiKey = apiKey;
     this.baseUrl = FDC_CONFIG.API_BASE_URL;
     this.searchEndpoint = FDC_CONFIG.SEARCH_ENDPOINT;
-    this.unitConverter = new UnitConversionService();
+    this.householdMeasureService = new HouseholdMeasureService();
   }
 
   /**
    * Search for a product by UPC/GTIN code
-   * @param {string} upcCode - The UPC/GTIN code to search for
-   * @returns {Promise<Object>} Product data or null if not found
+   * @param upcCode - The UPC/GTIN code to search for
+   * @returns Product data or null if not found
    */
-  async searchByUPC(upcCode) {
+  async searchByUPC(upcCode: string): Promise<ParsedProduct | null> {
     console.log('FDC: Starting UPC lookup for:', upcCode);
 
     try {
@@ -113,11 +163,11 @@ export class FDCService {
 
   /**
    * Parse USDA FDC product data into our standard format
-   * @param {Object} product - Raw product data from FDC API
-   * @param {string} upcCode - The original UPC code searched
-   * @returns {Object} Parsed product data
+   * @param product - Raw product data from FDC API
+   * @param upcCode - The original UPC code searched
+   * @returns Parsed product data
    */
-  parseProductData(product, upcCode) {
+  parseProductData(product: FDCProduct, upcCode: string): ParsedProduct {
     console.log('FDC: Parsing product data...');
 
     try {
@@ -136,10 +186,10 @@ export class FDCService {
       if (product.servingSize && product.servingSizeUnit) {
         servingCount = product.servingSize;
         // Standardize the unit from USDA API (MLT → ml, GRM → g, etc.)
-        servingUnit = this.unitConverter.standardizeUnit(product.servingSizeUnit);
+        servingUnit = this.householdMeasureService.standardizeUnit(product.servingSizeUnit);
 
         // Generate smart serving size using household measure if available
-        smartServingResult = this.unitConverter.generateSmartServingSize(
+        smartServingResult = this.householdMeasureService.generateSmartServingSize(
           product.servingSize,
           servingUnit, // Use standardized unit
           product.householdServingFullText,
@@ -235,9 +285,9 @@ export class FDCService {
       console.log(`  - calciumValue: ${calciumValue} (type: ${typeof calciumValue})`);
       console.log(`  - servingCount: ${servingCount} (type: ${typeof servingCount})`);
       console.log(`  - servingUnit: "${servingUnit}" (type: ${typeof servingUnit})`);
-      console.log(`  - isVolumeOrMassUnit: ${this.isVolumeOrMassUnit(servingUnit)}`);
+      console.log(`  - isVolumeOrMassUnit: ${this.householdMeasureService.isVolumeOrMassUnit(servingUnit)}`);
 
-      if (calciumValue && servingCount && this.isVolumeOrMassUnit(servingUnit)) {
+      if (calciumValue && servingCount && this.householdMeasureService.isVolumeOrMassUnit(servingUnit)) {
         // API calcium is per 100g, calculate for actual serving size
         // Treating grams and milliliters as equivalent (1:1 density)
         calciumPerServing = Math.round((calciumValue * servingCount) / 100);
@@ -246,8 +296,52 @@ export class FDCService {
         console.log('FDC: ❌ Cannot calculate per-serving calcium - missing required data');
         if (!calciumValue) console.log('    Missing calciumValue');
         if (!servingCount) console.log('    Missing servingCount');
-        if (!this.isVolumeOrMassUnit(servingUnit)) console.log(`    Invalid servingUnit: "${servingUnit}"`);
+        if (!this.householdMeasureService.isVolumeOrMassUnit(servingUnit)) console.log(`    Invalid servingUnit: "${servingUnit}"`);
       }
+
+      // ============================================================================
+      // CENTRALIZED SERVING DECISION LOGIC
+      // Determine final serving format for AddFoodModal (single source of truth)
+      // ============================================================================
+      let finalServingQuantity: number;
+      let finalServingUnit: string;
+      let servingDisplayText: string;
+      let servingSource: 'enhanced' | 'standard';
+
+      console.log('FDC: Making centralized serving decision...');
+      console.log(`  - smartServingResult.isEnhanced: ${smartServingResult?.isEnhanced}`);
+      console.log(`  - smartServingResult.householdAmount: ${smartServingResult?.householdAmount}`);
+
+      if (smartServingResult && smartServingResult.isEnhanced) {
+        // ENHANCED: Use household measure format
+        // Example: "2 tbsp" → quantity=2, unit="tbsp (11g)"
+        finalServingQuantity = smartServingResult.householdAmount || 1;
+
+        // Extract just the unit part from parsed household measure
+        const parsedMeasure = this.householdMeasureService.parseHouseholdMeasure(product.householdServingFullText || '');
+        const householdUnit = parsedMeasure?.unit || 'serving';
+        finalServingUnit = `${householdUnit} (${servingCount}${servingUnit})`;
+
+        servingDisplayText = smartServingResult.text; // e.g., "2 tbsp (11g)"
+        servingSource = 'enhanced';
+
+        console.log(`FDC: ✅ Enhanced serving - quantity: ${finalServingQuantity}, unit: "${finalServingUnit}"`);
+      } else {
+        // STANDARD: Use raw API serving format
+        // Example: "170 g" → quantity=170, unit="g"
+        finalServingQuantity = servingCount;
+        finalServingUnit = servingUnit;
+        servingDisplayText = servingSize; // Already formatted above
+        servingSource = 'standard';
+
+        console.log(`FDC: ⚡ Standard serving - quantity: ${finalServingQuantity}, unit: "${finalServingUnit}"`);
+      }
+
+      console.log('FDC: Final serving decision:');
+      console.log(`  - finalServingQuantity: ${finalServingQuantity}`);
+      console.log(`  - finalServingUnit: "${finalServingUnit}"`);
+      console.log(`  - servingDisplayText: "${servingDisplayText}"`);
+      console.log(`  - servingSource: "${servingSource}"`);
 
       const result = {
         source: 'USDA FDC',
@@ -256,11 +350,20 @@ export class FDCService {
         productName: productName,
         brandOwner: brandOwner,
         brandName: brandName,
+
+        // Clean final data for AddFoodModal (centralized decision result)
+        finalServingQuantity: finalServingQuantity,
+        finalServingUnit: finalServingUnit,
+        servingDisplayText: servingDisplayText,
+        servingSource: servingSource,
+
+        // Legacy fields (for backward compatibility)
         servingSize: servingSize,
         servingCount: servingCount,
         servingUnit: servingUnit,
         householdServingFullText: product.householdServingFullText,
         smartServing: smartServingResult, // Include smart serving analysis
+
         calcium: calcium,
         calciumValue: calciumValue,
         calciumPercentDV: calciumPercentDV,
@@ -280,72 +383,13 @@ export class FDCService {
     }
   }
 
-  /**
-   * Check if a unit represents volume (ml) or mass (g) that can be used for per-serving calculation
-   * Handles various API unit format variations
-   * @param {string} unit - The unit string to check
-   * @returns {boolean} True if unit represents grams or milliliters
-   */
-  isVolumeOrMassUnit(unit) {
-    console.log(`FDC: Checking unit "${unit}" for volume/mass compatibility`);
-
-    if (!unit || typeof unit !== 'string') {
-      console.log(`FDC: Unit check failed - invalid input: ${unit} (type: ${typeof unit})`);
-      return false;
-    }
-
-    // Enhanced unit cleaning - handle multiple formats and edge cases
-    let cleanedUnit = unit.toString().trim();
-
-    // Remove common prefixes/suffixes and normalize
-    cleanedUnit = cleanedUnit.replace(/^[\s\d\.\-]+/, ''); // Remove leading numbers/spaces/dots/dashes
-    cleanedUnit = cleanedUnit.replace(/[\s\.\-]+$/, '');   // Remove trailing spaces/dots/dashes
-    cleanedUnit = cleanedUnit.toLowerCase();
-
-    console.log(`FDC: Original unit: "${unit}" → Cleaned: "${cleanedUnit}"`);
-
-    // Explicit handling for problematic USDA formats
-    const unitMappings = {
-      'grm': 'g',
-      'gm': 'g',
-      'gms': 'g',
-      'gram': 'g',
-      'grams': 'g',
-      'gr': 'g',
-      'mlt': 'ml',
-      'milliliter': 'ml',
-      'milliliters': 'ml',
-      'millilitre': 'ml',
-      'millilitres': 'ml',
-      'mls': 'ml'
-    };
-
-    // Apply mapping if exists
-    if (unitMappings[cleanedUnit]) {
-      console.log(`FDC: Mapped "${cleanedUnit}" → "${unitMappings[cleanedUnit]}"`);
-      cleanedUnit = unitMappings[cleanedUnit];
-    }
-
-    // Core valid units (simplified after mapping)
-    const validUnits = ['g', 'ml', 'oz', 'fl oz', 'fluid ounce', 'ounce'];
-
-    const isValidUnit = validUnits.includes(cleanedUnit);
-    console.log(`FDC: Final unit "${cleanedUnit}" is ${isValidUnit ? 'VALID' : 'INVALID'} for calculation`);
-
-    if (!isValidUnit) {
-      console.log(`FDC: Valid units after mapping: [${validUnits.join(', ')}]`);
-      console.log(`FDC: Available mappings:`, unitMappings);
-    }
-
-    return isValidUnit;
-  }
 
   /**
    * Validate that a string looks like a UPC code
-   * @param {string} code - The code to validate
-   * @returns {boolean} True if it looks like a valid UPC
+   * @param code - The code to validate
+   * @returns True if it looks like a valid UPC
    */
-  static isValidUPCFormat(code) {
+  static isValidUPCFormat(code: string): boolean {
     if (!code || typeof code !== 'string') return false;
 
     const cleanCode = code.replace(/\D/g, '');
@@ -354,10 +398,10 @@ export class FDCService {
 
   /**
    * Format UPC code for display
-   * @param {string} upcCode - Raw UPC code
-   * @returns {string} Formatted UPC code
+   * @param upcCode - Raw UPC code
+   * @returns Formatted UPC code
    */
-  static formatUPC(upcCode) {
+  static formatUPC(upcCode: string): string {
     const clean = upcCode.replace(/\D/g, '');
 
     // Format common UPC lengths

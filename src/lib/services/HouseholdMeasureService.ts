@@ -1,7 +1,43 @@
-// Unit Conversion Service for smart household measure matching
-// Helps convert between weight/volume units and validate serving size compatibility
+// Household Measure Service for smart UPC serving size validation
+// Helps validate household measures against weight/volume and generate smart serving sizes
 
-export class UnitConversionService {
+interface ParsedMeasure {
+  amount: number;
+  unit: string;
+  original: string;
+}
+
+interface ValidationResult {
+  isValid: boolean;
+  confidence: 'high' | 'medium' | 'low' | 'very-low';
+  reason: string;
+  estimatedGrams: number | null;
+  category?: string;
+  density?: number;
+}
+
+interface SmartServingResult {
+  text: string;
+  householdAmount?: number;
+  isEnhanced: boolean;
+  validation: ValidationResult | null;
+}
+
+interface UnitConversions {
+  [key: string]: number;
+}
+
+interface CategoryKeywords {
+  [key: string]: string[];
+}
+
+export class HouseholdMeasureService {
+  private unitStandardization: UnitConversions;
+  private categoryDensities: UnitConversions;
+  private volumeConversions: UnitConversions;
+  private weightConversions: UnitConversions;
+  private categoryKeywords: CategoryKeywords;
+
   constructor() {
     // USDA unit standardization mapping - normalize inconsistent API units
     this.unitStandardization = {
@@ -129,10 +165,10 @@ export class UnitConversionService {
 
   /**
    * Parse household serving text to extract number and unit
-   * @param {string} householdText - Text like "2 tbsp", "1 cup", "1/2 tsp"
-   * @returns {Object} {amount: number, unit: string, original: string}
+   * @param householdText - Text like "2 tbsp", "1 cup", "1/2 tsp"
+   * @returns ParsedMeasure object or null if parsing fails
    */
-  parseHouseholdMeasure(householdText) {
+  parseHouseholdMeasure(householdText: string): ParsedMeasure | null {
     if (!householdText || typeof householdText !== 'string') {
       return null;
     }
@@ -348,17 +384,15 @@ export class UnitConversionService {
 
     // Only use household measure if validation passes
     if (validation.isValid && validation.confidence !== 'very-low') {
-      // Remove count from household measure if it's 1 (e.g., "1 cup" → "cup")
-      let householdMeasure = parsedMeasure.original;
-      if (parsedMeasure.amount === 1) {
-        householdMeasure = parsedMeasure.unit;
-      }
+      // Include full household measure for display, store amount separately for separation
+      const enhancedText = `${parsedMeasure.original} (${servingCount}${servingUnit || 'g'})`;
 
-      const enhancedText = `${householdMeasure} (${servingCount}${servingUnit || 'g'})`;
       console.log('UnitConversion: Using enhanced text:', enhancedText);
+      console.log(`UnitConversion: Household amount: ${parsedMeasure.amount}, unit: ${parsedMeasure.unit}`);
 
       return {
         text: enhancedText,
+        householdAmount: parsedMeasure.amount, // Return the amount separately for Add Food dialog
         isEnhanced: true,
         validation
       };
@@ -411,5 +445,37 @@ export class UnitConversionService {
 
     // If no mapping found, return lowercase version
     return cleaned.toLowerCase();
+  }
+
+  /**
+   * Check if a unit represents volume (ml) or mass (g) that can be used for per-serving calculation
+   * Handles various API unit format variations
+   * @param {string} unit - The unit string to check
+   * @returns {boolean} True if unit represents grams or milliliters
+   */
+  isVolumeOrMassUnit(unit) {
+    if (!unit || typeof unit !== 'string') {
+      return false;
+    }
+
+    // Standardize the unit first
+    const standardizedUnit = this.standardizeUnit(unit);
+
+    // Check if it's a weight or volume unit
+    return this.isWeightUnit(standardizedUnit) || this.isVolumeUnit(standardizedUnit);
+  }
+
+  /**
+   * Extract unit portion from smart serving text for Add Food dialog
+   * @param smartText - Enhanced text like "2 tbsp (11g)" or "1 cup (240ml)"
+   * @returns Unit portion like "tbsp (11g)" or "cup (240ml)"
+   */
+  extractUnitFromSmartText(smartText: string): string {
+    if (!smartText || typeof smartText !== 'string') {
+      return smartText;
+    }
+
+    // Remove leading number and optional whitespace: "2 tbsp (11g)" → "tbsp (11g)"
+    return smartText.replace(/^\d+(\.\d+)?\s*/, '');
   }
 }

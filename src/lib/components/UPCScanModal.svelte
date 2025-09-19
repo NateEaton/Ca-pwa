@@ -5,7 +5,7 @@
 <script>
   import { createEventDispatcher, onMount, onDestroy } from 'svelte';
   import { BrowserMultiFormatReader } from '@zxing/browser';
-  import { FDCService } from '$lib/services/FDCService.js';
+  import { FDCService } from '$lib/services/FDCService';
   import { FDC_CONFIG } from '$lib/config/fdc.js';
 
   export let show = false;
@@ -218,14 +218,16 @@
   function handleUseProduct() {
     if (productResult) {
       dispatch('upcComplete', {
+        method: 'UPC',
         source: 'UPC',
         productName: productResult.productName,
         brandOwner: productResult.brandOwner,
         brandName: productResult.brandName,
-        servingSize: productResult.servingSize,
-        servingCount: productResult.servingCount,
-        servingUnit: productResult.servingUnit,
-        householdServingFullText: productResult.householdServingFullText,
+
+        // Clean final data for AddFoodModal (pre-processed by FDC)
+        servingQuantity: productResult.finalServingQuantity,
+        servingUnit: productResult.finalServingUnit,
+
         calcium: productResult.calcium,
         calciumValue: productResult.calciumValue,
         calciumPercentDV: productResult.calciumPercentDV,
@@ -234,6 +236,10 @@
         upcCode: productResult.upcCode,
         fdcId: productResult.fdcId,
         confidence: 'high',
+
+        // Metadata for debugging/display
+        servingDisplayText: productResult.servingDisplayText,
+        servingSource: productResult.servingSource,
         rawData: productResult
       });
     }
@@ -475,12 +481,12 @@
                     </tr>
                   {/if}
 
-                  {#if productResult.servingSize}
+                  {#if productResult.servingDisplayText}
                     <tr>
                       <td class="label">Serving Size</td>
                       <td class="value serving-size-info">
-                        {productResult.servingSize}
-                        {#if productResult.smartServing && productResult.smartServing.isEnhanced}
+                        {productResult.servingDisplayText}
+                        {#if productResult.servingSource === 'enhanced'}
                           <br><span class="smart-serving-note">✓ Smart format: household measure + weight</span>
                         {/if}
                       </td>

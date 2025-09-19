@@ -571,23 +571,13 @@
         foodName = scanData.productName || 'Scanned Product';
       }
 
-      // Use smart serving size if available, otherwise fall back to parsed data
-      if (scanData.smartServing && scanData.smartServing.isEnhanced) {
-        // Use the enhanced serving size (e.g., "2 tbsp (11g)")
-        servingUnit = scanData.smartServing.text;
-        servingQuantity = 1; // Set to 1 since the text already contains the full measure
-        console.log(`UPC: Using smart serving size: ${servingUnit}`);
-        console.log(`UPC: Smart serving validation:`, scanData.smartServing.validation);
-      } else if (scanData.servingSize) {
-        // Use the processed servingSize which includes standardized units
-        servingUnit = scanData.servingSize;
-        servingQuantity = 1; // Set to 1 since servingSize is the complete description
-        console.log(`UPC: Using processed servingSize: ${servingUnit}`);
-      } else if (scanData.servingCount && scanData.servingUnit) {
-        // Fallback to individual components (should be rare)
-        servingQuantity = scanData.servingCount;
-        servingUnit = scanData.servingUnit;
-        console.log(`UPC: Using individual serving components - count: ${servingQuantity}, unit: ${servingUnit}`);
+      // Clean, simple assignment - FDCService has made all decisions
+      servingQuantity = scanData.servingQuantity || 1;
+      servingUnit = scanData.servingUnit || 'serving';
+      console.log(`UPC: Using centralized serving data - quantity: ${servingQuantity}, unit: ${servingUnit}`);
+      console.log(`UPC: Serving source: ${scanData.servingSource || 'unknown'}`);
+      if (scanData.servingDisplayText) {
+        console.log(`UPC: Display text was: ${scanData.servingDisplayText}`);
       }
 
       // Use calculated per-serving calcium if available, otherwise fall back to raw API value
