@@ -203,20 +203,22 @@ export class OpenFoodFactsService {
       });
 
       if (product.nutriments) {
-        // Check calcium unit to determine conversion factor
-        const calciumUnit = product.nutriments[OPENFOODFACTS_CONFIG.NUTRITION_FIELDS.CALCIUM_UNIT] || OPENFOODFACTS_CONFIG.UNIT_CONVERSION.DEFAULT_UNIT;
-        const isGrams = calciumUnit === 'g' || calciumUnit === 'gram' || calciumUnit === 'grams';
-        const conversionFactor = isGrams ? OPENFOODFACTS_CONFIG.UNIT_CONVERSION.GRAMS_TO_MG : 1;
+        // IMPORTANT: OpenFoodFacts calcium units are inconsistent!
+        // calcium_unit may say "mg" but values are often fractional grams (e.g., 0.158)
+        // The OpenFoodFacts website shows these as milligrams after conversion
+        // Therefore, we ALWAYS apply 1000x conversion regardless of stated unit
+        const calciumUnit = product.nutriments[OPENFOODFACTS_CONFIG.NUTRITION_FIELDS.CALCIUM_UNIT] || 'unknown';
+        const conversionFactor = OPENFOODFACTS_CONFIG.UNIT_CONVERSION.GRAMS_TO_MG; // Always 1000x
 
-        console.log('OFF: Calcium unit detected:', calciumUnit, 'conversion factor:', conversionFactor);
+        console.log('OFF: Calcium unit detected:', calciumUnit, 'using hardcoded conversion factor:', conversionFactor);
 
         // Try calcium_100g first (per 100g value)
         if (product.nutriments[OPENFOODFACTS_CONFIG.NUTRITION_FIELDS.CALCIUM_100G]) {
           const rawCalciumValue = parseFloat(product.nutriments[OPENFOODFACTS_CONFIG.NUTRITION_FIELDS.CALCIUM_100G].toString()) || null;
           if (rawCalciumValue !== null) {
-            calciumValue = rawCalciumValue * conversionFactor; // Convert to mg if needed
+            calciumValue = rawCalciumValue * conversionFactor; // Always convert g→mg
             calcium = `${calciumValue} mg`;
-            console.log(`OFF: Found calcium_100g: ${rawCalciumValue}${calciumUnit} → ${calcium}`);
+            console.log(`OFF: Found calcium_100g: ${rawCalciumValue} (stated: ${calciumUnit}) → ${calcium} (hardcoded conversion)`);
           }
         }
 
@@ -224,8 +226,8 @@ export class OpenFoodFactsService {
         if (product.nutriments[OPENFOODFACTS_CONFIG.NUTRITION_FIELDS.CALCIUM_SERVING]) {
           const rawCalciumServing = parseFloat(product.nutriments[OPENFOODFACTS_CONFIG.NUTRITION_FIELDS.CALCIUM_SERVING].toString()) || null;
           if (rawCalciumServing !== null) {
-            calciumPerServing = rawCalciumServing * conversionFactor; // Convert to mg if needed
-            console.log(`OFF: Found calcium_serving: ${rawCalciumServing}${calciumUnit} → ${calciumPerServing}mg`);
+            calciumPerServing = rawCalciumServing * conversionFactor; // Always convert g→mg
+            console.log(`OFF: Found calcium_serving: ${rawCalciumServing} (stated: ${calciumUnit}) → ${calciumPerServing}mg (hardcoded conversion)`);
           }
         }
       }

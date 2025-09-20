@@ -34,5 +34,11 @@ export const OPENFOODFACTS_CONFIG = {
   UNIT_CONVERSION: {
     GRAMS_TO_MG: 1000,    // Convert grams to milligrams
     DEFAULT_UNIT: 'g',    // Default calcium unit in OpenFoodFacts
+
+    // IMPORTANT: OpenFoodFacts has inconsistent calcium units!
+    // - calcium_unit often shows "mg" but values are actually in grams (fractions like 0.158)
+    // - The OpenFoodFacts website displays these as converted mg values
+    // - We hardcode the conversion rather than trust calcium_unit field
+    FORCE_CALCIUM_CONVERSION: true  // Always convert calcium values by 1000x
   }
 };

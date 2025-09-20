@@ -1,75 +1,165 @@
 <!--
- * Smart Scan Modal for Calcium Tracker PWA
- * Progressive workflow: UPC Barcode → OCR Nutrition Label → Manual Entry
+ * Unified Smart Scan Modal for Calcium Tracker PWA
+ * Combines Barcode (UPC) and Nutrition Label (OCR) scanning.
 -->
 <script>
-  import { createEventDispatcher } from 'svelte';
-  import UPCScanModal from './UPCScanModal.svelte';
+  import { createEventDispatcher, onMount, onDestroy } from 'svelte';
+  import { BrowserMultiFormatReader } from '@zxing/browser';
+  import { FDCService } from '$lib/services/FDCService';
+  import { OpenFoodFactsService } from '$lib/services/OpenFoodFactsService';
   import { OCRService } from '$lib/services/OCRService.js';
+  import { FDC_CONFIG } from '$lib/config/fdc.js';
   import { OCR_CONFIG } from '$lib/config/ocr.js';
 
   export let show = false;
 
   const dispatch = createEventDispatcher();
 
-  // Workflow state
-  let currentStep = 'upc'; // 'upc', 'ocr', 'manual'
-  let showUPCModal = false;
-  let showOCRModal = false;
+  // --- Workflow State ---
+  let activeTab = 'upc'; // 'upc' or 'ocr'
 
-  // OCR functionality (preserved from original)
+  // --- Barcode (UPC) State ---
+  let videoElement;
+  let codeReader;
+  let scanningActive = false;
+  let isProcessingBarcode = false;
+  let scannerControls = null;
+  let manualUPC = '';
+  let selectedSource = 'usda';
+
+  // --- Nutrition Label (OCR) State ---
   let imagePreview = null;
   let ocrResult = null;
+  let cameraInput;
+  let fileInput;
+  let ocrLoadingState = ''; // 'compressing', 'processing', ''
+
+  // --- General Modal State ---
   let isLoading = false;
   let error = null;
-  let fileInput;
-  let cameraInput;
-  let loadingState = ''; // 'compressing', 'processing', ''
 
-  // Initialize OCR service with API key from config
+  // --- Service Initialization ---
+  const fdcService = new FDCService(FDC_CONFIG.API_KEY);
+  const openFoodFactsService = new OpenFoodFactsService();
   const ocrService = new OCRService(OCR_CONFIG.API_KEY);
 
-  // Handle UPC scan completion
-  function handleUPCComplete(event) {
-    console.log('SmartScan: UPC scan completed:', event.detail);
+  // --- Lifecycle ---
+  onMount(() => {
+    // Load sticky preferences
+    const lastTab = localStorage.getItem('scan-default-tab');
+    if (lastTab) activeTab = lastTab;
 
-    // Forward the UPC result to parent
-    dispatch('scanComplete', {
-      ...event.detail,
-      method: 'UPC'
-    });
+    const lastSource = localStorage.getItem('upc-data-source');
+    if (lastSource) selectedSource = lastSource;
+  });
 
-    closeModal();
+  onDestroy(() => {
+    stopScanning();
+  });
+
+  // --- Core Logic ---
+  function closeModal(didScan = false) {
+    stopScanning();
+    show = false;
+    if (!didScan) {
+      dispatch('close');
+    }
   }
 
-  // Handle UPC scan skip - move to OCR step
-  function handleSkipToOCR() {
-    console.log('SmartScan: Skipping to OCR step');
-    currentStep = 'ocr';
-    showUPCModal = false;
-    showOCRModal = true;
+  async function switchTab(tab) {
+    if (isLoading) return;
+    activeTab = tab;
+    localStorage.setItem('scan-default-tab', tab);
+    error = null;
+    stopScanning(); // Stop scanner when switching tabs
+    if (tab === 'upc') {
+      // Delay to allow UI to render before starting camera
+      setTimeout(startScanning, 100);
+    }
   }
 
-  // Start workflow with UPC scanning
-  function startUPCStep() {
-    currentStep = 'upc';
-    showUPCModal = true;
-    showOCRModal = false;
+  // --- Barcode (UPC) Functions ---
+  async function startScanning() {
+    if (!show || scanningActive || activeTab !== 'upc') return;
+    try {
+      isLoading = true;
+      error = null;
+
+      codeReader = new BrowserMultiFormatReader();
+      const videoInputDevices = await BrowserMultiFormatReader.listVideoInputDevices();
+      if (videoInputDevices.length === 0) throw new Error('No camera found.');
+
+      let selectedDevice = videoInputDevices.find(d => d.label.toLowerCase().includes('back')) || videoInputDevices[0];
+      
+      scanningActive = true;
+      scannerControls = await codeReader.decodeFromVideoDevice(
+        selectedDevice.deviceId,
+        videoElement,
+        (result, err) => {
+          if (result && !isProcessingBarcode && scanningActive) {
+            handleBarcodeDetected(result.getText());
+          }
+        }
+      );
+    } catch (err) {
+      error = err.message || 'Failed to start camera.';
+      scanningActive = false;
+    } finally {
+      isLoading = false;
+    }
   }
 
-  // Start OCR scanning (can be called directly or from UPC skip)
-  function startOCRStep() {
-    currentStep = 'ocr';
-    showUPCModal = false;
-    showOCRModal = true;
+  function stopScanning() {
+    scanningActive = false;
+    if (scannerControls) {
+      scannerControls.stop();
+      scannerControls = null;
+    }
+    // BUG FIX: Removed the call to codeReader.reset() as it does not exist.
+    // The library handles its own state cleanup. Re-creating the instance is sufficient.
+    codeReader = null; 
   }
 
-  // OCR functionality (preserved from original implementation)
+  async function handleBarcodeDetected(code) {
+    if (isProcessingBarcode) return;
+    if (!FDCService.isValidUPCFormat(code)) return;
+
+    isProcessingBarcode = true;
+    stopScanning();
+    isLoading = true;
+    error = null;
+
+    try {
+      let productResult = null;
+      if (selectedSource === 'usda') {
+        productResult = await fdcService.searchByUPC(code);
+      } else {
+        productResult = await openFoodFactsService.searchByUPC(code);
+      }
+
+      if (productResult) {
+        dispatch('scanComplete', { ...productResult, method: 'UPC' });
+        closeModal(true);
+      } else {
+        throw new Error(`Product not found in ${selectedSource === 'usda' ? 'USDA' : 'OpenFoodFacts'} database.`);
+      }
+    } catch (err) {
+      error = err.message || 'Product lookup failed.';
+    } finally {
+      isLoading = false;
+      isProcessingBarcode = false;
+    }
+  }
+
+  function handleSourceChange(event) {
+    selectedSource = event.target.value;
+    localStorage.setItem('upc-data-source', selectedSource);
+  }
+
+  // --- Nutrition Label (OCR) Functions ---
   async function handleFileSelect(event) {
     const file = event.target.files[0];
     if (!file) return;
-
-    console.log('SmartScan: File selected for OCR:', file);
     error = null;
     imagePreview = URL.createObjectURL(file);
     await processImage(file);
@@ -79,313 +169,125 @@
     isLoading = true;
     ocrResult = null;
     error = null;
-    loadingState = '';
+    ocrLoadingState = 'processing';
 
     try {
-      // Show compression state if file is large
-      if (file.size > 1024 * 1024) {
-        loadingState = 'compressing';
-        console.log('SmartScan: Large file detected, will compress:', file.size, 'bytes');
+      const result = await ocrService.processImage(file);
+      if (result) {
+        dispatch('scanComplete', {
+          ...result,
+          method: 'OCR',
+          calciumValue: result.calcium ? parseFloat(result.calcium.match(/[\d\.]+/)?.[0]) : null,
+        });
+        closeModal(true);
+      } else {
+        throw new Error("Could not extract nutrition data from the image.");
       }
-
-      // Brief delay to show compression state
-      if (loadingState === 'compressing') {
-        await new Promise(resolve => setTimeout(resolve, 100));
-      }
-
-      // Switch to OCR processing state
-      loadingState = 'processing';
-      ocrResult = await ocrService.processImage(file);
-      console.log('SmartScan: OCR completed successfully:', ocrResult);
     } catch (err) {
-      console.error('SmartScan: OCR processing failed:', err);
-      error = err.message || 'Failed to process image';
+      error = err.message || 'Failed to process image.';
     } finally {
       isLoading = false;
-      loadingState = '';
+      ocrLoadingState = '';
+      imagePreview = null; // Clear preview after attempt
     }
   }
 
-  function triggerFileInput() {
-    if (fileInput) {
-      fileInput.click();
-    }
-  }
-
-  function triggerCameraInput() {
-    if (cameraInput) {
-      cameraInput.click();
-    }
-  }
-
-  function handleOCRSaveResults() {
-    if (ocrResult) {
-      dispatch('scanComplete', {
-        source: 'OCR',
-        productName: 'Scanned Food Item', // Default name for OCR
-        servingSize: ocrResult.servingSize,
-        calcium: ocrResult.calcium,
-        calciumValue: ocrResult.calcium ? parseFloat(ocrResult.calcium.match(/[\d\.]+/)?.[0]) : null,
-        confidence: ocrResult.confidence,
-        rawText: ocrResult.rawText,
-        method: 'OCR'
-      });
-    }
-    closeModal();
-  }
-
-  function handleManualEntry() {
-    console.log('SmartScan: User chose manual entry');
-
-    // Send empty scan result to indicate manual entry
-    dispatch('scanComplete', {
-      source: 'Manual',
-      method: 'Manual',
-      confidence: 'user-entered'
-    });
-
-    closeModal();
-  }
-
-  function closeModal() {
-    showUPCModal = false;
-    showOCRModal = false;
-    show = false;
-    currentStep = 'upc';
-
-    // Reset OCR state
-    imagePreview = null;
-    ocrResult = null;
-    error = null;
-    isLoading = false;
-    loadingState = '';
-
-    if (fileInput) {
-      fileInput.value = '';
-    }
-    if (cameraInput) {
-      cameraInput.value = '';
-    }
-  }
-
+  // --- Event Handlers ---
   function handleBackdropClick(event) {
-    if (event.target === event.currentTarget) {
-      closeModal();
-    }
+    if (event.target === event.currentTarget) closeModal();
   }
 
-  function handleBackdropKeydown(event) {
-    if (event.key === 'Escape') {
-      closeModal();
-    }
+  function handleKeydown(event) {
+    if (event.key === 'Escape') closeModal();
   }
 
-  // Auto-start UPC scanning when modal opens
-  $: if (show && currentStep === 'upc') {
-    startUPCStep();
+  // --- Reactive Logic ---
+  $: if (show && activeTab === 'upc' && !scanningActive) {
+    setTimeout(startScanning, 100);
+  } else if (!show) {
+    stopScanning();
   }
 </script>
 
-<!-- UPC Scanning Modal -->
-<UPCScanModal
-  bind:show={showUPCModal}
-  on:upcComplete={handleUPCComplete}
-  on:skipToOCR={handleSkipToOCR}
-/>
-
-<!-- OCR Scanning Modal (only show when in OCR step) -->
-{#if showOCRModal && currentStep === 'ocr'}
-  <div
-    class="modal-backdrop"
-    on:click={handleBackdropClick}
-    on:keydown={handleBackdropKeydown}
-    role="button"
-    tabindex="0"
-  >
+{#if show}
+  <div class="modal-backdrop" on:click={handleBackdropClick} on:keydown={handleKeydown} role="button" tabindex="0">
+    <!-- svelte-ignore a11y-no-noninteractive-element-interactions -->
     <div class="modal-content" on:click|stopPropagation on:keydown|stopPropagation role="dialog" tabindex="-1">
       <div class="modal-header">
-        <div class="modal-header-left">
-          <button class="modal-back" on:click={closeModal} disabled={isLoading}>
-            <span class="material-icons">arrow_back</span>
-          </button>
-        </div>
-        <div class="modal-header-center">
-          <h2 class="modal-title">Scan Nutrition Label</h2>
-        </div>
+        <button class="modal-back" on:click={() => closeModal()}>
+          <span class="material-icons">arrow_back</span>
+        </button>
+        <h2 class="modal-title">Smart Scan</h2>
+      </div>
+
+      <div class="tab-controls">
+        <button class="tab-btn" class:active={activeTab === 'upc'} on:click={() => switchTab('upc')} disabled={isLoading}>
+          <span class="material-icons">qr_code_scanner</span> Barcode
+        </button>
+        <button class="tab-btn" class:active={activeTab === 'ocr'} on:click={() => switchTab('ocr')} disabled={isLoading}>
+          <span class="material-icons">camera_alt</span> Nutrition Label
+        </button>
       </div>
 
       <div class="modal-body">
-        <!-- Hidden File Inputs -->
-        <input
-          bind:this={cameraInput}
-          type="file"
-          accept="image/*"
-          capture="environment"
-          on:change={handleFileSelect}
-          disabled={isLoading}
-          class="file-input"
-          id="ocr-camera-input"
-        />
-        <input
-          bind:this={fileInput}
-          type="file"
-          accept="image/*"
-          on:change={handleFileSelect}
-          disabled={isLoading}
-          class="file-input"
-          id="ocr-file-input"
-        />
-
-        <!-- Instructions -->
-        {#if !imagePreview && !isLoading && !error && !ocrResult}
-          <div class="instructions">
-            <div class="instruction-icon">
-              <span class="material-icons">photo_camera</span>
+        {#if activeTab === 'upc'}
+          <!-- Barcode Scanning UI -->
+          <div class="source-selection">
+             <label class="source-option">
+              <input type="radio" bind:group={selectedSource} value="usda" on:change={handleSourceChange} disabled={isLoading} />
+              <span class="source-label">USDA</span>
+            </label>
+            <label class="source-option">
+              <input type="radio" bind:group={selectedSource} value="openfoodfacts" on:change={handleSourceChange} disabled={isLoading} />
+              <span class="source-label">OpenFoodFacts</span>
+            </label>
+          </div>
+          <div class="camera-section">
+            <video bind:this={videoElement} class="camera-video" autoplay muted playsinline></video>
+            {#if scanningActive}
+              <div class="scan-overlay">
+                <div class="scan-frame">
+                  <div class="laser-line"></div>
+                </div>
+                <p class="scan-instruction">Center barcode in frame</p>
+              </div>
+            {/if}
+          </div>
+          {#if error}
+            <div class="error-section">
+              <span class="material-icons">error</span>
+              <p>{error}</p>
+              <button class="retry-btn" on:click={startScanning} disabled={isLoading}>Try Again</button>
             </div>
-            <h3>Scan Nutrition Label</h3>
-            <p>Take a photo of the nutrition facts panel or upload an existing image. We'll automatically extract the serving size and calcium content.</p>
-          </div>
-        {/if}
-
-        <!-- File Input Section -->
-        <div class="file-input-section">
-          <div class="input-buttons">
-            <button
-              class="camera-btn"
-              class:disabled={isLoading}
-              on:click={triggerCameraInput}
-              disabled={isLoading}
-            >
-              <span class="material-icons">camera_alt</span>
-              Take Photo
-            </button>
-            <button
-              class="file-btn"
-              class:disabled={isLoading}
-              on:click={triggerFileInput}
-              disabled={isLoading}
-            >
-              <span class="material-icons">folder</span>
-              Choose File
-            </button>
-          </div>
-
-          {#if isLoading}
-            <p class="status-text">
-              {#if loadingState === 'compressing'}
-                Compressing large image...
-              {:else if loadingState === 'processing'}
-                Analyzing nutrition label...
-              {:else}
-                Processing image...
-              {/if}
-            </p>
           {/if}
-        </div>
-
-        <!-- Image Preview -->
-        {#if imagePreview}
-          <div class="image-preview-section">
-            <img src={imagePreview} alt="Label preview" class="image-preview" />
+        {:else if activeTab === 'ocr'}
+          <!-- OCR Scanning UI -->
+          <div class="ocr-instructions">
+            <span class="material-icons">photo_camera</span>
+            <p>Take a photo of the nutrition label or upload an image.</p>
           </div>
-        {/if}
-
-        <!-- Loading State -->
-        {#if isLoading}
-          <div class="loading-section">
-            <div class="loading-spinner"></div>
-            <p>
-              {#if loadingState === 'compressing'}
-                Compressing large image for optimal processing...
-              {:else if loadingState === 'processing'}
-                Analyzing nutrition label with OCR...
-              {:else}
-                Processing your image...
-              {/if}
-            </p>
-          </div>
-        {/if}
-
-        <!-- Error State -->
-        {#if error}
-          <div class="error-section">
-            <span class="material-icons">error</span>
-            <p>{error}</p>
-            <div class="error-actions">
-              <button class="retry-btn" on:click={triggerCameraInput}>
-                <span class="material-icons">camera_alt</span>
-                Take Photo
-              </button>
-              <button class="retry-btn" on:click={triggerFileInput}>
-                <span class="material-icons">folder</span>
-                Choose File
-              </button>
-            </div>
-          </div>
-        {/if}
-
-        <!-- OCR Results -->
-        {#if ocrResult}
-          <div class="results-section">
-            <!-- Confidence Indicator -->
-            <div class="confidence-indicator confidence-{ocrResult.confidence}">
-              <span class="material-icons">
-                {ocrResult.confidence === 'high' ? 'check_circle' :
-                 ocrResult.confidence === 'medium' ? 'info' : 'warning'}
-              </span>
-              <span>
-                {ocrResult.confidence === 'high' ? 'High confidence' :
-                 ocrResult.confidence === 'medium' ? 'Medium confidence' : 'Low confidence - please verify'}
-              </span>
-            </div>
-
-            <!-- Parsed Results -->
-            <div class="parsed-results">
-              <div class="result-field">
-                <label for="ocr-serving-size">Serving Size</label>
-                <input
-                  id="ocr-serving-size"
-                  type="text"
-                  bind:value={ocrResult.servingSize}
-                  class="result-input"
-                  placeholder="Not detected - enter manually"
-                />
-              </div>
-
-              <div class="result-field">
-                <label for="ocr-calcium">Calcium</label>
-                <input
-                  id="ocr-calcium"
-                  type="text"
-                  bind:value={ocrResult.calcium}
-                  class="result-input"
-                  placeholder="Not detected - enter manually"
-                />
-              </div>
-            </div>
-
-            <!-- Raw Text (Collapsible) -->
-            <details class="raw-text-section">
-              <summary>View Raw OCR Text</summary>
-              <pre class="raw-text">{ocrResult.rawText}</pre>
-            </details>
-
-            <!-- Action Button -->
-            <button class="save-btn" on:click={handleOCRSaveResults}>
-              <span class="material-icons">check</span>
-              Use These Results
+          <div class="input-buttons">
+            <button class="file-btn" on:click={() => cameraInput?.click()} disabled={isLoading}>
+              <span class="material-icons">camera_alt</span> Take Photo
+            </button>
+            <button class="file-btn" on:click={() => fileInput?.click()} disabled={isLoading}>
+              <span class="material-icons">folder</span> Choose File
             </button>
           </div>
-        {/if}
-
-        <!-- Manual Entry Option -->
-        {#if !ocrResult && !isLoading}
-          <div class="manual-section">
-            <button class="manual-btn" on:click={handleManualEntry}>
-              <span class="material-icons">edit</span>
-              Enter Food Information Manually
-            </button>
-          </div>
+          {#if isLoading}
+            <div class="loading-section">
+              <div class="loading-spinner"></div>
+              <p>Analyzing nutrition label...</p>
+            </div>
+          {/if}
+          {#if error}
+            <div class="error-section">
+              <span class="material-icons">error</span>
+              <p>{error}</p>
+            </div>
+          {/if}
+          <input bind:this={cameraInput} type="file" accept="image/*" capture="environment" on:change={handleFileSelect} disabled={isLoading} class="file-input" />
+          <input bind:this={fileInput} type="file" accept="image/*" on:change={handleFileSelect} disabled={isLoading} class="file-input" />
         {/if}
       </div>
     </div>
@@ -393,6 +295,7 @@
 {/if}
 
 <style>
+  /* Base Modal Styles */
   .modal-backdrop {
     position: fixed;
     top: 0;
@@ -406,414 +309,239 @@
     z-index: 1000;
     padding: var(--spacing-lg);
   }
-
   .modal-content {
     background: var(--surface);
-    border-radius: 0.5rem;
+    border-radius: var(--spacing-sm);
     box-shadow: var(--shadow);
-    border: 1px solid var(--divider);
     width: 100%;
-    max-width: 28rem;
+    max-width: 25rem;
     max-height: 90vh;
     overflow: hidden;
     display: flex;
     flex-direction: column;
   }
-
   .modal-header {
     display: flex;
     align-items: center;
-    padding: var(--spacing-lg) 1.5rem;
+    padding: var(--spacing-md) var(--spacing-lg);
     border-bottom: 1px solid var(--divider);
-    position: relative;
   }
-
-  .modal-header-left {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-  }
-
-  .modal-header-center {
-    position: absolute;
-    left: 50%;
-    transform: translateX(-50%);
-  }
-
   .modal-back {
-    background: none;
+    background: none; border: none; color: var(--text-secondary); cursor: pointer;
+    padding: 0.25rem; border-radius: 50%;
+  }
+  .modal-title {
+    font-size: var(--font-size-lg); font-weight: 500; color: var(--text-primary);
+    margin: 0 auto;
+  }
+
+  /* Tab Controls */
+  .tab-controls {
+    display: flex;
+    background: var(--surface-variant);
+    padding: var(--spacing-xs);
+  }
+  .tab-btn {
+    flex: 1;
+    padding: var(--spacing-sm);
     border: none;
-    color: var(--text-secondary);
+    background: transparent;
+    border-radius: 0.25rem;
     cursor: pointer;
-    font-size: 1.5rem;
-    padding: 0.25rem;
-    border-radius: 50%;
-    transition: all 0.2s;
+    font-weight: 500;
+    color: var(--text-secondary);
     display: flex;
     align-items: center;
     justify-content: center;
+    gap: var(--spacing-sm);
+    transition: all 0.2s ease;
   }
-
-  .modal-back:hover:not(:disabled) {
-    background: var(--divider);
-    color: var(--text-primary);
-  }
-
-  .modal-back:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-
-  .modal-title {
-    font-size: var(--font-size-lg);
-    font-weight: 500;
-    color: var(--text-primary);
-    margin: 0;
+  .tab-btn.active {
+    background: var(--surface);
+    color: var(--primary-color);
+    box-shadow: var(--shadow);
   }
 
   .modal-body {
-    padding: 1.5rem;
+    padding: var(--spacing-lg);
     flex: 1;
     overflow-y: auto;
     display: flex;
     flex-direction: column;
     gap: var(--spacing-lg);
+    min-height: 400px; /* Style adjustment for consistent height */
   }
 
-  .file-input {
-    display: none;
-  }
-
-  .instructions {
-    text-align: center;
-    padding: 1.5rem 0;
-  }
-
-  .instruction-icon {
-    font-size: 4rem;
-    color: var(--primary-color);
-    margin-bottom: var(--spacing-lg);
-  }
-
-  .instructions h3 {
-    font-size: var(--font-size-xl);
-    font-weight: 600;
-    color: var(--text-primary);
-    margin: 0 0 0.75rem 0;
-  }
-
-  .instructions p {
-    font-size: var(--font-size-base);
-    line-height: 1.5;
-    color: var(--text-secondary);
-    margin: 0;
-  }
-
-  .file-input-section {
+  /* Barcode Tab Styles */
+  .source-selection {
     display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
+    gap: var(--spacing-md);
+    justify-content: center;
+    margin-bottom: var(--spacing-md);
+  }
+  .source-option {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    font-size: var(--font-size-sm);
+    cursor: pointer;
+    padding: var(--spacing-xs) var(--spacing-sm);
+    border-radius: 0.25rem;
+    transition: all 0.2s;
+  }
+  .source-option:hover {
+    background: var(--surface-variant);
   }
 
+  /* Custom radio button styling */
+  .source-option input[type="radio"] {
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    border: 2px solid var(--text-secondary);
+    border-radius: 50%;
+    margin: 0;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* Unselected state - larger empty circle */
+  .source-option input[type="radio"]:not(:checked) {
+    width: 18px;
+    height: 18px;
+    border-color: var(--text-secondary);
+  }
+
+  /* Selected state - smaller circle with filled center */
+  .source-option input[type="radio"]:checked {
+    width: 16px;
+    height: 16px;
+    border-color: var(--primary-color);
+    background: var(--primary-color);
+    position: relative;
+  }
+
+  /* Filled center dot for selected state */
+  .source-option input[type="radio"]:checked::after {
+    content: '';
+    width: 6px;
+    height: 6px;
+    background: white;
+    border-radius: 50%;
+    position: absolute;
+  }
+
+  .source-label {
+    font-weight: 500;
+    color: var(--text-primary);
+  }
+  .camera-section {
+    position: relative;
+    background: #000;
+    border-radius: 0.5rem;
+    overflow: hidden;
+    min-height: 200px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .camera-video {
+    width: 100%;
+    display: block;
+  }
+  .scan-overlay {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+  }
+  .scan-frame {
+    width: 80%; height: 100px;
+    border-radius: 0.5rem;
+    box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.5);
+    position: relative;
+  }
+  .laser-line {
+    position: absolute;
+    top: 50%;
+    left: 5%; right: 5%;
+    height: 2px;
+    background: red;
+    box-shadow: 0 0 4px red;
+    animation: laser-scan 2s infinite;
+  }
+  @keyframes laser-scan {
+    0%, 100% { transform: translateY(-30px); }
+    50% { transform: translateY(30px); }
+  }
+  .scan-instruction {
+    color: white;
+    background: rgba(0, 0, 0, 0.7);
+    padding: 0.25rem 0.75rem;
+    border-radius: 1rem;
+    margin-top: 1rem;
+    font-size: var(--font-size-sm);
+  }
+
+  /* OCR Tab Styles */
+  .ocr-instructions {
+    text-align: center;
+    color: var(--text-secondary);
+  }
+  .ocr-instructions .material-icons {
+    font-size: 3rem;
+    color: var(--primary-color);
+  }
   .input-buttons {
     display: flex;
-    gap: 0.5rem;
-    width: 100%;
+    gap: var(--spacing-md);
   }
-
-  .camera-btn, .file-btn {
+  .file-btn {
     flex: 1;
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 0.5rem;
-    padding: var(--spacing-lg);
-    border: 2px solid var(--primary-color);
+    padding: var(--spacing-md);
+    border: 1px solid var(--divider);
     border-radius: 0.5rem;
-    background: var(--primary-color);
-    color: white;
-    cursor: pointer;
-    transition: all 0.2s;
-    font-weight: 500;
-    font-size: var(--font-size-base);
-  }
-
-  .file-btn {
     background: var(--surface);
-    color: var(--primary-color);
+    color: var(--text-primary);
+    cursor: pointer;
   }
+  .file-input { display: none; }
 
-  .camera-btn:hover:not(.disabled),
-  .file-btn:hover:not(.disabled) {
-    transform: translateY(-1px);
-    box-shadow: var(--shadow);
-  }
-
-  .camera-btn.disabled,
-  .file-btn.disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-    transform: none;
-  }
-
-  .status-text {
-    text-align: center;
-    color: var(--text-secondary);
-    font-size: var(--font-size-sm);
-    margin: 0;
-  }
-
-  .image-preview-section {
-    display: flex;
-    justify-content: center;
-    margin: 0.75rem 0;
-  }
-
-  .image-preview {
-    max-width: 100%;
-    max-height: 200px;
-    border-radius: 0.25rem;
-    box-shadow: var(--shadow);
-  }
-
+  /* Common States */
   .loading-section {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.75rem;
-    padding: 1.5rem;
+    text-align: center;
   }
-
   .loading-spinner {
-    width: 2rem;
-    height: 2rem;
+    width: 2rem; height: 2rem;
     border: 3px solid var(--divider);
     border-top: 3px solid var(--primary-color);
     border-radius: 50%;
     animation: spin 1s linear infinite;
+    margin: 1rem auto;
   }
-
-  @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-  }
-
+  @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+  
   .error-section {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.75rem;
-    padding: var(--spacing-lg);
-    background: var(--error-alpha-10);
-    border-radius: 0.5rem;
     text-align: center;
-  }
-
-  .error-section .material-icons {
-    font-size: 3rem;
     color: var(--error-color);
+    background: var(--error-alpha-10);
+    padding: var(--spacing-md);
+    border-radius: 0.5rem;
   }
-
-  .error-section p {
-    color: var(--error-color);
-    margin: 0;
-    font-size: var(--font-size-sm);
-  }
-
-  .error-actions {
-    display: flex;
-    justify-content: center;
-    gap: 0.5rem;
-    flex-wrap: wrap;
-  }
-
   .retry-btn {
-    display: flex;
-    align-items: center;
-    gap: 0.25rem;
+    margin-top: var(--spacing-sm);
     background: var(--error-color);
     color: white;
     border: none;
-    padding: 0.5rem var(--spacing-lg);
+    padding: 0.5rem 1rem;
     border-radius: 0.25rem;
     cursor: pointer;
-    font-weight: 500;
-  }
-
-  .results-section {
-    display: flex;
-    flex-direction: column;
-    gap: var(--spacing-lg);
-  }
-
-  .confidence-indicator {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.75rem;
-    border-radius: 0.25rem;
-    font-size: var(--font-size-sm);
-    font-weight: 500;
-  }
-
-  .confidence-high {
-    background: var(--success-alpha-10);
-    color: var(--success-color);
-  }
-
-  .confidence-medium {
-    background: var(--warning-alpha-10);
-    color: var(--warning-color);
-  }
-
-  .confidence-low {
-    background: var(--error-alpha-10);
-    color: var(--error-color);
-  }
-
-  .parsed-results {
-    display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
-  }
-
-  .result-field {
-    display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
-  }
-
-  .result-field label {
-    font-weight: 500;
-    color: var(--text-primary);
-    font-size: var(--font-size-sm);
-  }
-
-  .result-input {
-    width: 100%;
-    padding: 0.75rem;
-    border: 1px solid var(--divider);
-    border-radius: 0.25rem;
-    font-size: var(--font-size-base);
-    background-color: var(--surface);
-    color: var(--text-primary);
-    transition: border-color 0.2s;
-  }
-
-  .result-input:focus {
-    outline: none;
-    border-color: var(--primary-color);
-    box-shadow: 0 0 0 2px var(--primary-alpha-10);
-  }
-
-  .raw-text-section {
-    margin-top: 0.75rem;
-  }
-
-  .raw-text-section summary {
-    cursor: pointer;
-    font-size: var(--font-size-sm);
-    color: var(--text-secondary);
-    padding: 0.5rem;
-  }
-
-  .raw-text {
-    background: var(--surface-variant);
-    border: 1px solid var(--divider);
-    border-radius: 0.25rem;
-    padding: 0.75rem;
-    margin-top: 0.5rem;
-    font-size: var(--font-size-sm);
-    color: var(--text-secondary);
-    white-space: pre-wrap;
-    word-wrap: break-word;
-    max-height: 200px;
-    overflow-y: auto;
-  }
-
-  .save-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.5rem;
-    background: var(--primary-color);
-    color: white;
-    border: none;
-    padding: 0.75rem var(--spacing-lg);
-    border-radius: 0.25rem;
-    cursor: pointer;
-    font-weight: 500;
-    font-size: var(--font-size-base);
-    transition: all 0.2s;
-    width: 100%;
-  }
-
-  .save-btn:hover {
-    background: var(--primary-color-dark);
-  }
-
-  .save-btn:active {
-    transform: translateY(1px);
-  }
-
-  .manual-section {
-    text-align: center;
-    margin-top: 1rem;
-  }
-
-  .manual-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.5rem;
-    background: var(--surface);
-    color: var(--text-secondary);
-    border: 2px solid var(--divider);
-    padding: 0.75rem var(--spacing-lg);
-    border-radius: 0.25rem;
-    cursor: pointer;
-    font-weight: 500;
-    font-size: var(--font-size-base);
-    transition: all 0.2s;
-    width: 100%;
-  }
-
-  .manual-btn:hover {
-    color: var(--text-primary);
-    border-color: var(--text-secondary);
-  }
-
-  /* Responsive adjustments */
-  @media (max-width: 480px) {
-    .modal-content {
-      max-width: 100vw;
-      max-height: 95vh;
-      border-radius: 0.25rem;
-      margin: 0.5rem;
-    }
-
-    .modal-body {
-      max-height: calc(95vh - 120px);
-      overflow-y: auto;
-    }
-
-    .input-buttons {
-      flex-direction: column;
-      gap: 0.5rem;
-    }
-
-    .camera-btn, .file-btn {
-      padding: 0.75rem;
-      width: 100%;
-    }
-
-    .error-actions {
-      flex-direction: column;
-    }
-
-    .retry-btn {
-      width: 100%;
-      justify-content: center;
-    }
   }
 </style>

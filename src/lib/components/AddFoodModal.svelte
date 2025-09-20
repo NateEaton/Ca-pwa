@@ -18,7 +18,7 @@
 
 <script>
   import { createEventDispatcher, onMount } from "svelte";
-  import { calciumState, calciumService } from "$lib/stores/calcium";
+  import { calciumState, calciumService, showToast } from "$lib/stores/calcium";
   import { DEFAULT_FOOD_DATABASE, getPrimaryMeasure, getAllMeasures, hasMultipleMeasures } from "$lib/data/foodDatabase";
   import { SearchService } from "$lib/services/SearchService";
   import UnitConverter from "$lib/services/UnitConverter";
@@ -68,11 +68,6 @@
 
   // Smart Scanning (UPC → OCR → Manual)
   let showSmartScanModal = false;
-
-  // Debug: Track modal state changes
-  $: {
-    console.log('AddFood: showSmartScanModal changed to:', showSmartScanModal);
-  }
 
   // Initialize component on mount
   onMount(async () => {
@@ -484,17 +479,11 @@
       } else {
         // Only save as custom food definition if it's truly new (not selected from search)
         if (isCustomMode && !isSelectedFromSearch) {
-          // console.log('About to save custom food in custom mode');
           await calciumService.saveCustomFood({
             name: foodName.trim(),
             calcium: calciumValue,
             measure: `${servingQuantity} ${servingUnit.trim()}`,
           });
-          // console.log('Custom food save completed');
-        } else if (isSelectedFromSearch) {
-          // console.log('Custom food selected from search, not saving as new definition');
-        } else {
-          // console.log('Not in custom mode, skipping custom food save');
         }
 
         // Handle serving preference for database foods
@@ -556,93 +545,57 @@
   }
 
   function handleSmartScan() {
-    console.log('🎯 AddFood: Smart scan button clicked!');
-    console.log('   - isSubmitting:', isSubmitting);
-    console.log('   - showSmartScanModal before:', showSmartScanModal);
     showSmartScanModal = true;
-    console.log('   - showSmartScanModal after:', showSmartScanModal);
   }
 
   function handleScanComplete(event) {
     const scanData = event.detail;
-    console.log('AddFood: Scan completed:', scanData);
-
-    // Explicitly close the smart scan modal to ensure clean state
-    console.log('AddFood: Before closing modal - showSmartScanModal:', showSmartScanModal);
     showSmartScanModal = false;
-    console.log('AddFood: After closing modal - showSmartScanModal:', showSmartScanModal);
 
-    // Add a small delay to ensure DOM updates
+    // Give the UI a moment to update before showing toast and focusing
     setTimeout(() => {
-      console.log('AddFood: After timeout - showSmartScanModal:', showSmartScanModal);
-    }, 100);
+      showToast("Scan successful. Please verify the details.", "success");
 
-    // Switch to custom mode and populate the fields
-    isCustomMode = true;
+      // Always switch to custom mode for verification and editing
+      isCustomMode = true;
 
-    // Handle different scan methods
-    if (scanData.method === 'UPC') {
-      // UPC scan - we have rich product data
-      // Combine brandName and description for better food name
-      if (scanData.brandName && scanData.productName) {
-        foodName = `${scanData.brandName} ${scanData.productName}`;
-      } else {
-        foodName = scanData.productName || 'Scanned Product';
-      }
+      if (scanData.method === 'UPC') {
+        // UPC scan provides a full product name
+        if (scanData.brandName && scanData.productName) {
+          foodName = `${scanData.brandName} ${scanData.productName}`;
+        } else {
+          foodName = scanData.productName || 'Scanned Product';
+        }
+        
+        // Use the centrally-decided serving info
+        servingQuantity = scanData.finalServingQuantity || 1;
+        servingUnit = scanData.finalServingUnit || 'serving';
+        
+        // Use the final calculated per-serving calcium
+        calcium = scanData.calciumPerServing ? scanData.calciumPerServing.toString() : '';
 
-      // Clean, simple assignment - FDCService has made all decisions
-      servingQuantity = scanData.servingQuantity || 1;
-      servingUnit = scanData.servingUnit || 'serving';
-      console.log(`UPC: Using centralized serving data - quantity: ${servingQuantity}, unit: ${servingUnit}`);
-      console.log(`UPC: Serving source: ${scanData.servingSource || 'unknown'}`);
-      if (scanData.servingDisplayText) {
-        console.log(`UPC: Display text was: ${scanData.servingDisplayText}`);
-      }
+      } else if (scanData.method === 'OCR') {
+        // OCR provides serving size and calcium, but no name
+        foodName = ''; // Clear the name to prompt user entry
+        servingQuantity = 1; // Default to 1, as OCR serving size is the whole unit
+        servingUnit = scanData.servingSize || '';
+        calcium = scanData.calciumValue ? scanData.calciumValue.toString() : '';
 
-      // Use calculated per-serving calcium if available, otherwise fall back to raw API value
-      if (scanData.calciumPerServing) {
-        calcium = scanData.calciumPerServing.toString();
-        console.log(`UPC: Using calculated per-serving calcium: ${scanData.calciumPerServing}mg`);
-      } else if (scanData.calciumValue) {
-        calcium = scanData.calciumValue.toString();
-        console.log(`UPC: Using raw API calcium value: ${scanData.calciumValue}mg`);
-      }
-
-      console.log(`UPC scan: ${scanData.productName} - ${scanData.calcium}`);
-
-    } else if (scanData.method === 'OCR') {
-      // OCR scan - nutrition label data
-      foodName = scanData.productName || 'Scanned Food Item';
-
-      if (scanData.servingSize) {
-        servingUnit = scanData.servingSize;
-      }
-
-      if (scanData.calciumValue) {
-        calcium = scanData.calciumValue.toString();
-      }
-
-      console.log(`OCR scan with ${scanData.confidence} confidence: ${scanData.calcium}`);
-
-    } else if (scanData.method === 'Manual') {
-      // User chose manual entry - just set custom mode and clear fields
-      foodName = '';
-      servingUnit = 'serving';
-      calcium = '';
-
-      console.log('User chose manual entry');
-    }
-
-    // Focus on the food name field so user can immediately start typing
-    setTimeout(() => {
-      const nameInput = document.querySelector('input[placeholder*="food name"], input[placeholder*="Food name"]');
-      if (nameInput) {
-        nameInput.focus();
-        if (scanData.method !== 'Manual') {
-          nameInput.select(); // Select the placeholder text for easy replacement
+        // Auto-focus the food name input for the user
+        const nameInput = document.querySelector('#foodName');
+        if (nameInput) {
+          nameInput.focus();
         }
       }
-    }, 100);
+    }, 150);
+  }
+
+  function handleScanClose() {
+    showSmartScanModal = false;
+    // Switch to custom mode for manual entry
+    if (!isCustomMode) {
+      toggleMode();
+    }
   }
 </script>
 
@@ -698,7 +651,7 @@
               disabled={isSubmitting}
               title="Scan Product Barcode or Nutrition Label"
             >
-              <span class="material-icons">qr_code_scanner</span>
+              <span class="material-icons">photo_camera</span>
             </button>
             
             <button
@@ -944,7 +897,11 @@
   on:cancel={handleDeleteCancel}
 />
 
-<SmartScanModal bind:show={showSmartScanModal} on:scanComplete={handleScanComplete} />
+<SmartScanModal 
+  bind:show={showSmartScanModal} 
+  on:scanComplete={handleScanComplete}
+  on:close={handleScanClose}
+/>
 
 <style>
   .modal-backdrop {
