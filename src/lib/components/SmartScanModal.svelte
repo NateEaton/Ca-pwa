@@ -156,20 +156,16 @@
   }
 
   async function startBarcodeScanning() {
-    if (!show || scanningActive || activeTab !== 'upc' || !cameraInitialized) return;
+    if (!show || scanningActive || activeTab !== 'upc' || !cameraInitialized || !videoElement) return;
 
     try {
       stopBarcodeScanners(); // Ensure clean state
 
       codeReader = new BrowserMultiFormatReader();
-      const videoInputDevices = await BrowserMultiFormatReader.listVideoInputDevices();
-      if (videoInputDevices.length === 0) throw new Error('No camera found.');
 
-      let selectedDevice = videoInputDevices.find(d => d.label.toLowerCase().includes('back')) || videoInputDevices[0];
-
+      // Use our existing video stream instead of letting ZXing manage its own
       scanningActive = true;
-      scannerControls = await codeReader.decodeFromVideoDevice(
-        selectedDevice.deviceId,
+      scannerControls = await codeReader.decodeFromVideoElement(
         videoElement,
         (result, err) => {
           if (result && !isProcessingBarcode && scanningActive) {
@@ -322,7 +318,16 @@
     // Convert to blob and process
     canvas.toBlob(async (blob) => {
       if (blob) {
-        await processImage(blob);
+        // Convert blob to proper File object with correct metadata
+        const file = new File(
+          [blob],
+          `nutrition-label-${Date.now()}.jpg`,
+          {
+            type: 'image/jpeg',
+            lastModified: Date.now()
+          }
+        );
+        await processImage(file);
       }
     }, 'image/jpeg', 0.8);
   }
@@ -865,13 +870,13 @@
   }
 
   .ocr-frame {
-    width: 70%; /* Larger frame with more height available */
-    aspect-ratio: 3/4; /* Portrait nutrition label shape */
+    width: 80%; /* Larger frame with more height available */
+    aspect-ratio: 1/2; /* Portrait nutrition label shape */
     position: relative;
     border: 2px solid var(--primary-color);
     border-radius: 8px;
     box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.4);
-    max-height: 80%; /* Increase max height to use more available space */
+    max-height: 90%; /* Increase max height to use more available space */
   }
 
   .corner-guides {

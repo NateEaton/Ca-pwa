@@ -48,10 +48,6 @@ try {
 ")
 echo "📋 Build ID: $BUILD_ID"
 
-# --- Build Process ---
-echo "📦 Installing dependencies..."
-npm install
-
 # Set deployment directory AND base path based on environment
 DEPLOY_DIR=""
 export BASE_PATH="" # Export the variable so npm scripts can see it
@@ -71,6 +67,10 @@ if [ "$ENVIRONMENT" = "prod" ]; then
     fi
     echo "✅ Production deployment confirmed. Proceeding..."
     echo ""
+
+    # --- Build Process ---
+    echo "📦 Installing dependencies..."
+    npm install
     
     DEPLOY_DIR="$PROD_DEPLOY_DIR"
     export BASE_PATH="" # Production serves at root path
