@@ -18,6 +18,7 @@
 
 import { get } from 'svelte/store';
 import { syncState, setSyncStatus, setSyncError } from '$lib/stores/sync';
+import { isOnline } from '$lib/stores/networkStatus';
 import { showToast, calciumService } from '$lib/stores/calcium';
 import { CryptoUtils } from '$lib/utils/cryptoUtils';
 import { FEATURES } from '$lib/utils/featureFlags';
@@ -63,18 +64,19 @@ export class SyncService {
 
   /**
    * Initializes the sync service, restores settings from localStorage,
-   * and sets up online/offline event listeners.
+   * and subscribes to centralized network status.
    */
   async initialize(): Promise<void> {
     this.checkSyncEnabled();
 
-    window.addEventListener('online', this.handleOnlineStatus.bind(this));
-    window.addEventListener('offline', this.handleOfflineStatus.bind(this));
-
-    // Check initial status
-    if (!navigator.onLine) {
-      setSyncStatus('offline');
-    }
+    // Subscribe to centralized network status
+    isOnline.subscribe(online => {
+      if (online) {
+        this.handleOnlineStatus();
+      } else {
+        this.handleOfflineStatus();
+      }
+    });
 
     try {
       const storedSettings = localStorage.getItem('calcium_sync_settings');

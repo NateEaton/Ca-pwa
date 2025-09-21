@@ -19,6 +19,7 @@
 <script>
   import { createEventDispatcher, onMount } from "svelte";
   import { calciumState, calciumService, showToast } from "$lib/stores/calcium";
+  import { isOnline } from "$lib/stores/networkStatus";
   import { DEFAULT_FOOD_DATABASE, getPrimaryMeasure, getAllMeasures, hasMultipleMeasures } from "$lib/data/foodDatabase";
   import { SearchService } from "$lib/services/SearchService";
   import UnitConverter from "$lib/services/UnitConverter";
@@ -545,6 +546,10 @@
   }
 
   function handleSmartScan() {
+    if (!$isOnline) {
+      showToast("Smart scan is not available without an internet connection", "error");
+      return;
+    }
     showSmartScanModal = true;
   }
 
@@ -647,6 +652,7 @@
             <!-- Smart Scan Button -->
             <button
               class="smart-scan-btn"
+              class:offline={!$isOnline}
               on:click={handleSmartScan}
               disabled={isSubmitting}
               title="Scan Product Barcode or Nutrition Label"
@@ -1465,6 +1471,23 @@
   .smart-scan-btn:disabled {
     opacity: 0.5;
     cursor: not-allowed;
+  }
+
+  /* Smart scan button offline state */
+  .smart-scan-btn.offline {
+    opacity: 0.5;
+    color: var(--text-secondary);
+    cursor: not-allowed;
+  }
+
+  .smart-scan-btn.offline:hover {
+    background: transparent;
+    transform: none;
+  }
+
+  /* Ensure consistent disabled styling */
+  .smart-scan-btn.offline .material-icons {
+    color: var(--text-secondary);
   }
 
 </style>

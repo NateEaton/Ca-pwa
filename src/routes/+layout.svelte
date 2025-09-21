@@ -30,9 +30,13 @@
   import { FEATURES } from "$lib/utils/featureFlags";
   import { SyncUrlHandler } from "$lib/utils/syncUrlHandler";
   import { SyncService } from "$lib/services/SyncService";
+  import { NetworkStatusService } from "$lib/services/NetworkStatusService";
 
   onMount(async () => {
     await calciumService.initialize();
+
+    // Initialize network status first
+    NetworkStatusService.getInstance().initialize();
 
     // Conditionally initialize sync services
     if (FEATURES.SYNC_ENABLED) {
