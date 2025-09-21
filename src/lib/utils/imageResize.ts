@@ -1,7 +1,13 @@
-// src/lib/utils/imageResize.js
+// ImageResizer utility with TypeScript type safety
+
+interface ResizeCalculation {
+  width: number;
+  height: number;
+  quality: number;
+}
 
 export class ImageResizer {
-  static async resizeForOCR(file, maxSizeBytes = 1024 * 1024) { // 1MB default
+  static async resizeForOCR(file: File, maxSizeBytes: number = 1024 * 1024): Promise<File> {
     // If file is already under limit, return as-is
     if (file.size <= maxSizeBytes) {
       console.log('Image already under size limit:', file.size, 'bytes');
@@ -10,17 +16,22 @@ export class ImageResizer {
 
     console.log('Resizing image from', file.size, 'bytes to under', maxSizeBytes, 'bytes');
 
-    return new Promise((resolve, reject) => {
+    return new Promise<File>((resolve, reject) => {
       const img = new Image();
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d');
 
+      if (!ctx) {
+        reject(new Error('Failed to get canvas 2D context'));
+        return;
+      }
+
       img.onload = () => {
         // Calculate new dimensions while maintaining aspect ratio
         const { width, height, quality } = this.calculateOptimalSize(
-          img.width, 
-          img.height, 
-          file.size, 
+          img.width,
+          img.height,
+          file.size,
           maxSizeBytes
         );
 
@@ -36,12 +47,12 @@ export class ImageResizer {
           (blob) => {
             if (blob) {
               console.log('Resized image to', blob.size, 'bytes');
-              
+
               // Create new File object with same name and type
               const resizedFile = new File(
-                [blob], 
-                file.name, 
-                { 
+                [blob],
+                file.name,
+                {
                   type: file.type || 'image/jpeg',
                   lastModified: Date.now()
                 }
@@ -65,14 +76,19 @@ export class ImageResizer {
     });
   }
 
-  static calculateOptimalSize(originalWidth, originalHeight, originalSize, targetSize) {
+  static calculateOptimalSize(
+    originalWidth: number,
+    originalHeight: number,
+    originalSize: number,
+    targetSize: number
+  ): ResizeCalculation {
     // Calculate size reduction factor needed
     const sizeRatio = Math.sqrt(targetSize / originalSize * 0.8); // 80% of target for safety margin
-    
+
     // Apply size reduction while maintaining aspect ratio
     let width = Math.floor(originalWidth * sizeRatio);
     let height = Math.floor(originalHeight * sizeRatio);
-    
+
     // Ensure minimum readable dimensions for OCR
     const minDimension = 400;
     if (width < minDimension || height < minDimension) {
@@ -80,15 +96,15 @@ export class ImageResizer {
       width = Math.floor(width * scale);
       height = Math.floor(height * scale);
     }
-    
+
     // Calculate quality based on how much we need to compress
     const compressionNeeded = originalSize / targetSize;
-    let quality;
-    
+    let quality: number;
+
     if (compressionNeeded < 2) {
       quality = 0.9; // Light compression
     } else if (compressionNeeded < 5) {
-      quality = 0.8; // Medium compression  
+      quality = 0.8; // Medium compression
     } else {
       quality = 0.7; // Heavy compression
     }
@@ -101,24 +117,28 @@ export class ImageResizer {
     return { width, height, quality };
   }
 
-  static async compressWithFallback(file, maxSizeBytes = 1024 * 1024, maxAttempts = 3) {
+  static async compressWithFallback(
+    file: File,
+    maxSizeBytes: number = 1024 * 1024,
+    maxAttempts: number = 3
+  ): Promise<File> {
     let currentFile = file;
     let attempt = 0;
-    
+
     while (currentFile.size > maxSizeBytes && attempt < maxAttempts) {
       attempt++;
       console.log(`Compression attempt ${attempt}/${maxAttempts}`);
-      
+
       // Reduce target size for each attempt
       const targetSize = maxSizeBytes * (0.8 ** attempt);
       currentFile = await this.resizeForOCR(currentFile, targetSize);
     }
-    
+
     if (currentFile.size > maxSizeBytes) {
       console.warn('Could not compress image below size limit after', maxAttempts, 'attempts');
       // Return the most compressed version we achieved
     }
-    
+
     return currentFile;
   }
 }

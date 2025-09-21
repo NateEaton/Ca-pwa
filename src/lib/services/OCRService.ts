@@ -1,13 +1,31 @@
-// Updated OCRService.js with better error handling and debugging
-import { ImageResizer } from '$lib/utils/imageResize.js';
+// OCRService.ts with TypeScript type safety
+import { ImageResizer } from '$lib/utils/imageResize.ts';
+
+interface OCRResponse {
+  IsErroredOnProcessing: boolean;
+  ErrorMessage?: string;
+  ParsedResults?: Array<{
+    ParsedText: string;
+  }>;
+}
+
+interface NutritionParseResult {
+  rawText: string;
+  servingSize: string;
+  calcium: string;
+  confidence: 'high' | 'medium' | 'low';
+}
 
 export class OCRService {
-  constructor(apiKey) {
+  private apiKey: string;
+  private apiEndpoint: string;
+
+  constructor(apiKey: string) {
     this.apiKey = apiKey;
     this.apiEndpoint = 'https://api.ocr.space/parse/image';
   }
 
-  async processImage(file) {
+  async processImage(file: File): Promise<NutritionParseResult> {
     console.log('OCR: Starting image processing...', {
       fileName: file.name,
       fileSize: file.size,
@@ -26,7 +44,7 @@ export class OCRService {
       }
 
       // Compress image if needed (OCR.space has 1MB limit)
-      let processedFile = file;
+      let processedFile: File = file;
       if (file.size > 1024 * 1024) { // 1MB limit
         console.log('OCR: Compressing large image from', file.size, 'bytes');
         try {
@@ -64,7 +82,7 @@ export class OCRService {
         throw new Error(`OCR API error: ${response.status} - ${response.statusText}`);
       }
 
-      const result = await response.json();
+      const result: OCRResponse = await response.json();
       console.log('OCR: API response data:', result);
 
       // Check for API-level errors
@@ -86,26 +104,28 @@ export class OCRService {
       }
 
       return this.parseNutritionData(rawText);
-      
+
     } catch (error) {
       console.error('OCR processing failed:', error);
-      
+
       // Provide more helpful error messages
-      if (error.message.includes('Failed to fetch')) {
-        throw new Error('Network error: Unable to connect to OCR service. Please check your internet connection.');
+      if (error instanceof Error) {
+        if (error.message.includes('Failed to fetch')) {
+          throw new Error('Network error: Unable to connect to OCR service. Please check your internet connection.');
+        }
+
+        if (error.name === 'TypeError' && error.message.includes('fetch')) {
+          throw new Error('Network error: Please check your internet connection and try again.');
+        }
       }
-      
-      if (error.name === 'TypeError' && error.message.includes('fetch')) {
-        throw new Error('Network error: Please check your internet connection and try again.');
-      }
-      
+
       throw error;
     }
   }
 
-  parseNutritionData(text) {
+  private parseNutritionData(text: string): NutritionParseResult {
     console.log('OCR: Parsing nutrition data from text...');
-    
+
     // Improved regex patterns to handle more formats
     const servingPatterns = [
       /Serving\s*size\s*[:\-]?\s*(.+?)(?:\n|\r\n|$)/i,
@@ -115,7 +135,7 @@ export class OCRService {
       // Handle cases where serving size is on multiple lines
       /Serving\s*size\s*[:\-]?\s*(\d+\s*\w+(?:\s*\([^)]+\))?)/i
     ];
-    
+
     const calciumPatterns = [
       /Calcium\s*[:\-]?\s*(\d+(?:\.\d+)?)\s*(mg|%|%\s*DV)/i,
       /Calcium\s*[:\-]?\s*(\d+(?:\.\d+)?)/i,
@@ -123,10 +143,10 @@ export class OCRService {
       // Handle OCR errors like "450mg" without space
       /Calcium\s*(\d+)mg/i
     ];
-    
+
     let servingSize = '';
     let calcium = '';
-    
+
     // Try to find serving size
     for (const pattern of servingPatterns) {
       const match = text.match(pattern);
@@ -138,7 +158,7 @@ export class OCRService {
         break;
       }
     }
-    
+
     // Try to find calcium
     for (const pattern of calciumPatterns) {
       const match = text.match(pattern);
@@ -150,22 +170,22 @@ export class OCRService {
       }
     }
 
-    const result = {
+    const result: NutritionParseResult = {
       rawText: text,
       servingSize,
       calcium,
       confidence: this.calculateConfidence(servingSize, calcium)
     };
-    
+
     console.log('OCR: Parse result:', result);
     return result;
   }
 
-  calculateConfidence(servingSize, calcium) {
+  private calculateConfidence(servingSize: string, calcium: string): 'high' | 'medium' | 'low' {
     let score = 0;
     if (servingSize && servingSize.length > 2) score += 50;
-    if (calcium && calcium.includes('mg') || calcium.includes('%')) score += 50;
-    
+    if (calcium && (calcium.includes('mg') || calcium.includes('%'))) score += 50;
+
     if (score >= 80) return 'high';
     if (score >= 40) return 'medium';
     return 'low';
