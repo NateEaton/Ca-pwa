@@ -315,6 +315,11 @@ export class FDCService {
         if (!calciumValue) console.log('    Missing calciumValue');
         if (!servingCount) console.log('    Missing servingCount');
         if (!this.householdMeasureService.isVolumeOrMassUnit(servingUnit)) console.log(`    Invalid servingUnit: "${servingUnit}"`);
+
+        // If we can't calculate per-serving, use the raw value as fallback
+        if (calciumValue) {
+          console.log(`FDC: Using raw calciumValue as fallback: ${calciumValue}mg`);
+        }
       }
 
       // ============================================================================

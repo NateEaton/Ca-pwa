@@ -286,8 +286,10 @@
       }
 
       if (productResult) {
+        console.log('SmartScanModal: Dispatching scanComplete event with data:', { ...productResult, method: 'UPC' });
         dispatch('scanComplete', { ...productResult, method: 'UPC' });
-        closeModal(true);
+        // Add small delay to ensure event is processed before modal closes
+        setTimeout(() => closeModal(true), 100);
       } else {
         throw new Error(`Product not found in ${selectedSource === 'usda' ? 'USDA' : 'OpenFoodFacts'} database.`);
       }
@@ -319,8 +321,10 @@
       }
 
       if (productResult) {
+        console.log('SmartScanModal: Dispatching scanComplete event (Manual UPC) with data:', { ...productResult, method: 'Manual UPC' });
         dispatch('scanComplete', { ...productResult, method: 'Manual UPC' });
-        closeModal(true);
+        // Add small delay to ensure event is processed before modal closes
+        setTimeout(() => closeModal(true), 100);
       } else {
         throw new Error(`Product not found in ${selectedSource === 'usda' ? 'USDA' : 'OpenFoodFacts'} database.`);
       }
@@ -402,13 +406,16 @@
                 
         // Don't close modal if in debug mode - let user examine results
         if (!debugMode) {
-          dispatch('scanComplete', {
+          const ocrData = {
             ...result,
             method: 'OCR',
             calciumValue: result.calcium, // Direct numeric value in mg
             servingSize: servingSize, // Formatted string for display
-          });
-          closeModal(true);
+          };
+          console.log('SmartScanModal: Dispatching scanComplete event (OCR) with data:', ocrData);
+          dispatch('scanComplete', ocrData);
+          // Add small delay to ensure event is processed before modal closes
+          setTimeout(() => closeModal(true), 100);
         }
       } else {
         throw new Error("Could not extract nutrition data from the image.");
@@ -477,7 +484,7 @@
         }
       }
       
-      dispatch('scanComplete', {
+      const debugOcrData = {
         rawText: debugData.rawText,
         servingQuantity: debugData.servingQuantity,
         servingMeasure: debugData.servingMeasure,
@@ -488,8 +495,11 @@
         method: 'OCR',
         calciumValue: debugData.calcium,
         servingSize: servingSize,
-      });
-      closeModal(true);
+      };
+      console.log('SmartScanModal: Dispatching scanComplete event (Debug OCR) with data:', debugOcrData);
+      dispatch('scanComplete', debugOcrData);
+      // Add small delay to ensure event is processed before modal closes
+      setTimeout(() => closeModal(true), 100);
     }
   }  
 

@@ -34,6 +34,40 @@ export interface CustomFood {
   measure: string;
   dateAdded: string;
   isCustom: true;
+
+  // Enhanced source metadata
+  sourceMetadata?: {
+    // Core source info
+    sourceType: 'manual' | 'upc_scan' | 'ocr_scan' | null;
+    upcSource?: 'usda_fdc' | 'openfoodfacts' | null;
+    upc?: string | null;
+    sourceKey?: string | null; // fdcId, off_id, etc.
+    confidence?: number; // 0-1 for OCR/scan confidence
+
+    // Scan processing details (what was used but not carried through)
+    scanData?: {
+      originalName?: string; // Raw scanned name before cleanup
+      householdMeasure?: string; // e.g., "1 cup (240ml)"
+      servingSize?: string; // e.g., "240ml" or "1 container"
+      selectedNutrientPer?: string; // "100g" | "serving" | "container"
+      calciumPer100g?: number; // Original per-100g value if converted
+      brandName?: string; // Brand extracted from scan
+      ingredients?: string; // Full ingredient list if available
+      allergens?: string[]; // Detected allergens
+    };
+
+    // Processing notes
+    processingNotes?: {
+      measureConversion?: string; // e.g., "Converted from 240ml to 1 cup"
+      calciumConversion?: string; // e.g., "Calculated from 150mg per 100g"
+      nameNormalization?: string; // e.g., "Simplified from 'Organic Unsweetened...'"
+      confidence?: {
+        name: number;
+        calcium: number;
+        measure: number;
+      };
+    };
+  };
 }
 
 export interface CalciumSettings {

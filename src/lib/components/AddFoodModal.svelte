@@ -45,6 +45,9 @@
   const foodDatabase = DEFAULT_FOOD_DATABASE;
   let isDatabaseLoading = false; // No loading needed
 
+  // Scan context for source metadata
+  let scanContext = null;
+
   // Form fields
   let foodName = "";
   let calcium = "";
@@ -134,6 +137,7 @@
     searchResults = [];
     showSearchResults = false;
     hasResetToOriginal = false;
+    scanContext = null; // Clear scan context
     
     // Clear multi-measure state
     selectedMeasureIndex = 0;
@@ -480,10 +484,26 @@
       } else {
         // Only save as custom food definition if it's truly new (not selected from search)
         if (isCustomMode && !isSelectedFromSearch) {
+          // Create appropriate source metadata based on scan context
+          console.log('AddFoodModal: Creating sourceMetadata, scanContext:', scanContext);
+          let sourceMetadata;
+          if (scanContext?.method === 'UPC' || scanContext?.method === 'Manual UPC') {
+            console.log('AddFoodModal: Creating UPC metadata');
+            sourceMetadata = calciumService.createUPCSourceMetadata(scanContext);
+          } else if (scanContext?.method === 'OCR') {
+            console.log('AddFoodModal: Creating OCR metadata');
+            sourceMetadata = calciumService.createOCRSourceMetadata(scanContext);
+          } else {
+            console.log('AddFoodModal: Creating manual metadata (no scan context)');
+            sourceMetadata = calciumService.createManualSourceMetadata();
+          }
+          console.log('AddFoodModal: Final sourceMetadata:', sourceMetadata);
+
           await calciumService.saveCustomFood({
             name: foodName.trim(),
             calcium: calciumValue,
             measure: `${servingQuantity} ${servingUnit.trim()}`,
+            sourceMetadata: sourceMetadata
           });
         }
 
@@ -555,28 +575,52 @@
 
   function handleScanComplete(event) {
     const scanData = event.detail;
+    console.log('AddFoodModal: handleScanComplete triggered with scanData:', scanData);
     showSmartScanModal = false;
-    
+
+    // Store scan context for source metadata
+    scanContext = scanData;
+    console.log('AddFoodModal: scanContext stored:', scanContext);
+
     // Give the UI a moment to update before showing toast and focusing
     setTimeout(() => {
+      console.log('AddFoodModal: Starting data population for method:', scanData.method);
       showToast("Scan successful. Please verify the details.", "success");
       // Always switch to custom mode for verification and editing
       isCustomMode = true;
       
-      if (scanData.method === 'UPC') {
+      if (scanData.method === 'UPC' || scanData.method === 'Manual UPC') {
         // UPC scan provides a full product name
-        if (scanData.brandName && scanData.productName) {
-          foodName = `${scanData.brandName} ${scanData.productName}`;
+        const brand = scanData.brandName || scanData.brandOwner || '';
+        const product = scanData.productName || 'Scanned Product';
+
+        if (brand && product) {
+          foodName = `${brand} ${product}`;
         } else {
-          foodName = scanData.productName || 'Scanned Product';
+          foodName = product;
         }
+
+        console.log('AddFoodModal: UPC product name set to:', foodName);
         
         // Use the centrally-decided serving info
         servingQuantity = scanData.finalServingQuantity || 1;
         servingUnit = scanData.finalServingUnit || 'serving';
         
-        // Use the final calculated per-serving calcium
-        calcium = scanData.calciumPerServing ? scanData.calciumPerServing.toString() : '';
+        // Use the final calculated per-serving calcium with fallbacks
+        console.log('AddFoodModal: UPC scan data received:', scanData);
+        calcium = '';
+        if (scanData.calciumPerServing) {
+          calcium = scanData.calciumPerServing.toString();
+          console.log('AddFoodModal: Using calciumPerServing:', calcium);
+        } else if (scanData.calciumValue) {
+          calcium = scanData.calciumValue.toString();
+          console.log('AddFoodModal: Fallback to calciumValue:', calcium);
+        } else if (scanData.calciumFromPercentDV) {
+          calcium = scanData.calciumFromPercentDV.toString();
+          console.log('AddFoodModal: Fallback to calciumFromPercentDV:', calcium);
+        } else {
+          console.log('AddFoodModal: No calcium data found in scan result');
+        }
         
       } else if (scanData.method === 'OCR') {
         // OCR provides serving size and calcium, but no name

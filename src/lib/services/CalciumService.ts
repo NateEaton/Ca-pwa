@@ -47,6 +47,9 @@ export class CalciumService {
     // Migrate existing positive ID custom foods to negative IDs
     await this.migrateExistingCustomFoods();
 
+    // Migrate existing custom foods to include source metadata
+    await this.migrateCustomFoodsToSourceMetadata();
+
     await this.loadSettings();
     await this.loadDailyFoods();
     await this.loadCustomFoods();
@@ -253,6 +256,53 @@ export class CalciumService {
       await this.setMigrationStatus('customFoodsToNegativeIDs', true);
     } catch (error) {
       console.error('Custom foods negative ID migration failed:', error);
+    }
+  }
+
+  /**
+   * Migrates existing custom foods to include source metadata with default values.
+   * This ensures backward compatibility when the sourceMetadata field is added.
+   */
+  private async migrateCustomFoodsToSourceMetadata(): Promise<void> {
+    if (!this.db) return;
+
+    const migrationStatus = await this.getMigrationStatus('customFoodsToSourceMetadata');
+    if (migrationStatus) return;
+
+    try {
+      const transaction = this.db.transaction(['customFoods'], 'readwrite');
+      const store = transaction.objectStore('customFoods');
+      const request = store.getAll();
+
+      const allCustomFoods = await new Promise<any[]>((resolve, reject) => {
+        request.onsuccess = () => resolve(request.result || []);
+        request.onerror = () => reject(request.error);
+      });
+
+      // Update each custom food that doesn't have sourceMetadata
+      for (const food of allCustomFoods) {
+        if (!food.sourceMetadata) {
+          const updatedFood = {
+            ...food,
+            sourceMetadata: {
+              sourceType: null // Unknown source for existing foods
+            }
+          };
+
+          const putTransaction = this.db.transaction(['customFoods'], 'readwrite');
+          const putStore = putTransaction.objectStore('customFoods');
+
+          await new Promise<void>((resolve, reject) => {
+            const putRequest = putStore.put(updatedFood);
+            putRequest.onsuccess = () => resolve();
+            putRequest.onerror = () => reject(putRequest.error);
+          });
+        }
+      }
+
+      await this.setMigrationStatus('customFoodsToSourceMetadata', true);
+    } catch (error) {
+      console.error('Custom foods source metadata migration failed:', error);
     }
   }
 
@@ -525,7 +575,12 @@ export class CalciumService {
    * @param foodData The custom food data
    * @returns Promise resolving to the saved custom food or null if failed
    */
-  async saveCustomFood(foodData: { name: string; calcium: number; measure: string }): Promise<CustomFood | null> {
+  async saveCustomFood(foodData: {
+    name: string;
+    calcium: number;
+    measure: string;
+    sourceMetadata?: CustomFood['sourceMetadata']
+  }): Promise<CustomFood | null> {
     const result = await this.saveCustomFoodToIndexedDB(foodData);
     SyncTrigger.triggerDataSync();
     return result;
@@ -547,7 +602,11 @@ export class CalciumService {
           measure: foodData.measure,
           isCustom: true,
           dateAdded: foodData.dateAdded || new Date().toISOString(),
-          id: foodData.id
+          id: foodData.id,
+          sourceMetadata: foodData.sourceMetadata || {
+            sourceType: 'manual',
+            dateAdded: new Date().toISOString()
+          }
         };
         request = store.put(dbObject);
       } else {
@@ -558,7 +617,11 @@ export class CalciumService {
           measure: foodData.measure,
           isCustom: true,
           dateAdded: new Date().toISOString(),
-          id: this.nextCustomFoodId
+          id: this.nextCustomFoodId,
+          sourceMetadata: foodData.sourceMetadata || {
+            sourceType: 'manual',
+            dateAdded: new Date().toISOString()
+          }
         };
         
         // Decrement for next custom food
@@ -574,7 +637,11 @@ export class CalciumService {
           measure: foodData.measure,
           isCustom: true,
           dateAdded: foodData.dateAdded || new Date().toISOString(),
-          id: foodData.id || this.nextCustomFoodId + 1 // The ID we just used
+          id: foodData.id || this.nextCustomFoodId + 1, // The ID we just used
+          sourceMetadata: foodData.sourceMetadata || {
+            sourceType: 'manual',
+            dateAdded: new Date().toISOString()
+          }
         };
 
         calciumState.update(state => {
@@ -684,10 +751,19 @@ export class CalciumService {
       const request = store.getAll();
 
       request.onsuccess = () => {
-        const customFoods: CustomFood[] = (request.result || []).map((food: any) => ({
-          ...food,
-          isCustom: true
-        }));
+        const customFoods: CustomFood[] = (request.result || []).map((food: any) => {
+          // Ensure backward compatibility for foods without sourceMetadata
+          if (!food.sourceMetadata) {
+            food.sourceMetadata = {
+              sourceType: null
+            };
+          }
+
+          return {
+            ...food,
+            isCustom: true
+          };
+        });
 
         calciumState.update(state => ({ ...state, customFoods }));
         resolve();
@@ -1640,6 +1716,145 @@ private async clearAllData(): Promise<void> {
     const newId = CryptoUtils.generateUUID();
     this.settings.syncGenerationId = newId;
     await this.saveSettings();
+  }
+
+  /**
+   * Gets the source accent color for a custom food based on its source type.
+   */
+  getSourceAccentColor(food: CustomFood): string {
+    const sourceType = food.sourceMetadata?.sourceType;
+    switch (sourceType) {
+      case 'manual': return 'var(--primary)';
+      case 'upc_scan': return 'var(--success)';
+      case 'ocr_scan': return 'var(--warning)';
+      default: return 'var(--text-secondary)';
+    }
+  }
+
+  /**
+   * Gets the source icon name for a custom food based on its source type.
+   */
+  getSourceIcon(food: CustomFood): string {
+    const sourceType = food.sourceMetadata?.sourceType;
+    switch (sourceType) {
+      case 'manual': return 'edit';
+      case 'upc_scan': return 'qr_code_scanner';
+      case 'ocr_scan': return 'photo_camera';
+      default: return 'help_outline';
+    }
+  }
+
+  /**
+   * Formats source metadata for user-friendly display.
+   */
+  formatSourceMetadata(food: CustomFood): string {
+    const metadata = food.sourceMetadata;
+    if (!metadata) return 'Unknown source';
+
+    switch (metadata.sourceType) {
+      case 'manual':
+        return 'Added manually';
+      case 'upc_scan':
+        return metadata.upcSource
+          ? `Scanned from ${metadata.upcSource.toUpperCase()}`
+          : 'Scanned from barcode';
+      case 'ocr_scan':
+        const confidence = metadata.confidence ? ` (${Math.round(metadata.confidence * 100)}% confidence)` : '';
+        return `Scanned from nutrition label${confidence}`;
+      default:
+        return metadata.dateAdded
+          ? `Added ${new Date(metadata.dateAdded).toLocaleDateString()}`
+          : 'Unknown source';
+    }
+  }
+
+  /**
+   * Creates source metadata for a manual food entry.
+   */
+  createManualSourceMetadata(): CustomFood['sourceMetadata'] {
+    return {
+      sourceType: 'manual'
+    };
+  }
+
+  /**
+   * Creates source metadata for a UPC scan food entry.
+   */
+  createUPCSourceMetadata(scanData: any): CustomFood['sourceMetadata'] {
+    const metadata: CustomFood['sourceMetadata'] = {
+      sourceType: 'upc_scan',
+      upc: scanData.upcCode || null,
+      sourceKey: scanData.fdcId ? scanData.fdcId.toString() : null,
+      confidence: 1.0 // UPC scans are always high confidence
+    };
+
+    // Set UPC source based on the service used
+    if (scanData.source === 'USDA FDC') {
+      metadata.upcSource = 'usda_fdc';
+    } else if (scanData.source === 'OpenFoodFacts') {
+      metadata.upcSource = 'openfoodfacts';
+    }
+
+    // Add scan processing details
+    if (scanData.brandOwner || scanData.brandName || scanData.ingredients) {
+      metadata.scanData = {
+        originalName: scanData.productName || null,
+        brandName: scanData.brandOwner || scanData.brandName || null,
+        ingredients: scanData.ingredients || null,
+        householdMeasure: scanData.servingDisplayText || null,
+        calciumPer100g: scanData.calciumValue || null
+      };
+    }
+
+    // Add processing notes for serving conversions
+    if (scanData.finalServingQuantity && scanData.finalServingUnit) {
+      metadata.processingNotes = {
+        measureConversion: `Serving: ${scanData.finalServingQuantity} ${scanData.finalServingUnit}`,
+        calciumConversion: scanData.calciumPerServing
+          ? `Calculated ${scanData.calciumPerServing}mg per serving from ${scanData.calciumValue}mg per 100g`
+          : null
+      };
+    }
+
+    return metadata;
+  }
+
+  /**
+   * Creates source metadata for an OCR scan food entry.
+   */
+  createOCRSourceMetadata(scanData: any): CustomFood['sourceMetadata'] {
+    const metadata: CustomFood['sourceMetadata'] = {
+      sourceType: 'ocr_scan',
+      confidence: scanData.confidence || 0.8 // Default confidence if not provided
+    };
+
+    // Add scan processing details
+    if (scanData.rawText || scanData.servingQuantity || scanData.calcium) {
+      metadata.scanData = {
+        originalName: scanData.rawText ? 'From nutrition label scan' : null,
+        servingSize: scanData.servingSize || null,
+        selectedNutrientPer: scanData.standardMeasureValue && scanData.standardMeasureUnit
+          ? `${scanData.standardMeasureValue}${scanData.standardMeasureUnit}`
+          : 'serving'
+      };
+    }
+
+    // Add processing notes for OCR parsing
+    if (scanData.servingQuantity && scanData.servingMeasure) {
+      metadata.processingNotes = {
+        measureConversion: `Parsed: ${scanData.servingQuantity} ${scanData.servingMeasure}`,
+        calciumConversion: scanData.calciumValue
+          ? `Extracted ${scanData.calciumValue}mg from nutrition label`
+          : null,
+        confidence: {
+          name: 0.5, // OCR doesn't provide names
+          calcium: scanData.confidence || 0.8,
+          measure: scanData.confidence || 0.8
+        }
+      };
+    }
+
+    return metadata;
   }
 
 }
