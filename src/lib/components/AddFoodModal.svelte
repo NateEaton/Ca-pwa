@@ -556,14 +556,13 @@
   function handleScanComplete(event) {
     const scanData = event.detail;
     showSmartScanModal = false;
-
+    
     // Give the UI a moment to update before showing toast and focusing
     setTimeout(() => {
       showToast("Scan successful. Please verify the details.", "success");
-
       // Always switch to custom mode for verification and editing
       isCustomMode = true;
-
+      
       if (scanData.method === 'UPC') {
         // UPC scan provides a full product name
         if (scanData.brandName && scanData.productName) {
@@ -578,14 +577,29 @@
         
         // Use the final calculated per-serving calcium
         calcium = scanData.calciumPerServing ? scanData.calciumPerServing.toString() : '';
-
+        
       } else if (scanData.method === 'OCR') {
         // OCR provides serving size and calcium, but no name
         foodName = ''; // Clear the name to prompt user entry
-        servingQuantity = 1; // Default to 1, as OCR serving size is the whole unit
-        servingUnit = scanData.servingSize || '';
+        
+        // Use structured serving data if available
+        if (scanData.servingQuantity && scanData.servingMeasure) {
+          servingQuantity = scanData.servingQuantity;
+          
+          // Build complete serving unit with standard measure if available
+          servingUnit = scanData.servingMeasure;
+          if (scanData.standardMeasureValue && scanData.standardMeasureUnit) {
+            servingUnit += ` (${scanData.standardMeasureValue}${scanData.standardMeasureUnit})`;
+          }
+        } else {
+          // Fallback to legacy format
+          servingQuantity = 1;
+          servingUnit = scanData.servingSize || 'serving';
+        }
+        
+        // Use direct calcium value (already in mg)
         calcium = scanData.calciumValue ? scanData.calciumValue.toString() : '';
-
+        
         // Auto-focus the food name input for the user
         const nameInput = document.querySelector('#foodName');
         if (nameInput) {
@@ -595,13 +609,6 @@
     }, 150);
   }
 
-  function handleScanClose() {
-    showSmartScanModal = false;
-    // Switch to custom mode for manual entry
-    if (!isCustomMode) {
-      toggleMode();
-    }
-  }
 </script>
 
 {#if show}
@@ -906,7 +913,6 @@
 <SmartScanModal 
   bind:show={showSmartScanModal} 
   on:scanComplete={handleScanComplete}
-  on:close={handleScanClose}
 />
 
 <style>

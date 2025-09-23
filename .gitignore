@@ -75,6 +75,7 @@ worker/.env*
 
 # Misc dev files
 /tmp/
+/test/
 /backup/
 /backup*/
 .repomixignore

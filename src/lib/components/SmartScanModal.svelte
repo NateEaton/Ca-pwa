@@ -14,7 +14,7 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
--->
+ */
 
 <!--
  * Unified Smart Scan Modal for Calcium Tracker PWA
@@ -61,6 +61,12 @@
   let fileInput;
   let ocrLoadingState = ''; // 'compressing', 'processing', ''
 
+  // --- Debug Mode State ---
+  let debugMode = false;
+  let debugData = null;
+  let longPressTimer = null;
+  let isLongPressing = false;
+
   // --- General Modal State ---
   let isLoading = false;
   let error = null;
@@ -83,6 +89,9 @@
   onDestroy(() => {
     stopScanning();
     stopCamera();
+    if (longPressTimer) {
+      clearTimeout(longPressTimer);
+    }
   });
 
   // --- Core Logic ---
@@ -91,6 +100,8 @@
     stopCamera();
     showManualUPCEntry = false;
     manualUPCValue = '';
+    debugMode = false; // Reset debug mode when closing
+    debugData = null;
     show = false;
     if (!didScan) {
       dispatch('close');
@@ -358,31 +369,92 @@
     await processImage(file);
   }
 
+  // Enhanced processImage function with debug data capture
   async function processImage(file) {
     isLoading = true;
     ocrResult = null;
     error = null;
     ocrLoadingState = 'processing';
-
+    
     try {
       const result = await ocrService.processImage(file);
       if (result) {
-        dispatch('scanComplete', {
-          ...result,
-          method: 'OCR',
-          calciumValue: result.calcium ? parseFloat(result.calcium.match(/[\d\.]+/)?.[0]) : null,
-        });
-        closeModal(true);
+        // Capture debug data
+        debugData = {
+          rawText: result.rawText,
+          servingQuantity: result.servingQuantity,
+          servingMeasure: result.servingMeasure,
+          standardMeasureValue: result.standardMeasureValue,
+          standardMeasureUnit: result.standardMeasureUnit,
+          calcium: result.calcium,
+          confidence: result.confidence,
+          timestamp: new Date().toLocaleTimeString()
+        };
+        
+        // Build serving size string for display
+        let servingSize = '';
+        if (result.servingQuantity && result.servingMeasure) {
+          servingSize = `${result.servingQuantity} ${result.servingMeasure}`;
+          if (result.standardMeasureValue && result.standardMeasureUnit) {
+            servingSize += ` (${result.standardMeasureValue}${result.standardMeasureUnit})`;
+          }
+        }
+                
+        // Don't close modal if in debug mode - let user examine results
+        if (!debugMode) {
+          dispatch('scanComplete', {
+            ...result,
+            method: 'OCR',
+            calciumValue: result.calcium, // Direct numeric value in mg
+            servingSize: servingSize, // Formatted string for display
+          });
+          closeModal(true);
+        }
       } else {
         throw new Error("Could not extract nutrition data from the image.");
       }
     } catch (err) {
       error = err.message || 'Failed to process image.';
+      debugData = {
+        error: err.message,
+        timestamp: new Date().toLocaleTimeString()
+      };
     } finally {
       isLoading = false;
       ocrLoadingState = '';
-      imagePreview = null; // Clear preview after attempt
+      if (!debugMode) {
+        imagePreview = null; // Only clear preview if not in debug mode
+      }
     }
+  }
+
+  // --- Debug Mode Functions ---
+  // Long press handlers for debug mode
+  function handleFileSelectStart() {
+    isLongPressing = true;
+    longPressTimer = setTimeout(() => {
+      if (isLongPressing) {
+        debugMode = !debugMode;
+        // Provide haptic feedback if available
+        if (navigator.vibrate) {
+          navigator.vibrate(50);
+        }
+        console.log('Debug mode:', debugMode ? 'enabled' : 'disabled');
+      }
+    }, 1000); // 1 second long press
+  }
+
+  function handleFileSelectEnd() {
+    isLongPressing = false;
+    if (longPressTimer) {
+      clearTimeout(longPressTimer);
+      longPressTimer = null;
+    }
+  }
+
+  // Toggle debug panel
+  function toggleDebugPanel() {
+    debugMode = !debugMode;
   }
 
   // --- Event Handlers ---
@@ -393,6 +465,33 @@
   function handleKeydown(event) {
     if (event.key === 'Escape') closeModal();
   }
+
+  function useDebugResults() {
+    if (debugData && !debugData.error) {
+      // Build serving size string for display
+      let servingSize = '';
+      if (debugData.servingQuantity && debugData.servingMeasure) {
+        servingSize = `${debugData.servingQuantity} ${debugData.servingMeasure}`;
+        if (debugData.standardMeasureValue && debugData.standardMeasureUnit) {
+          servingSize += ` (${debugData.standardMeasureValue}${debugData.standardMeasureUnit})`;
+        }
+      }
+      
+      dispatch('scanComplete', {
+        rawText: debugData.rawText,
+        servingQuantity: debugData.servingQuantity,
+        servingMeasure: debugData.servingMeasure,
+        standardMeasureValue: debugData.standardMeasureValue,
+        standardMeasureUnit: debugData.standardMeasureUnit,
+        calcium: debugData.calcium,
+        confidence: debugData.confidence,
+        method: 'OCR',
+        calciumValue: debugData.calcium,
+        servingSize: servingSize,
+      });
+      closeModal(true);
+    }
+  }  
 
   // --- Enhanced Reactive Logic ---
   $: if (show && (activeTab === 'upc' || activeTab === 'ocr')) {
@@ -593,9 +692,24 @@
                 Capture
               </button>
 
-              <button class="file-btn secondary" on:click={() => fileInput?.click()}>
+              <button class="file-select-btn" 
+                      class:debug-active={debugMode}
+                      on:touchstart={handleFileSelectStart}
+                      on:touchend={handleFileSelectEnd}
+                      on:mousedown={handleFileSelectStart}
+                      on:mouseup={handleFileSelectEnd}
+                      on:mouseleave={handleFileSelectEnd}
+                      on:click={() => {
+                        if (!isLongPressing) {
+                          fileInput.click();
+                        }
+                      }}
+                      disabled={isLoading}>
                 <span class="material-icons">folder</span>
-                Choose File
+                Select Image File
+                {#if debugMode}
+                  <span class="debug-indicator">🔍</span>
+                {/if}
               </button>
             </div>
           {/if}
@@ -612,6 +726,70 @@
               <p>{error}</p>
             </div>
           {/if}
+
+          <!-- Debug Panel -->
+          {#if debugMode}
+            <div class="debug-panel">
+              <div class="debug-header">
+                <h4>🔍 Debug Mode</h4>
+                <button on:click={toggleDebugPanel} class="debug-close">×</button>
+              </div>
+              
+              {#if debugData}
+                <div class="debug-content">
+                  <div class="debug-section">
+                    <h5>📄 Raw OCR Text:</h5>
+                    <pre class="debug-text">{debugData.rawText || 'No text captured'}</pre>
+                  </div>
+                  
+                  {#if !debugData.error}
+                    <div class="debug-section">
+                      <h5>🍽️ Parsed Serving:</h5>
+                      <div class="debug-grid">
+                        <span>Quantity:</span> <span>{debugData.servingQuantity || 'null'}</span>
+                        <span>Measure:</span> <span>{debugData.servingMeasure || 'null'}</span>
+                        <span>Standard Value:</span> <span>{debugData.standardMeasureValue || 'null'}</span>
+                        <span>Standard Unit:</span> <span>{debugData.standardMeasureUnit || 'null'}</span>
+                      </div>
+                    </div>
+                    
+                    <div class="debug-section">
+                      <h5>🥛 Parsed Calcium:</h5>
+                      <div class="debug-value">
+                        {debugData.calcium ? `${debugData.calcium}mg` : 'null'}
+                      </div>
+                    </div>
+                    
+                    <div class="debug-section">
+                      <h5>📊 Confidence:</h5>
+                      <div class="debug-confidence debug-confidence-{debugData.confidence}">
+                        {debugData.confidence}
+                      </div>
+                    </div>
+                  {:else}
+                    <div class="debug-section debug-error">
+                      <h5>❌ Error:</h5>
+                      <pre>{debugData.error}</pre>
+                    </div>
+                  {/if}
+                  
+                  <div class="debug-footer">
+                    <small>Parsed at {debugData.timestamp}</small>
+                    {#if !debugData.error}
+                      <button class="debug-use-btn" on:click={useDebugResults}>
+                        Use These Results
+                      </button>
+                    {/if}
+                  </div>
+                </div>
+              {:else}
+                <div class="debug-placeholder">
+                  Process an image to see debug information
+                </div>
+              {/if}
+            </div>
+          {/if}
+
           <input bind:this={fileInput} type="file" accept="image/*" on:change={handleFileSelect} disabled={isLoading} class="file-input" />
         {/if}
       </div>
@@ -1124,7 +1302,9 @@
     box-shadow: var(--shadow);
   }
 
-  .file-btn.secondary {
+  /* File Select Button with Debug Mode */
+  .file-select-btn {
+    position: relative;
     flex: 1;
     display: flex;
     align-items: center;
@@ -1139,12 +1319,213 @@
     font-weight: 500;
     cursor: pointer;
     transition: all 0.2s ease;
+    user-select: none;
   }
 
-  .file-btn.secondary:hover {
+  .file-select-btn:hover {
     background: var(--surface-variant);
     border-color: var(--primary-color);
   }
+
+  .file-select-btn:disabled {
+    background: #9ca3af;
+    cursor: not-allowed;
+  }
+
+  .file-select-btn.debug-active {
+    background: #fbbf24;
+    color: #92400e;
+    border: 2px solid #f59e0b;
+  }
+
+  .file-select-btn.debug-active:hover {
+    background: #f59e0b;
+  }
+
+  .debug-indicator {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    background: #ef4444;
+    color: white;
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
+
+  /* Debug Panel Styles */
+  .debug-panel {
+    margin-top: 1rem;
+    border: 2px dashed #fbbf24;
+    border-radius: 8px;
+    background: #fffbeb;
+    font-family: 'Courier New', monospace;
+    font-size: 0.8rem;
+  }
+
+  .debug-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem;
+    background: #fbbf24;
+    color: #92400e;
+    border-radius: 6px 6px 0 0;
+  }
+
+  .debug-header h4 {
+    margin: 0;
+    font-size: 0.9rem;
+  }
+
+  .debug-close {
+    background: none;
+    border: none;
+    font-size: 1.2rem;
+    cursor: pointer;
+    color: #92400e;
+  }
+
+  .debug-content {
+    padding: 0.75rem;
+  }
+
+  .debug-section {
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid #fde68a;
+  }
+
+  .debug-section:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+  }
+
+  .debug-section h5 {
+    margin: 0 0 0.25rem 0;
+    color: #92400e;
+    font-size: 0.8rem;
+  }
+
+  .debug-text {
+    background: #f3f4f6;
+    padding: 0.5rem;
+    border-radius: 4px;
+    white-space: pre-wrap;
+    word-break: break-word;
+    max-height: 120px;
+    overflow-y: auto;
+    margin: 0;
+    font-size: 0.7rem;
+    line-height: 1.3;
+  }
+
+  .debug-grid {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+  }
+
+  .debug-grid span:nth-child(odd) {
+    font-weight: bold;
+    color: #7c2d12;
+  }
+
+  .debug-value {
+    font-weight: bold;
+    color: #059669;
+    font-size: 0.9rem;
+  }
+
+  .debug-confidence {
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    text-align: center;
+    font-weight: bold;
+    text-transform: uppercase;
+    font-size: 0.7rem;
+  }
+
+  .debug-confidence-high {
+    background: #d1fae5;
+    color: #065f46;
+  }
+
+  .debug-confidence-medium {
+    background: #fef3c7;
+    color: #92400e;
+  }
+
+  .debug-confidence-low {
+    background: #fee2e2;
+    color: #991b1b;
+  }
+
+  .debug-error {
+    background: #fee2e2;
+    border-color: #fca5a5;
+    border-radius: 4px;
+    padding: 0.5rem;
+  }
+
+  .debug-error h5 {
+    color: #991b1b;
+  }
+
+  .debug-error pre {
+    margin: 0;
+    color: #991b1b;
+    font-size: 0.7rem;
+  }
+
+  .debug-footer {
+    margin-top: 0.5rem;
+    padding-top: 0.5rem;
+    border-top: 1px solid #fde68a;
+    text-align: center;
+    color: #92400e;
+  }
+
+  .debug-placeholder {
+    padding: 2rem;
+    text-align: center;
+    color: #92400e;
+    font-style: italic;
+  }
+
+  .debug-header {
+    position: sticky; /* Keep header visible when scrolling */
+    top: 0;
+    z-index: 1;
+  }
+
+  .debug-use-btn {
+    background: #059669;
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    font-weight: bold;
+    cursor: pointer;
+    margin-top: 0.5rem;
+    width: 100%;
+  }
+
+  .debug-use-btn:hover {
+    background: #047857;
+  }  
 
   /* Mobile responsive adjustments */
   @media (max-width: 480px) {
@@ -1180,6 +1561,20 @@
       width: 44px;
       height: 44px;
     }
+
+    .debug-panel {
+      max-height: 40vh; /* Limit height on mobile */
+      overflow-y: auto; /* Make it scrollable */
+    }
+    
+    .debug-content {
+      padding: 0.5rem; /* Reduce padding on mobile */
+    }
+    
+    .debug-text {
+      max-height: 80px; /* Reduce OCR text display height */
+      font-size: 0.65rem; /* Smaller font on mobile */
+    }    
   }
 
   /* Desktop specific sizing */
