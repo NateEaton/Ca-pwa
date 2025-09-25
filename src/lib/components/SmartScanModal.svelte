@@ -352,9 +352,10 @@
     canvas.toBlob(async (blob) => {
       if (blob) {
         // Convert blob to proper File object with correct metadata
+        const fileName = `nutrition-label-capture-${Date.now()}.jpg`;
         const file = new File(
           [blob],
-          `nutrition-label-${Date.now()}.jpg`,
+          fileName,
           {
             type: 'image/jpeg',
             lastModified: Date.now()
@@ -379,20 +380,33 @@
     ocrResult = null;
     error = null;
     ocrLoadingState = 'processing';
-    
+
+    // Determine scan type and file info
+    const scanType = activeTab === 'ocr' ? 'file' : 'camera';
+    const fileName = file ? file.name : null;
+
     try {
       const result = await ocrService.processImage(file);
       if (result) {
-        // Capture debug data
+        // Capture comprehensive debug data
         debugData = {
-          rawText: result.rawText,
-          servingQuantity: result.servingQuantity,
-          servingMeasure: result.servingMeasure,
-          standardMeasureValue: result.standardMeasureValue,
-          standardMeasureUnit: result.standardMeasureUnit,
-          calcium: result.calcium,
-          confidence: result.confidence,
-          timestamp: new Date().toLocaleTimeString()
+          scanType: scanType,
+          imageCapture: scanType === 'camera',
+          isFile: scanType === 'file',
+          fileName: fileName,
+          rawOcrText: result.rawText,
+          spatialResults: result.spatialResults || null, // From enhanced OCR.space API
+          apiResponse: result.fullApiResponse || null, // Complete API response
+          parsedElements: {
+            servingQuantity: result.servingQuantity,
+            servingMeasure: result.servingMeasure,
+            standardMeasureValue: result.standardMeasureValue,
+            standardMeasureUnit: result.standardMeasureUnit,
+            calcium: result.calcium,
+            confidence: result.confidence
+          },
+          timestamp: new Date().toLocaleTimeString(),
+          processingTime: Date.now() // Will be calculated later
         };
         
         // Build serving size string for display
@@ -411,6 +425,7 @@
             method: 'OCR',
             calciumValue: result.calcium, // Direct numeric value in mg
             servingSize: servingSize, // Formatted string for display
+            fileName: debugData.fileName || null, // Include file name for metadata
           };
           console.log('SmartScanModal: Dispatching scanComplete event (OCR) with data:', ocrData);
           dispatch('scanComplete', ocrData);
@@ -423,6 +438,10 @@
     } catch (err) {
       error = err.message || 'Failed to process image.';
       debugData = {
+        scanType: scanType,
+        imageCapture: scanType === 'camera',
+        isFile: scanType === 'file',
+        fileName: fileName,
         error: err.message,
         timestamp: new Date().toLocaleTimeString()
       };
@@ -477,29 +496,66 @@
     if (debugData && !debugData.error) {
       // Build serving size string for display
       let servingSize = '';
-      if (debugData.servingQuantity && debugData.servingMeasure) {
-        servingSize = `${debugData.servingQuantity} ${debugData.servingMeasure}`;
-        if (debugData.standardMeasureValue && debugData.standardMeasureUnit) {
-          servingSize += ` (${debugData.standardMeasureValue}${debugData.standardMeasureUnit})`;
+      if (debugData.parsedElements.servingQuantity && debugData.parsedElements.servingMeasure) {
+        servingSize = `${debugData.parsedElements.servingQuantity} ${debugData.parsedElements.servingMeasure}`;
+        if (debugData.parsedElements.standardMeasureValue && debugData.parsedElements.standardMeasureUnit) {
+          servingSize += `(${debugData.parsedElements.standardMeasureValue}${debugData.parsedElements.standardMeasureUnit})`;
         }
       }
-      
+
       const debugOcrData = {
-        rawText: debugData.rawText,
-        servingQuantity: debugData.servingQuantity,
-        servingMeasure: debugData.servingMeasure,
-        standardMeasureValue: debugData.standardMeasureValue,
-        standardMeasureUnit: debugData.standardMeasureUnit,
-        calcium: debugData.calcium,
-        confidence: debugData.confidence,
+        rawText: debugData.rawOcrText,
+        servingQuantity: debugData.parsedElements.servingQuantity,
+        servingMeasure: debugData.parsedElements.servingMeasure,
+        standardMeasureValue: debugData.parsedElements.standardMeasureValue,
+        standardMeasureUnit: debugData.parsedElements.standardMeasureUnit,
+        calcium: debugData.parsedElements.calcium,
+        confidence: debugData.parsedElements.confidence,
         method: 'OCR',
-        calciumValue: debugData.calcium,
+        calciumValue: debugData.parsedElements.calcium,
         servingSize: servingSize,
+        fileName: debugData.fileName || null, // Include file name for metadata
       };
       console.log('SmartScanModal: Dispatching scanComplete event (Debug OCR) with data:', debugOcrData);
       dispatch('scanComplete', debugOcrData);
       // Add small delay to ensure event is processed before modal closes
       setTimeout(() => closeModal(true), 100);
+    }
+  }
+
+  // Copy debug data to clipboard as JSON
+  async function copyDebugDataToClipboard() {
+    if (!debugData) return;
+
+    const debugJson = {
+      scanType: debugData.scanType,
+      imageCapture: debugData.imageCapture,
+      isFile: debugData.isFile,
+      fileName: debugData.fileName || null,
+      rawOcrText: debugData.rawOcrText || debugData.error || null,
+      spatialResults: debugData.spatialResults || null,
+      apiResponse: debugData.apiResponse || null,
+      parsedElements: debugData.parsedElements || null,
+      timestamp: debugData.timestamp,
+      error: debugData.error || null
+    };
+
+    try {
+      await navigator.clipboard.writeText(JSON.stringify(debugJson, null, 2));
+      // Show brief success feedback
+      if (navigator.vibrate) {
+        navigator.vibrate(50);
+      }
+      console.log('Debug data copied to clipboard');
+    } catch (err) {
+      console.error('Failed to copy to clipboard:', err);
+      // Fallback: create temporary textarea
+      const textarea = document.createElement('textarea');
+      textarea.value = JSON.stringify(debugJson, null, 2);
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textarea);
     }
   }  
 
@@ -748,32 +804,62 @@
               {#if debugData}
                 <div class="debug-content">
                   <div class="debug-section">
-                    <h5>📄 Raw OCR Text:</h5>
-                    <pre class="debug-text">{debugData.rawText || 'No text captured'}</pre>
+                    <h5>📱 Scan Info:</h5>
+                    <div class="debug-grid">
+                      <span>Type:</span> <span>{debugData.scanType}</span>
+                      <span>Image Capture:</span> <span>{debugData.imageCapture ? 'Yes' : 'No'}</span>
+                      <span>File:</span> <span>{debugData.fileName || 'N/A'}</span>
+                    </div>
                   </div>
-                  
+
                   {#if !debugData.error}
                     <div class="debug-section">
                       <h5>🍽️ Parsed Serving:</h5>
                       <div class="debug-grid">
-                        <span>Quantity:</span> <span>{debugData.servingQuantity || 'null'}</span>
-                        <span>Measure:</span> <span>{debugData.servingMeasure || 'null'}</span>
-                        <span>Standard Value:</span> <span>{debugData.standardMeasureValue || 'null'}</span>
-                        <span>Standard Unit:</span> <span>{debugData.standardMeasureUnit || 'null'}</span>
+                        <span>Quantity:</span> <span>{debugData.parsedElements?.servingQuantity || 'null'}</span>
+                        <span>Measure:</span> <span>{debugData.parsedElements?.servingMeasure || 'null'}</span>
+                        <span>Standard Value:</span> <span>{debugData.parsedElements?.standardMeasureValue || 'null'}</span>
+                        <span>Standard Unit:</span> <span>{debugData.parsedElements?.standardMeasureUnit || 'null'}</span>
                       </div>
                     </div>
-                    
+
                     <div class="debug-section">
                       <h5>🥛 Parsed Calcium:</h5>
                       <div class="debug-value">
-                        {debugData.calcium ? `${debugData.calcium}mg` : 'null'}
+                        {debugData.parsedElements?.calcium ? `${debugData.parsedElements.calcium}mg` : 'null'}
                       </div>
                     </div>
-                    
+
                     <div class="debug-section">
                       <h5>📊 Confidence:</h5>
-                      <div class="debug-confidence debug-confidence-{debugData.confidence}">
-                        {debugData.confidence}
+                      <div class="debug-confidence debug-confidence-{debugData.parsedElements?.confidence}">
+                        {debugData.parsedElements?.confidence || 'unknown'}
+                      </div>
+                    </div>
+
+                    <div class="debug-section">
+                      <h5>🎯 Spatial Results:</h5>
+                      <div class="debug-spatial">
+                        {#if debugData.spatialResults && debugData.spatialResults.length > 0}
+                          <div class="spatial-summary">
+                            {debugData.spatialResults.length} text elements with coordinates
+                          </div>
+                          <div class="spatial-preview">
+                            {#each debugData.spatialResults.slice(0, 5) as element}
+                              <div class="spatial-element">
+                                <span class="spatial-text">"{element.text}"</span>
+                                <span class="spatial-coords">({element.x}, {element.y})</span>
+                              </div>
+                            {/each}
+                            {#if debugData.spatialResults.length > 5}
+                              <div class="spatial-more">
+                                ...and {debugData.spatialResults.length - 5} more
+                              </div>
+                            {/if}
+                          </div>
+                        {:else}
+                          <div class="spatial-none">No spatial coordinate data available</div>
+                        {/if}
                       </div>
                     </div>
                   {:else}
@@ -782,14 +868,19 @@
                       <pre>{debugData.error}</pre>
                     </div>
                   {/if}
-                  
+
                   <div class="debug-footer">
                     <small>Parsed at {debugData.timestamp}</small>
-                    {#if !debugData.error}
-                      <button class="debug-use-btn" on:click={useDebugResults}>
-                        Use These Results
+                    <div class="debug-actions">
+                      <button class="debug-copy-btn" on:click={copyDebugDataToClipboard}>
+                        📋 Copy JSON
                       </button>
-                    {/if}
+                      {#if !debugData.error}
+                        <button class="debug-use-btn" on:click={useDebugResults}>
+                          Use These Results
+                        </button>
+                      {/if}
+                    </div>
                   </div>
                 </div>
               {:else}
@@ -1520,21 +1611,110 @@
     z-index: 1;
   }
 
+  .debug-actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+  }
+
+  .debug-copy-btn {
+    background: #3b82f6;
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: bold;
+    cursor: pointer;
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.25rem;
+  }
+
+  .debug-copy-btn:hover {
+    background: #2563eb;
+  }
+
   .debug-use-btn {
     background: #059669;
     color: white;
     border: none;
     padding: 0.5rem 1rem;
     border-radius: 4px;
-    font-size: 0.8rem;
+    font-size: 0.75rem;
     font-weight: bold;
     cursor: pointer;
-    margin-top: 0.5rem;
-    width: 100%;
+    flex: 1;
   }
 
   .debug-use-btn:hover {
     background: #047857;
+  }
+
+  /* Spatial results styles */
+  .debug-spatial {
+    font-size: 0.75rem;
+  }
+
+  .spatial-summary {
+    font-weight: bold;
+    color: #059669;
+    margin-bottom: 0.5rem;
+  }
+
+  .spatial-preview {
+    max-height: 120px;
+    overflow-y: auto;
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 4px;
+    padding: 0.5rem;
+  }
+
+  .spatial-element {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.25rem 0;
+    border-bottom: 1px solid #e5e7eb;
+    font-family: monospace;
+  }
+
+  .spatial-element:last-child {
+    border-bottom: none;
+  }
+
+  .spatial-text {
+    font-weight: bold;
+    color: #374151;
+    flex: 1;
+    margin-right: 0.5rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .spatial-coords {
+    color: #6b7280;
+    font-size: 0.7rem;
+    white-space: nowrap;
+  }
+
+  .spatial-more {
+    text-align: center;
+    font-style: italic;
+    color: #6b7280;
+    padding: 0.25rem 0;
+    border-top: 1px dashed #d1d5db;
+  }
+
+  .spatial-none {
+    text-align: center;
+    font-style: italic;
+    color: #9ca3af;
+    padding: 1rem;
   }  
 
   /* Mobile responsive adjustments */

@@ -1835,7 +1835,9 @@ private async clearAllData(): Promise<void> {
         servingSize: scanData.servingSize || null,
         selectedNutrientPer: scanData.standardMeasureValue && scanData.standardMeasureUnit
           ? `${scanData.standardMeasureValue}${scanData.standardMeasureUnit}`
-          : 'serving'
+          : 'serving',
+        // Include file name if this was a file scan (not camera capture)
+        fileName: scanData.fileName || null
       };
     }
 
