@@ -1,4 +1,4 @@
-// Complete enhanced OCRService.ts with all improvements
+// Enhanced OCRService.ts with improved parsing strategies
 
 import { ImageResizer } from '$lib/utils/imageResize.ts';
 
@@ -70,6 +70,7 @@ export class OCRService {
   private apiKey: string;
   private apiEndpoint: string;
   private readonly CALCIUM_DV_MG = 1300;
+  private allTextElements: TextElement[] = [];
 
   constructor(apiKey: string) {
     this.apiKey = apiKey;
@@ -147,6 +148,9 @@ export class OCRService {
   private parseWithMultipleStrategies(rawText: string, lines: any[], apiResponse: OCRResponse): NutritionParseResult {
     const textElements: TextElement[] = this.extractTextElements(lines);
     
+    // Store for use in helper methods
+    this.allTextElements = textElements;    
+
     // Enhanced debug logging for API structure
     console.log('OCR: Raw text preview:', rawText.substring(0, 200) + '...');
     console.log('OCR: API Response structure:', {
@@ -160,7 +164,7 @@ export class OCRService {
     
     // Log serving size related elements
     const servingElements = textElements.filter(el => 
-      /serving|size|cup|tbsp|tsp|ml|mL|\d+|\(/.test(el.text)
+      /serving|size|cup|tbsp|tsp|ml|mL|bottle|slice|container|\d+|\(/.test(el.text)
     );
     console.log('OCR: Serving-related elements:', 
       servingElements.map(e => `"${e.text}"@(${e.x},${e.y})`));
@@ -182,7 +186,7 @@ export class OCRService {
       confidence: 'low'
     };
     
-    // Apply preprocessing to all elements
+    // Apply enhanced preprocessing to all elements
     textElements.forEach(el => {
       el.text = this.preprocessSpatialText(el);
     });
@@ -190,26 +194,31 @@ export class OCRService {
     const preprocessedText = this.preprocessText(rawText);
     console.log('OCR: Preprocessed', textElements.length, 'spatial elements');
     
-    // Define parsing strategies in order of preference
+    // Define enhanced parsing strategies in order of preference
     const strategies: ParseStrategy[] = [
       {
-        name: 'table_structure',
+        name: 'enhanced_table_structure',
         priority: 1,
-        parser: (elements, text, res) => this.parseWithTableStructure(elements, res)
+        parser: (elements, text, res) => this.parseWithEnhancedTableStructure(elements, res)
       },
       {
-        name: 'spatial_alignment',
+        name: 'format_specific',
         priority: 2,
-        parser: (elements, text, res) => this.parseWithSpatialAlignment(elements, res)
+        parser: (elements, text, res) => this.parseWithFormatSpecific(elements, text, res)
       },
       {
-        name: 'regex_enhanced',
+        name: 'enhanced_spatial_alignment',
         priority: 3,
+        parser: (elements, text, res) => this.parseWithEnhancedSpatialAlignment(elements, res)
+      },
+      {
+        name: 'enhanced_regex',
+        priority: 4,
         parser: (elements, text, res) => this.parseWithEnhancedRegex(text, res)
       },
       {
         name: 'fuzzy_matching',
-        priority: 4,
+        priority: 5,
         parser: (elements, text, res) => this.parseWithFuzzyMatching(elements, text, res)
       }
     ];
@@ -243,7 +252,7 @@ export class OCRService {
     console.log('OCR: Final result:', {
       servingQuantity: result.servingQuantity,
       servingMeasure: result.servingMeasure,
-      standardMeasure: result.standardMeasureValue + result.standardMeasureUnit,
+      standardMeasure: (result.standardMeasureValue || '') + (result.standardMeasureUnit || ''),
       calcium: result.calcium,
       confidence: result.confidence
     });
@@ -274,9 +283,15 @@ export class OCRService {
   private preprocessText(text: string): string {
     let cleaned = text;
     
-    // Common OCR character substitutions
+    // Enhanced OCR character substitutions
     const charMappings: [RegExp, string][] = [
+      // Common serving size fixes
       [/Sewing/gi, 'Serving'],
+      [/Seruing/gi, 'Serving'],
+      [/Serving\s*slze/gi, 'Serving size'],
+      [/Serving\s*size/gi, 'Serving size'],
+      
+      // Unit corrections
       [/\brnL\b/gi, 'mL'],
       [/\bfog\b/gi, 'mg'],
       [/\blg\b/gi, 'g'],
@@ -284,88 +299,118 @@ export class OCRService {
       [/\bOmg\b/gi, '0mg'],
       [/\b0mg\b/gi, '0mg'],
       [/\bDmg\b/gi, '0mg'],
+      
+      // Nutrient name fixes
       [/\bCholest[^\s]*\b/gi, 'Cholesterol'],
       [/\bVitamin\s*D/gi, 'Vitamin D'],
+      [/\bCalclum/gi, 'Calcium'],
       [/\bCalcium/gi, 'Calcium'],
-      [/\bPotassium/gi, 'Potassium'],
       
-      // Unicode artifacts from OCR (fixed character ranges)
-      [/[À-ÿ]/g, ''], // Remove extended Latin characters
-      [/[€£¥]/g, ''], // Currency symbol artifacts  
-      [/Ã…/g, 'A'], // A with ring
-      [/Ã˜/g, 'O'], // O with stroke
-      [/ÃŸ/g, 'ss'], // German eszett
-      [/â‚¬/g, ''], // Euro symbol artifacts
-      [/Ã/g, ''], // Common OCR artifact prefix
-      
-      // Percentage formatting fixes
-      [/(\d+)\/0/g, '$1%'],
-      [/(\d+)\\0/g, '$1%'],
-      [/(\d+)0\/0/g, '$1%'],
-      [/(\d+)\/o/gi, '$1%'],
-      [/(\d+)\s*0\/0/g, '$1%'],
-      
-      // Unit fixes
-      [/\bmcg\b/gi, 'mcg'],
-      [/\bIU\b/gi, 'IU'],
-      [/\bfl\s*oz\b/gi, 'fl oz'],
+      // Fraction corrections for serving sizes
+      [/\b1\s*I\s*2\b/gi, '1/2'],
+      [/\b1I2\b/gi, '1/2'],
+      [/\b112\b/gi, '1/2'],
+      [/\bl\s*\/\s*2\b/gi, '1/2'],
+      [/\bI\s*\/\s*2\b/gi, '1/2'],
+      [/\b1\s*l\s*2\b/gi, '1/2'],
+      [/\b2\s*I\s*3\b/gi, '2/3'],
+      [/\b213\b/gi, '2/3'],
+      [/\b1\s*I\s*3\b/gi, '1/3'],
+      [/\b113\b/gi, '1/3'],
+      [/\b1\s*I\s*4\b/gi, '1/4'],
+      [/\b114\b/gi, '1/4'],
+      [/\b3\s*I\s*4\b/gi, '3/4'],
+      [/\b314\b/gi, '3/4'],
     ];
     
     for (const [pattern, replacement] of charMappings) {
       cleaned = cleaned.replace(pattern, replacement);
     }
     
-    // Normalize whitespace but preserve line structure
-    cleaned = cleaned
-      .replace(/\t+/g, ' ')
-      .replace(/ +/g, ' ')
-      .replace(/\r\n/g, '\n')
-      .replace(/\r/g, '\n')
-      .trim();
-    
     return cleaned;
   }
 
   private preprocessSpatialText(element: TextElement): string {
-    let text = element.text.trim();
+    let text = element.text;
     
-    // Common single-word OCR errors
-    const wordMappings: [RegExp, string][] = [
-      [/^0g$/i, '0g'],
-      [/^Og$/i, '0g'], 
-      [/^0mg$/i, '0mg'],
-      [/^Omg$/i, '0mg'],
-      [/^tbsp$/i, 'tbsp'],
-      [/^tsp$/i, 'tsp'],
-      [/^cup$/i, 'cup'],
-      [/^cups$/i, 'cup'],
-      [/^serving$/i, 'serving'],
-      [/^size$/i, 'size'],
-      [/^calcium$/i, 'Calcium'],
-      [/^potassium$/i, 'Potassium'],
-      [/^sodium$/i, 'Sodium'],
-      [/^cholesterol$/i, 'Cholesterol'],
+    // Enhanced spatial-specific OCR corrections
+    const spatialMappings: [RegExp, string][] = [
+      // Fraction patterns (common in serving sizes)
+      [/^1I2$/i, '1/2'],
+      [/^112$/i, '1/2'],
+      [/^l\/2$/i, '1/2'],
+      [/^I\/2$/i, '1/2'],
+      [/^2I3$/i, '2/3'],
+      [/^213$/i, '2/3'],
+      [/^1I3$/i, '1/3'],
+      [/^113$/i, '1/3'],
+      [/^1I4$/i, '1/4'],
+      [/^114$/i, '1/4'],
+      [/^3I4$/i, '3/4'],
+      [/^314$/i, '3/4'],
       
-      // Handle measurements with OCR errors
+      // Unit corrections
       [/^(\d+(?:\.\d+)?)rng$/i, '$1mg'],
       [/^(\d+(?:\.\d+)?)fog$/i, '$1mg'],
       [/^(\d+(?:\.\d+)?)rag$/i, '$1mg'],
       [/^(\d+(?:\.\d+)?)rnL$/i, '$1mL'],
       [/^(\d+(?:\.\d+)?)mL$/i, '$1mL'],
       [/^(\d+(?:\.\d+)?)ml$/i, '$1mL'],
+      
+      // Common OCR character fixes
+      [/^O([a-zA-Z])$/i, '0$1'],
+      [/^(\d+)O([a-zA-Z])$/i, '$10$2'],
+      [/^l([a-zA-Z])$/i, '1$1'],
     ];
     
-    for (const [pattern, replacement] of wordMappings) {
+    for (const [pattern, replacement] of spatialMappings) {
       text = text.replace(pattern, replacement);
     }
     
     return text;
   }
 
-  private detectTableStructure(textElements: TextElement[]): { columns: TableColumn[]; rows: NutrientRow[] } {
-    // Group elements by Y coordinate (rows)
+  private parseWithEnhancedTableStructure(textElements: TextElement[], result: NutritionParseResult): boolean {
+    const { columns, rows } = this.detectEnhancedTableStructure(textElements);
+    
+    if (columns.length < 2 || rows.length < 3) {
+      console.log('OCR: Insufficient table structure detected');
+      return false;
+    }
+    
+    let servingParsed = false;
+    let calciumParsed = false;
+    
+    // Find serving size row with enhanced matching
+    const servingRow = rows.find(row => 
+      row.elements.some(el => 
+        /serving\s*size/i.test(el.text) || 
+        /size/i.test(el.text) && row.elements.some(e => /serving/i.test(e.text))
+      )
+    );
+    
+    if (servingRow) {
+      this.parseServingFromEnhancedTableRow(servingRow, columns, result);
+      servingParsed = result.servingQuantity !== null && result.servingMeasure !== null;
+      console.log('OCR: Enhanced table serving parsed:', servingParsed);
+    }
+    
+    // Find calcium row with multiple strategies
+    const calciumRow = this.findCalciumRow(rows);
+    
+    if (calciumRow) {
+      this.parseCalciumFromEnhancedTableRow(calciumRow, columns, result);
+      calciumParsed = result.calcium !== null;
+      console.log('OCR: Enhanced table calcium parsed:', calciumParsed);
+    }
+    
+    return servingParsed && calciumParsed;
+  }
+
+  private detectEnhancedTableStructure(textElements: TextElement[]): { columns: TableColumn[]; rows: NutrientRow[] } {
+    // Group elements by Y coordinate (rows) with flexible tolerance
     const rowGroups = new Map<number, TextElement[]>();
-    const yTolerance = 10;
+    const yTolerance = 15; // Increased tolerance
     
     for (const element of textElements) {
       let foundRow = false;
@@ -381,9 +426,17 @@ export class OCRService {
       }
     }
     
-    // Analyze X positions to identify columns
+    // Enhanced column identification with multiple thresholds
     const xPositions = textElements.map(e => e.x).sort((a, b) => a - b);
-    const columns = this.identifyColumns(xPositions);
+    let columns = this.identifyColumnsWithThreshold(xPositions, 40); // Try tight threshold first
+    
+    if (columns.length < 2) {
+      columns = this.identifyColumnsWithThreshold(xPositions, 60); // Medium threshold
+    }
+    
+    if (columns.length < 2) {
+      columns = this.identifyColumnsWithThreshold(xPositions, 80); // Loose threshold
+    }
     
     // Build structured rows
     const rows: NutrientRow[] = [];
@@ -396,14 +449,13 @@ export class OCRService {
       });
     }
     
-    console.log(`OCR: Detected ${columns.length} columns and ${rows.length} rows`);
+    console.log(`OCR: Enhanced table detection - ${columns.length} columns and ${rows.length} rows`);
     return { columns, rows };
   }
 
-  private identifyColumns(xPositions: number[]): TableColumn[] {
+  private identifyColumnsWithThreshold(xPositions: number[], clusterTolerance: number): TableColumn[] {
     // Cluster X positions to identify column boundaries
     const clusters: number[][] = [];
-    const clusterTolerance = 50;
     
     for (const x of xPositions) {
       let foundCluster = false;
@@ -424,7 +476,7 @@ export class OCRService {
       const avgX = cluster.reduce((sum, x) => sum + x, 0) / cluster.length;
       return {
         x: avgX,
-        width: Math.max(...cluster) - Math.min(...cluster) + 50,
+        width: Math.max(...cluster) - Math.min(...cluster) + clusterTolerance,
         type: index === 0 ? 'label' : 
               index === 1 ? 'value' : 
               index === 2 ? 'unit' : 'percent'
@@ -434,229 +486,571 @@ export class OCRService {
     return columns;
   }
 
-  private parseWithTableStructure(textElements: TextElement[], result: NutritionParseResult): boolean {
-    const { columns, rows } = this.detectTableStructure(textElements);
+  private findCalciumRow(rows: NutrientRow[]): NutrientRow | undefined {
+    // Try multiple calcium identification strategies
     
-    if (columns.length < 2 || rows.length < 3) {
-      console.log('OCR: Insufficient table structure detected');
-      return false;
-    }
-    
-    let servingParsed = false;
-    let calciumParsed = false;
-    
-    // Find serving size row
-    const servingRow = rows.find(row => 
-      row.elements.some(el => /serving\s*size/i.test(el.text))
-    );
-    
-    if (servingRow) {
-      this.parseServingFromTableRow(servingRow, columns, result);
-      servingParsed = result.servingQuantity !== null && result.servingMeasure !== null;
-      console.log('OCR: Table serving parsed:', servingParsed);
-    }
-    
-    // Find calcium row
-    const calciumRow = rows.find(row => 
+    // Strategy 1: Exact match
+    let calciumRow = rows.find(row => 
       row.elements.some(el => /^calcium$/i.test(el.text.trim()))
     );
     
-    if (calciumRow) {
-      this.parseCalciumFromTableRow(calciumRow, columns, result);
-      calciumParsed = result.calcium !== null;
-      console.log('OCR: Table calcium parsed:', calciumParsed);
-    }
+    if (calciumRow) return calciumRow;
     
-    return servingParsed && calciumParsed;
+    // Strategy 2: Contains calcium with mg value nearby
+    calciumRow = rows.find(row => 
+      row.elements.some(el => /calcium/i.test(el.text)) &&
+      row.elements.some(el => /\d+mg/i.test(el.text))
+    );
+    
+    if (calciumRow) return calciumRow;
+    
+    // Strategy 3: Row with mg value and "calcium" text anywhere in vicinity
+    calciumRow = rows.find(row => {
+      const hasCalciumText = row.elements.some(el => /calcium/i.test(el.text));
+      const hasMgValue = row.elements.some(el => /\d+mg/i.test(el.text));
+      return hasCalciumText || hasMgValue;
+    });
+    
+    return calciumRow;
   }
 
-  private parseServingFromTableRow(row: NutrientRow, columns: TableColumn[], result: NutritionParseResult): void {
+  private parseServingFromEnhancedTableRow(row: NutrientRow, columns: TableColumn[], result: NutritionParseResult): void {
+    // Get all value elements in the row, sorted by x position
     const valueElements = row.elements.filter(el => 
-      columns.some(col => col.type !== 'label' && 
-        Math.abs(el.x - col.x) <= col.width / 2)
+      !(/serving|size|nutrition|facts/i.test(el.text))
     ).sort((a, b) => a.x - b.x);
     
-    console.log('OCR: Serving row value elements:', valueElements.map(e => e.text));
+    console.log('OCR: Enhanced serving row elements:', valueElements.map(e => `"${e.text}"@(${e.x})`));
     
-    for (const element of valueElements) {
+    // Try to find nearby elements that might be part of split parenthetical
+    const nearbyElements = this.getAllNearbyElements(row, this.allTextElements, 20);
+    const combinedElements = [...valueElements, ...nearbyElements].sort((a, b) => a.x - b.x);
+    
+    // Try to reconstruct split parenthetical expressions from nearby elements
+    const combinedText = combinedElements.map(e => e.text).join(' ');
+    const parentheticalMatch = combinedText.match(/\(\s*(\d+(?:\.\d+)?)\s*([a-zA-Z]+)\s*\)/i);
+    if (parentheticalMatch && !result.standardMeasureValue) {
+      result.standardMeasureValue = parseFloat(parentheticalMatch[1]);
+      result.standardMeasureUnit = parentheticalMatch[2].toLowerCase();
+      console.log('OCR: Found combined standard measure:', result.standardMeasureValue + result.standardMeasureUnit);
+    }
+    
+    for (let i = 0; i < valueElements.length; i++) {
+      const element = valueElements[i];
       const text = element.text.trim();
       
-      if (!result.servingQuantity && /^[\d\.\/]+$/.test(text)) {
-        result.servingQuantity = this.parseFraction(text);
-        console.log('OCR: Found table serving quantity:', result.servingQuantity);
-        continue;
+      // Enhanced fraction parsing for serving quantity
+      if (!result.servingQuantity) {
+        const quantity = this.parseEnhancedFraction(text);
+        if (quantity !== null && this.validateEnhancedServingQuantity(quantity, text)) {
+          result.servingQuantity = quantity;
+          console.log('OCR: Found enhanced table serving quantity:', result.servingQuantity);
+          continue;
+        }
       }
       
-      if (!result.servingMeasure && /^(cup|tbsp|tsp|bottle|slice|oz|fl|g|ml|mL)s?$/i.test(text)) {
+      // Enhanced serving measure detection
+      if (!result.servingMeasure && /^(cup|tbsp|tsp|bottle|slice|oz|fl|g|ml|mL|container)s?$/i.test(text)) {
         result.servingMeasure = text.toLowerCase().replace(/s$/, '');
-        console.log('OCR: Found table serving measure:', result.servingMeasure);
+        console.log('OCR: Found enhanced table serving measure:', result.servingMeasure);
         continue;
       }
       
-      // Look for parenthetical standard measure
-      const parentheticalMatch = text.match(/^\(?(\d+(?:\.\d+)?)\s*([a-zA-Z]+)\)?$/);
-      if (parentheticalMatch && !result.standardMeasureValue) {
-        result.standardMeasureValue = parseFloat(parentheticalMatch[1]);
-        result.standardMeasureUnit = parentheticalMatch[2].toLowerCase();
-        console.log('OCR: Found table standard measure:', 
-          result.standardMeasureValue, result.standardMeasureUnit);
+      // Look for split parenthetical - check if this element starts with (number
+      if (!result.standardMeasureValue && /^\((\d+)/.test(text)) {
+        const numberMatch = text.match(/^\((\d+(?:\.\d+)?)/);
+        if (numberMatch) {
+          // Look for unit in nearby elements (not just next element)
+          for (const nearbyEl of nearbyElements) {
+            const unitMatch = nearbyEl.text.match(/([a-zA-Z]+)\)?/);
+            if (unitMatch) {
+              result.standardMeasureValue = parseFloat(numberMatch[1]);
+              result.standardMeasureUnit = unitMatch[1].toLowerCase();
+              console.log('OCR: Found split standard measure from nearby:', result.standardMeasureValue + result.standardMeasureUnit);
+              break;
+            }
+          }
+        }
+      }
+      
+      // Check next element for measure if current is quantity
+      if (result.servingQuantity && !result.servingMeasure && i + 1 < valueElements.length) {
+        const nextText = valueElements[i + 1].text.trim();
+        if (/^(cup|tbsp|tsp|bottle|slice|oz|fl|g|ml|mL|container)/i.test(nextText)) {
+          result.servingMeasure = nextText.toLowerCase().replace(/s$/, '');
+          console.log('OCR: Found adjacent serving measure:', result.servingMeasure);
+        }
       }
     }
   }
 
-  private parseCalciumFromTableRow(row: NutrientRow, columns: TableColumn[], result: NutritionParseResult): void {
-    const valueElements = row.elements.filter(el => 
-      columns.some(col => col.type === 'value' && 
-        Math.abs(el.x - col.x) <= col.width / 2)
-    );
+  private getAllNearbyElements(centerRow: NutrientRow, allElements: TextElement[], yTolerance: number): TextElement[] {
+    return allElements.filter(el => {
+      // Don't include elements already in the center row
+      if (centerRow.elements.some(rowEl => rowEl.x === el.x && rowEl.y === el.y)) {
+        return false;
+      }
+      // Include elements within Y tolerance of the center row
+      return Math.abs(el.y - centerRow.y) <= yTolerance;
+    });
+  }
+
+  private parseCalciumFromEnhancedTableRow(row: NutrientRow, columns: TableColumn[], result: NutritionParseResult): void {
+    console.log('OCR: Enhanced calcium row elements:', row.elements.map(e => `"${e.text}"@(${e.x})`));
     
-    const percentElements = row.elements.filter(el => 
-      columns.some(col => col.type === 'percent' && 
-        Math.abs(el.x - col.x) <= col.width / 2)
-    );
+    // Look for direct mg values
+    const mgElements = row.elements.filter(el => /^\d+mg$/i.test(el.text.trim()));
+    console.log('OCR: Calcium mg elements:', mgElements.map(e => e.text));
     
-    console.log('OCR: Calcium value elements:', valueElements.map(e => e.text));
-    console.log('OCR: Calcium percent elements:', percentElements.map(e => e.text));
-    
-    // First priority: direct mg values
-    for (const element of valueElements) {
-      const text = element.text.trim();
-      const mgMatch = text.match(/^(\d+(?:\.\d+)?)mg$/i);
-      if (mgMatch) {
-        result.calcium = Math.round(parseFloat(mgMatch[1]));
-        console.log('OCR: Found table calcium mg:', result.calcium);
+    if (mgElements.length > 0) {
+      const mgValue = parseInt(mgElements[0].text.replace(/[^\d]/g, ''));
+      if (mgValue > 0 && mgValue <= 2000) { // Reasonable range for calcium
+        result.calcium = mgValue;
+        console.log('OCR: Found direct calcium mg value:', result.calcium);
         return;
       }
+    }
+    
+    // Look for percentage values and convert
+    const percentElements = row.elements.filter(el => /^\d+%$/i.test(el.text.trim()));
+    console.log('OCR: Calcium percent elements:', percentElements.map(e => e.text));
+    
+    if (percentElements.length > 0) {
+      const percentValue = parseInt(percentElements[0].text.replace(/[^\d]/g, ''));
+      if (percentValue > 0 && percentValue <= 100) {
+        result.calcium = Math.round((percentValue / 100) * this.CALCIUM_DV_MG);
+        console.log('OCR: Found calcium from percentage:', percentValue + '% =', result.calcium + 'mg');
+        return;
+      }
+    }
+    
+    // Enhanced pattern matching for combined values
+    for (const element of row.elements) {
+      const text = element.text;
       
-      const numberMatch = text.match(/^(\d+(?:\.\d+)?)$/);
-      if (numberMatch) {
-        const value = parseFloat(numberMatch[1]);
-        if (value >= 1 && value <= 2000) {
-          result.calcium = Math.round(value);
-          console.log('OCR: Found table calcium number (assuming mg):', result.calcium);
+      // Pattern: "380mg" or similar
+      const mgMatch = text.match(/(\d+)mg/i);
+      if (mgMatch) {
+        const mgValue = parseInt(mgMatch[1]);
+        if (mgValue > 0 && mgValue <= 2000) {
+          result.calcium = mgValue;
+          console.log('OCR: Found calcium from pattern match:', result.calcium);
+          return;
+        }
+      }
+      
+      // Pattern: "30%" or similar  
+      const percentMatch = text.match(/(\d+)%/);
+      if (percentMatch) {
+        const percentValue = parseInt(percentMatch[1]);
+        if (percentValue > 0 && percentValue <= 100) {
+          result.calcium = Math.round((percentValue / 100) * this.CALCIUM_DV_MG);
+          console.log('OCR: Found calcium from percent pattern:', percentValue + '% =', result.calcium + 'mg');
           return;
         }
       }
     }
-    
-    // Second priority: percentage conversion
-    for (const element of percentElements) {
-      const text = element.text.trim();
-      const percentMatch = text.match(/^(\d+(?:\.\d+)?)%$/);
-      if (percentMatch) {
-        const percent = parseFloat(percentMatch[1]);
-        result.calcium = Math.round((percent / 100) * this.CALCIUM_DV_MG);
-        console.log('OCR: Converted calcium percentage to mg:', percent + '%', '→', result.calcium + 'mg');
-        return;
-      }
-    }
   }
 
-  private parseWithSpatialAlignment(textElements: TextElement[], result: NutritionParseResult): boolean {
-    const alignmentGroups = this.groupByAlignment(textElements);
+  private parseWithFormatSpecific(textElements: TextElement[], rawText: string, result: NutritionParseResult): boolean {
+    // Detect specific nutrition label formats and apply specialized parsing
+    
+    // Format 1: Compact single-column layout (like yogurt containers)
+    if (this.isCompactSingleColumnFormat(textElements, rawText)) {
+      console.log('OCR: Detected compact single-column format');
+      return this.parseCompactSingleColumn(textElements, rawText, result);
+    }
+    
+    // Format 2: Wide multi-column layout (like milk jugs)
+    if (this.isWideMultiColumnFormat(textElements, rawText)) {
+      console.log('OCR: Detected wide multi-column format');
+      return this.parseWideMultiColumn(textElements, rawText, result);
+    }
+    
+    // Format 3: Bottle/can format (like drinks)
+    if (this.isBottleCanFormat(textElements, rawText)) {
+      console.log('OCR: Detected bottle/can format');
+      return this.parseBottleCanFormat(textElements, rawText, result);
+    }
+    
+    return false;
+  }
+
+  private isCompactSingleColumnFormat(textElements: TextElement[], rawText: string): boolean {
+    // Characteristics: narrow width, vitamins listed horizontally at bottom
+    const xPositions = textElements.map(e => e.x);
+    const width = Math.max(...xPositions) - Math.min(...xPositions);
+    const hasHorizontalVitamins = /Vitamin D.*Calcium.*Iron.*Potassium/i.test(rawText);
+    return width < 300 && hasHorizontalVitamins;
+  }
+
+  private isWideMultiColumnFormat(textElements: TextElement[], rawText: string): boolean {
+    // Characteristics: wide layout, clear column separation
+    const xPositions = textElements.map(e => e.x);
+    const width = Math.max(...xPositions) - Math.min(...xPositions);
+    return width > 500 && /Amount\/serving.*%\s*DV.*Amount\/serving.*%\s*DV/i.test(rawText);
+  }
+
+  private isBottleCanFormat(textElements: TextElement[], rawText: string): boolean {
+    // Characteristics: bottle serving size, vertical layout
+    return /bottle|serving\s*size.*bottle/i.test(rawText) || /207\s*ml|240\s*ml/i.test(rawText);
+  }
+
+  private parseCompactSingleColumn(textElements: TextElement[], rawText: string, result: NutritionParseResult): boolean {
+    // For compact formats, calcium is often in the horizontal vitamin list
+    const calciumMatch = rawText.match(/Calcium\s*(\d+)mg/i);
+    if (calciumMatch) {
+      result.calcium = parseInt(calciumMatch[1]);
+      console.log('OCR: Found compact format calcium:', result.calcium);
+    }
+    
+    // Serving size parsing for compact format
+    return this.parseServingFromText(rawText, result) && result.calcium !== null;
+  }
+
+  private parseWideMultiColumn(textElements: TextElement[], rawText: string, result: NutritionParseResult): boolean {
+    // Wide format usually has clear table structure
+    return this.parseWithEnhancedTableStructure(textElements, result);
+  }
+
+  private parseBottleCanFormat(textElements: TextElement[], rawText: string, result: NutritionParseResult): boolean {
+    // Bottle format has specific serving size patterns
+    const bottleServingMatch = rawText.match(/Serving\s*size\s*1\s*bottle\s*\((\d+)\s*(ml|mL)\)/i);
+    if (bottleServingMatch) {
+      result.servingQuantity = 1;
+      result.servingMeasure = 'bottle';
+      result.standardMeasureValue = parseInt(bottleServingMatch[1]);
+      result.standardMeasureUnit = 'ml';
+      console.log('OCR: Found bottle serving format');
+    }
+    
+    // Look for calcium in standard table format
+    const calciumMatch = rawText.match(/Calcium\s*(\d+)mg/i);
+    if (calciumMatch) {
+      result.calcium = parseInt(calciumMatch[1]);
+      console.log('OCR: Found bottle format calcium:', result.calcium);
+    }
+    
+    return result.servingQuantity !== null && result.calcium !== null;
+  }
+
+  private parseWithEnhancedSpatialAlignment(textElements: TextElement[], result: NutritionParseResult): boolean {
+    // Enhanced spatial alignment with better proximity matching
+    console.log('OCR: Using enhanced spatial alignment strategy');
     
     let servingParsed = false;
     let calciumParsed = false;
     
-    for (const group of alignmentGroups) {
-      const groupText = group.map(el => el.text).join(' ');
+    // Find serving-related keywords
+    const servingKeywords = textElements.filter(el => 
+      /serving|size/i.test(el.text) && !/nutrition|facts/i.test(el.text)
+    );
+    
+    for (const keyword of servingKeywords) {
+      const proximityElements = this.getProximityElements(keyword, textElements, 150);
       
-      if (/serving\s*size/i.test(groupText)) {
-        this.parseServingFromAlignedElements(group, result);
-        servingParsed = result.servingQuantity !== null && result.servingMeasure !== null;
+      // Enhanced serving parsing from nearby elements
+      for (const el of proximityElements) {
+        const text = el.text.trim();
+        
+        // Try to parse as fraction/quantity
+        if (!result.servingQuantity) {
+          const quantity = this.parseEnhancedFraction(text);
+          if (quantity !== null && this.validateEnhancedServingQuantity(quantity, text)) {
+            result.servingQuantity = quantity;
+            console.log('OCR: Found serving quantity via spatial alignment:', quantity);
+          }
+        }
+        
+        // Try to parse as measure
+        if (!result.servingMeasure && /^(cup|tbsp|tsp|bottle|slice|oz|fl|g|ml|mL|container)s?$/i.test(text)) {
+          result.servingMeasure = text.toLowerCase().replace(/s$/, '');
+          console.log('OCR: Found serving measure via spatial alignment:', result.servingMeasure);
+        }
+        
+        // Try to parse standard measure from parenthetical
+        if (!result.standardMeasureValue) {
+          const standardMatch = text.match(/\(?(\d+(?:\.\d+)?)\s*([a-zA-Z]+)\)?/);
+          if (standardMatch && /^(g|ml|mL|oz)$/i.test(standardMatch[2])) {
+            result.standardMeasureValue = parseFloat(standardMatch[1]);
+            result.standardMeasureUnit = standardMatch[2].toLowerCase();
+            console.log('OCR: Found standard measure via spatial alignment:', 
+              result.standardMeasureValue + result.standardMeasureUnit);
+          }
+        }
       }
       
-      if (/calcium/i.test(groupText)) {
-        this.parseCalciumFromAlignedElements(group, result);
+      if (result.servingQuantity && result.servingMeasure) {
+        servingParsed = true;
+        break;
+      }
+    }
+    
+    // Find calcium-related keywords
+    const calciumKeywords = textElements.filter(el => /calcium/i.test(el.text));
+    
+    for (const keyword of calciumKeywords) {
+      const proximityElements = this.getProximityElements(keyword, textElements, 100);
+      
+      // Enhanced calcium parsing from nearby elements
+      for (const el of proximityElements) {
+        const text = el.text.trim();
+        
+        // Direct mg value
+        const mgMatch = text.match(/^(\d+)mg$/i);
+        if (mgMatch) {
+          const mgValue = parseInt(mgMatch[1]);
+          if (mgValue > 0 && mgValue <= 2000) {
+            result.calcium = mgValue;
+            console.log('OCR: Found calcium mg via spatial alignment:', result.calcium);
+            calciumParsed = true;
+            break;
+          }
+        }
+        
+        // Percentage value
+        const percentMatch = text.match(/^(\d+)%$/i);
+        if (percentMatch) {
+          const percentValue = parseInt(percentMatch[1]);
+          if (percentValue > 0 && percentValue <= 100) {
+            result.calcium = Math.round((percentValue / 100) * this.CALCIUM_DV_MG);
+            console.log('OCR: Found calcium % via spatial alignment:', percentValue + '% =', result.calcium + 'mg');
+            calciumParsed = true;
+            break;
+          }
+        }
+      }
+      
+      if (calciumParsed) break;
+    }
+    
+    return servingParsed || calciumParsed;
+  }
+
+  private parseWithEnhancedRegex(text: string, result: NutritionParseResult): boolean {
+    let servingParsed = false;
+    let calciumParsed = false;
+    
+    // Enhanced serving size patterns
+    const servingPatterns = [
+      // Standard patterns with enhanced fraction support
+      /Serving\s*size\s*[:\-]?\s*([\d\.\/]+|1\/2|1\/3|1\/4|2\/3|3\/4)\s*(cup|tbsp|tsp|bottle|slice|container|oz|fl\s*oz|g|ml|mL)(?:\s*\(([0-9\.]+)\s*([a-zA-Z]+)\))?/i,
+      /Serving\s*size\s*[:\-]?\s*(\d+(?:\.\d+)?)\s*(cup|tbsp|tsp|bottle|slice|container|oz|fl\s*oz|g|ml|mL)\s*\(([0-9\.]+)\s*([a-zA-Z]+)\)/i,
+      /Serving\s*size\s*[:\-]?\s*([\d\.\/]+)\s*(cup|tbsp|tsp|bottle|slice|container|oz|fl|g|ml|mL)/i,
+      
+      // Compact format patterns
+      /(\d+(?:\.\d+)?)\s*(cup|tbsp|tsp|bottle|slice|container|oz|fl|g|ml|mL)\s*\(([0-9\.]+)\s*([a-zA-Z]+)\)/i,
+      /([\d\.\/]+|1\/2|1\/3|1\/4|2\/3|3\/4)\s*(cup|tbsp|tsp|bottle|slice|container|oz|fl|g|ml|mL)/i,
+    ];
+    
+    for (const pattern of servingPatterns) {
+      const match = text.match(pattern);
+      if (match) {
+        if (match[1]) {
+          const quantity = this.parseEnhancedFraction(match[1].trim());
+          if (quantity !== null && this.validateEnhancedServingQuantity(quantity, match[1])) {
+            result.servingQuantity = quantity;
+          }
+        }
+        if (match[2]) result.servingMeasure = match[2].trim().toLowerCase().replace(/s$/, '');
+        if (match[3]) result.standardMeasureValue = parseFloat(match[3]);
+        if (match[4]) result.standardMeasureUnit = match[4].trim().toLowerCase();
+        servingParsed = result.servingQuantity !== null && result.servingMeasure !== null;
+        console.log('OCR: Enhanced regex found serving:', match[0]);
+        break;
+      }
+    }
+    
+    // Enhanced calcium patterns
+    const calciumPatterns = [
+      { type: 'mg', pattern: /Calcium\s*[:\-]?\s*(\d+(?:\.\d+)?)mg/i },
+      { type: 'mg', pattern: /Calcium\s*[:\-]?\s*(\d+(?:\.\d+)?)\s*mg/i },
+      { type: 'percent', pattern: /Calcium\s*[:\-]?\s*(\d+(?:\.\d+)?)%/i },
+      { type: 'mg', pattern: /Calcium\s+(\d+(?:\.\d+)?)mg/i },
+      { type: 'mg', pattern: /Calcium[^\d]*(\d+(?:\.\d+)?)mg/i },
+      { type: 'percent', pattern: /Calcium[^\d]*(\d+(?:\.\d+)?)%/i },
+      
+      // Compact format patterns
+      { type: 'mg', pattern: /•\s*Calcium\s+(\d+)mg/i },
+      { type: 'percent', pattern: /•\s*Calcium.*?(\d+)%/i },
+    ];
+    
+    for (const { type, pattern } of calciumPatterns) {
+      const match = text.match(pattern);
+      if (match) {
+        const value = parseFloat(match[1]);
+        if (type === 'mg' && value > 0 && value <= 2000) {
+          result.calcium = Math.round(value);
+        } else if (type === 'percent' && value > 0 && value <= 100) {
+          result.calcium = Math.round((value / 100) * this.CALCIUM_DV_MG);
+        }
         calciumParsed = result.calcium !== null;
+        console.log('OCR: Enhanced regex found calcium:', match[0]);
+        break;
       }
     }
     
     return servingParsed && calciumParsed;
   }
 
-  private groupByAlignment(textElements: TextElement[]): TextElement[][] {
-    const groups: TextElement[][] = [];
-    const yTolerance = 8;
+  private parseWithFuzzyMatching(textElements: TextElement[], text: string, result: NutritionParseResult): boolean {
+    // Enhanced fuzzy matching as last resort
+    console.log('OCR: Using enhanced fuzzy matching strategy');
     
-    for (const element of textElements) {
-      let foundGroup = false;
-      for (const group of groups) {
-        if (group.some(el => Math.abs(el.y - element.y) <= yTolerance)) {
-          group.push(element);
-          foundGroup = true;
-          break;
+    const servingElements = textElements.filter(el => 
+      this.fuzzyMatch(el.text.toLowerCase(), 'serving') ||
+      this.fuzzyMatch(el.text.toLowerCase(), 'size')
+    );
+    
+    const calciumElements = textElements.filter(el => 
+      this.fuzzyMatch(el.text.toLowerCase(), 'calcium') ||
+      el.text.toLowerCase().includes('calc')
+    );
+    
+    let hasResults = false;
+    
+    if (servingElements.length > 0) {
+      hasResults = this.parseWithEnhancedProximity(servingElements, textElements, result, 'serving') || hasResults;
+    }
+    
+    if (calciumElements.length > 0) {
+      hasResults = this.parseWithEnhancedProximity(calciumElements, textElements, result, 'calcium') || hasResults;
+    }
+    
+    return hasResults;
+  }
+
+  private parseEnhancedFraction(text: string): number | null {
+    if (!text) return null;
+    
+    // Handle common fraction formats
+    const fractionPatterns = [
+      // Standard fractions
+      { pattern: /^(\d+)\/(\d+)$/, handler: (m: RegExpMatchArray) => parseFloat(m[1]) / parseFloat(m[2]) },
+      { pattern: /^(\d+)\s+(\d+)\/(\d+)$/, handler: (m: RegExpMatchArray) => parseFloat(m[1]) + (parseFloat(m[2]) / parseFloat(m[3])) },
+      
+      // Decimal numbers
+      { pattern: /^(\d+\.?\d*)$/, handler: (m: RegExpMatchArray) => parseFloat(m[1]) },
+      
+      // Common OCR misreads corrected
+      { pattern: /^1I2$|^112$|^l\/2$|^I\/2$/i, handler: () => 0.5 },
+      { pattern: /^2I3$|^213$/i, handler: () => 2/3 },
+      { pattern: /^1I3$|^113$/i, handler: () => 1/3 },
+      { pattern: /^1I4$|^114$/i, handler: () => 0.25 },
+      { pattern: /^3I4$|^314$/i, handler: () => 0.75 },
+    ];
+    
+    for (const { pattern, handler } of fractionPatterns) {
+      const match = text.match(pattern);
+      if (match) {
+        const result = handler(match);
+        if (result > 0 && result <= 20) { // Reasonable serving size range
+          return result;
         }
-      }
-      if (!foundGroup) {
-        groups.push([element]);
       }
     }
     
-    // Sort elements within each group by X coordinate
-    groups.forEach(group => group.sort((a, b) => a.x - b.x));
+    return null;
+  }
+
+  private validateEnhancedServingQuantity(quantity: number, rawText: string): boolean {
+    // Enhanced validation that's less restrictive but still sensible
     
-    return groups;
+    // Handle very large misreads (like "112" for "1/2")
+    if (quantity > 50 && /^\d{2,3}$/.test(rawText)) {
+      console.log('OCR: Potential large misread detected:', rawText, '=', quantity);
+      return false;
+    }
+    
+    // Normal range validation - more permissive than before
+    if (quantity > 0 && quantity <= 20) {
+      return true;
+    }
+    
+    // Special case: allow some larger values for containers/bottles
+    if (quantity > 20 && quantity <= 100 && /container|bottle/i.test(rawText)) {
+      return true;
+    }
+    
+    console.log('OCR: Serving quantity outside valid range:', quantity);
+    return false;
+  }
+
+  private getProximityElements(centerElement: TextElement, allElements: TextElement[], threshold: number): TextElement[] {
+    return allElements.filter(el => {
+      if (el === centerElement) return false;
+      const distance = Math.sqrt(
+        Math.pow(el.x - centerElement.x, 2) + Math.pow(el.y - centerElement.y, 2)
+      );
+      return distance <= threshold;
+    }).sort((a, b) => {
+      const distA = Math.sqrt(Math.pow(a.x - centerElement.x, 2) + Math.pow(a.y - centerElement.y, 2));
+      const distB = Math.sqrt(Math.pow(b.x - centerElement.x, 2) + Math.pow(b.y - centerElement.y, 2));
+      return distA - distB;
+    });
+  }
+
+  private parseWithEnhancedProximity(keyElements: TextElement[], allElements: TextElement[], result: NutritionParseResult, type: 'serving' | 'calcium'): boolean {
+    const proximityThreshold = 120; // Increased threshold
+    let hasResults = false;
+    
+    for (const keyElement of keyElements) {
+      const nearbyElements = this.getProximityElements(keyElement, allElements, proximityThreshold);
+      
+      if (type === 'serving') {
+        const beforeResults = { servingQuantity: result.servingQuantity, servingMeasure: result.servingMeasure };
+        this.parseServingFromAlignedElements(nearbyElements, result);
+        if (result.servingQuantity !== beforeResults.servingQuantity || 
+            result.servingMeasure !== beforeResults.servingMeasure) {
+          hasResults = true;
+        }
+      } else if (type === 'calcium') {
+        const beforeCalcium = result.calcium;
+        this.parseCalciumFromAlignedElements(nearbyElements, result);
+        if (result.calcium !== beforeCalcium) {
+          hasResults = true;
+        }
+      }
+      
+      // If we found what we need, stop looking
+      if ((type === 'serving' && result.servingQuantity && result.servingMeasure) ||
+          (type === 'calcium' && result.calcium)) {
+        break;
+      }
+    }
+    
+    return hasResults;
   }
 
   private parseServingFromAlignedElements(elements: TextElement[], result: NutritionParseResult): void {
-    // Sort elements by X position for left-to-right processing
-    const sortedElements = elements.sort((a, b) => a.x - b.x);
-    
-    for (let i = 0; i < sortedElements.length; i++) {
-      const element = sortedElements[i];
-      let text = element.text.trim();
+    for (const element of elements) {
+      const text = element.text.trim();
       
-      // Apply OCR corrections before parsing
-      text = this.correctCommonOCRErrors(text);
-      
-      if (!result.servingQuantity && /^[\d\.\/]+$/.test(text)) {
-        const quantity = this.parseFraction(text);
-        if (this.validateServingQuantity(quantity, element.text)) {
+      // Try quantity parsing
+      if (!result.servingQuantity) {
+        const quantity = this.parseEnhancedFraction(text);
+        if (quantity !== null && this.validateEnhancedServingQuantity(quantity, text)) {
           result.servingQuantity = quantity;
-          console.log('OCR: Found serving quantity:', result.servingQuantity);
+          console.log('OCR: Found aligned serving quantity:', quantity);
+          continue;
         }
-        continue;
       }
       
-      if (!result.servingMeasure && /^(cup|tbsp|tsp|bottle|slice|oz|fl|g|ml|mL)s?$/i.test(text)) {
+      // Try measure parsing
+      if (!result.servingMeasure && /^(cup|tbsp|tsp|bottle|slice|container|oz|fl|g|ml|mL)s?$/i.test(text)) {
         result.servingMeasure = text.toLowerCase().replace(/s$/, '');
-        console.log('OCR: Found serving measure:', result.servingMeasure);
+        console.log('OCR: Found aligned serving measure:', result.servingMeasure);
         continue;
       }
       
-      // Look for parenthetical standard measure - handle split elements
+      // Try standard measure parsing
       if (!result.standardMeasureValue) {
-        // Check for "(240" format
-        const parenMatch = text.match(/^\(?(\d+(?:\.\d+)?)/);
-        if (parenMatch) {
-          const value = parseFloat(parenMatch[1]);
-          if (value >= 10 && value <= 2000) { // Reasonable standard measure range
-            result.standardMeasureValue = value;
-            console.log('OCR: Found standard measure value:', value);
-            
-            // Look ahead for the unit in next elements
-            for (let j = i + 1; j < Math.min(i + 3, sortedElements.length); j++) {
-              const nextText = sortedElements[j].text.trim();
-              const unitMatch = nextText.match(/^([a-zA-Z]+)\)?$/);
-              if (unitMatch && /^(g|mg|ml|mL|oz|fl)$/i.test(unitMatch[1])) {
-                result.standardMeasureUnit = unitMatch[1].toLowerCase();
-                console.log('OCR: Found standard measure unit:', result.standardMeasureUnit);
-                break;
-              }
-            }
-          }
-        }
-        
-        // Look for combined format like "240mL" or complete "(240mL)"
-        const combinedMatch = text.match(/^[\(\[]?(\d+(?:\.\d+)?)\s*([a-zA-Z]+)[\)\]]?$/);
-        if (combinedMatch) {
-          const value = parseFloat(combinedMatch[1]);
-          if (value >= 10 && value <= 2000) {
-            result.standardMeasureValue = value;
-            result.standardMeasureUnit = combinedMatch[2].toLowerCase();
-            console.log('OCR: Found combined standard measure:', result.standardMeasureValue, result.standardMeasureUnit);
-          }
+        const standardMatch = text.match(/^\(?(\d+(?:\.\d+)?)\s*([a-zA-Z]+)\)?$/);
+        if (standardMatch && /^(g|ml|mL|oz)$/i.test(standardMatch[2])) {
+          result.standardMeasureValue = parseFloat(standardMatch[1]);
+          result.standardMeasureUnit = standardMatch[2].toLowerCase();
+          console.log('OCR: Found aligned standard measure:', 
+            result.standardMeasureValue + result.standardMeasureUnit);
         }
       }
     }
@@ -666,107 +1060,62 @@ export class OCRService {
     for (const element of elements) {
       const text = element.text.trim();
       
-      const mgMatch = text.match(/^(\d+(?:\.\d+)?)mg$/i);
+      // Direct mg value
+      const mgMatch = text.match(/^(\d+)mg$/i);
       if (mgMatch) {
-        result.calcium = Math.round(parseFloat(mgMatch[1]));
-        return;
+        const mgValue = parseInt(mgMatch[1]);
+        if (mgValue > 0 && mgValue <= 2000) {
+          result.calcium = mgValue;
+          console.log('OCR: Found aligned calcium mg:', result.calcium);
+          return;
+        }
       }
       
-      const percentMatch = text.match(/^(\d+(?:\.\d+)?)%$/);
+      // Percentage value
+      const percentMatch = text.match(/^(\d+)%$/i);
       if (percentMatch) {
-        const percent = parseFloat(percentMatch[1]);
-        result.calcium = Math.round((percent / 100) * this.CALCIUM_DV_MG);
-        return;
+        const percentValue = parseInt(percentMatch[1]);
+        if (percentValue > 0 && percentValue <= 100) {
+          result.calcium = Math.round((percentValue / 100) * this.CALCIUM_DV_MG);
+          console.log('OCR: Found aligned calcium %:', percentValue + '% =', result.calcium + 'mg');
+          return;
+        }
       }
       
-      const numberMatch = text.match(/^(\d+(?:\.\d+)?)$/);
-      if (numberMatch && element.x > 200) { // Likely in value column
-        const value = parseFloat(numberMatch[1]);
-        if (value >= 1 && value <= 2000) {
-          result.calcium = Math.round(value);
+      // Combined pattern
+      const combinedMatch = text.match(/(\d+)(mg|%)/i);
+      if (combinedMatch) {
+        const value = parseInt(combinedMatch[1]);
+        const unit = combinedMatch[2].toLowerCase();
+        
+        if (unit === 'mg' && value > 0 && value <= 2000) {
+          result.calcium = value;
+          console.log('OCR: Found aligned calcium combined mg:', result.calcium);
+          return;
+        } else if (unit === '%' && value > 0 && value <= 100) {
+          result.calcium = Math.round((value / 100) * this.CALCIUM_DV_MG);
+          console.log('OCR: Found aligned calcium combined %:', value + '% =', result.calcium + 'mg');
           return;
         }
       }
     }
   }
 
-  private parseWithEnhancedRegex(text: string, result: NutritionParseResult): boolean {
-    let servingParsed = false;
-    let calciumParsed = false;
-    
-    // Enhanced serving size patterns
-    const servingPatterns = [
-      /Serving\s*size\s*[:\-]?\s*([\d\.\/]+)\s*([a-zA-Z]+(?:\s+[a-zA-Z]+)?)\s*\(\s*([\d\.]+)\s*([a-zA-Z]+)\s*\)/i,
-      /Serving\s*size\s*[:\-]?\s*([\d\.\/]+)\s*([a-zA-Z]+)\s*\(\s*([\d\.]+)\s*([a-zA-Z]+)\s*\)/i,
-      /Serving\s*size\s+[:\-]?\s*([\d\.\/]+)\s+([a-zA-Z]+)(?:\s+\(([0-9\.]+)\s*([a-zA-Z]+)\))?/i,
-      /Serving\s*size\s*[:\-]?\s*([\d\.\/]+)\s*([a-zA-Z]+)/i,
-    ];
-    
-    for (const pattern of servingPatterns) {
-      const match = text.match(pattern);
-      if (match) {
-        if (match[1]) result.servingQuantity = this.parseFraction(match[1].trim());
-        if (match[2]) result.servingMeasure = match[2].trim().toLowerCase();
-        if (match[3]) result.standardMeasureValue = parseFloat(match[3]);
-        if (match[4]) result.standardMeasureUnit = match[4].trim().toLowerCase();
-        servingParsed = true;
-        console.log('OCR: Regex found serving:', match[0]);
-        break;
+  private parseServingFromText(text: string, result: NutritionParseResult): boolean {
+    // Fallback serving parsing from raw text
+    const servingMatch = text.match(/Serving\s*size\s*[:\-]?\s*([\d\.\/]+|1\/2|1\/3|1\/4|2\/3|3\/4)\s*(cup|tbsp|tsp|bottle|slice|container|oz|fl|g|ml|mL)/i);
+    if (servingMatch) {
+      const quantity = this.parseEnhancedFraction(servingMatch[1]);
+      if (quantity !== null && this.validateEnhancedServingQuantity(quantity, servingMatch[1])) {
+        result.servingQuantity = quantity;
+        result.servingMeasure = servingMatch[2].toLowerCase();
+        return true;
       }
     }
-    
-    // Enhanced calcium patterns
-    const calciumPatterns = [
-      { type: 'mg', pattern: /Calcium\s*[:\-]?\s*(\d+(?:\.\d+)?)mg/i },
-      { type: 'percent', pattern: /Calcium\s*[:\-]?\s*(\d+(?:\.\d+)?)%/i },
-      { type: 'mg', pattern: /Calcium\s+(\d+(?:\.\d+)?)mg/i },
-      { type: 'mg', pattern: /Calcium\s*[:\-]\s*(\d+(?:\.\d+)?)mg/i },
-      { type: 'mg', pattern: /Calcium[^\d]*(\d+(?:\.\d+)?)mg/i },
-    ];
-    
-    for (const { type, pattern } of calciumPatterns) {
-      const match = text.match(pattern);
-      if (match) {
-        const value = parseFloat(match[1]);
-        if (type === 'mg') {
-          result.calcium = Math.round(value);
-        } else if (type === 'percent') {
-          result.calcium = Math.round((value / 100) * this.CALCIUM_DV_MG);
-        }
-        calciumParsed = true;
-        console.log('OCR: Regex found calcium:', match[0]);
-        break;
-      }
-    }
-    
-    return servingParsed && calciumParsed;
+    return false;
   }
 
-  private parseWithFuzzyMatching(textElements: TextElement[], text: string, result: NutritionParseResult): boolean {
-    // Implementation of fuzzy matching as last resort
-    console.log('OCR: Using fuzzy matching as last resort');
-    
-    const servingElements = textElements.filter(el => 
-      this.fuzzyMatch(el.text.toLowerCase(), 'serving') ||
-      this.fuzzyMatch(el.text.toLowerCase(), 'size')
-    );
-    
-    const calciumElements = textElements.filter(el => 
-      this.fuzzyMatch(el.text.toLowerCase(), 'calcium')
-    );
-    
-    if (servingElements.length > 0) {
-      this.parseWithProximity(servingElements, textElements, result, 'serving');
-    }
-    
-    if (calciumElements.length > 0) {
-      this.parseWithProximity(calciumElements, textElements, result, 'calcium');
-    }
-    
-    return result.servingQuantity !== null && result.calcium !== null;
-  }
-
-  private fuzzyMatch(text: string, target: string, threshold: number = 0.7): boolean {
+  private fuzzyMatch(text: string, target: string, threshold: number = 0.6): boolean {
     const distance = this.levenshteinDistance(text, target);
     const similarity = 1 - distance / Math.max(text.length, target.length);
     return similarity >= threshold;
@@ -800,124 +1149,29 @@ export class OCRService {
     return matrix[b.length][a.length];
   }
 
-  private parseWithProximity(keyElements: TextElement[], allElements: TextElement[], result: NutritionParseResult, type: 'serving' | 'calcium'): void {
-    const proximityThreshold = 100; // pixels
+  private parseNutritionDataFallback(rawText: string, apiResponse: OCRResponse): NutritionParseResult {
+    console.log('OCR: Using fallback parsing without spatial data');
     
-    for (const keyElement of keyElements) {
-      const nearbyElements = allElements.filter(el => {
-        const distance = Math.sqrt(
-          Math.pow(el.x - keyElement.x, 2) + Math.pow(el.y - keyElement.y, 2)
-        );
-        return distance <= proximityThreshold && el !== keyElement;
-      }).sort((a, b) => {
-        const distA = Math.sqrt(Math.pow(a.x - keyElement.x, 2) + Math.pow(a.y - keyElement.y, 2));
-        const distB = Math.sqrt(Math.pow(b.x - keyElement.x, 2) + Math.pow(b.y - keyElement.y, 2));
-        return distA - distB;
-      });
-      
-      if (type === 'serving') {
-        this.parseServingFromAlignedElements(nearbyElements, result);
-      } else if (type === 'calcium') {
-        this.parseCalciumFromAlignedElements(nearbyElements, result);
-      }
-      
-      // If we found what we need, stop looking
-      if ((type === 'serving' && result.servingQuantity && result.servingMeasure) ||
-          (type === 'calcium' && result.calcium)) {
-        break;
-      }
-    }
-  }
-
-  private parseFraction(text: string): number {
-    const fractionPatterns = [
-      /^(\d+)\/(\d+)$/,
-      /^(\d+)\s*\/\s*(\d+)$/,
-      /^(\d+)\.(\d+)$/,
-      /^(\d+)$/,
-    ];
-    
-    for (const pattern of fractionPatterns) {
-      const match = text.match(pattern);
-      if (match) {
-        if (pattern.source.includes('/')) {
-          const numerator = parseFloat(match[1]);
-          const denominator = parseFloat(match[2]);
-          if (denominator !== 0) {
-            return numerator / denominator;
-          }
-        } else {
-          return parseFloat(match[0]);
-        }
-      }
-    }
-    
-    const numberMatch = text.match(/(\d+(?:\.\d+)?)/);
-    if (numberMatch) {
-      return parseFloat(numberMatch[1]);
-    }
-    
-    return 0;
-  }
-
-  private parseNutritionDataFallback(text: string, apiResponse: OCRResponse): NutritionParseResult {
-    console.log('OCR: Using enhanced fallback regex parsing');
-    
-    const cleanedText = this.preprocessText(text);
     const result: NutritionParseResult = {
-      rawText: text,
+      rawText,
       servingQuantity: null,
       servingMeasure: null,
       standardMeasureValue: null,
       standardMeasureUnit: null,
       calcium: null,
-      confidence: 'low'
+      confidence: 'low',
+      spatialResults: [],
+      fullApiResponse: apiResponse
     };
-
-    this.parseWithEnhancedRegex(cleanedText, result);
+    
+    const preprocessedText = this.preprocessText(rawText);
+    this.parseWithEnhancedRegex(preprocessedText, result);
     
     result.confidence = this.calculateConfidence(result);
     result.servingSize = this.buildLegacyServingSize(result);
     result.calciumValue = result.calcium;
-    result.spatialResults = [];
-    result.fullApiResponse = apiResponse;
-
-    return result;
-  }
-
-  private correctCommonOCRErrors(text: string): string {
-    const ocrCorrections: [RegExp, string][] = [
-      // Common fraction misreads
-      [/^112\s*cup$/i, '1/2 cup'],
-      [/^114\s*cup$/i, '1/4 cup'],  
-      [/^134\s*cup$/i, '3/4 cup'],
-      [/^113\s*cup$/i, '1/3 cup'],
-      [/^112\s*tbsp$/i, '1/2 tbsp'],
-      [/^114\s*tbsp$/i, '1/4 tbsp'],
-      
-      // Common character substitutions in quantities
-      [/^(\d+)l(\d+)/, '$1/$2'], // "1l2" → "1/2"  
-      [/^(\d+)I(\d+)/, '$1/$2'], // "1I2" → "1/2" (capital i)
-      [/^l(\d+)/, '1/$1'], // "l2" → "1/2"
-      [/^I(\d+)/, '1/$1'], // "I2" → "1/2"
-    ];
-
-    let corrected = text;
-    for (const [pattern, replacement] of ocrCorrections) {
-      corrected = corrected.replace(pattern, replacement);
-    }
-    return corrected;
-  }  
-
-  private validateServingQuantity(quantity: number, rawText: string): boolean {
-    // If it looks like a misread fraction (e.g., 112), likely invalid
-    if (quantity > 10 && /^\d{3}$/.test(rawText)) {
-      console.log('OCR: Potential misread fraction detected:', rawText);
-      return false;
-    }
     
-    // Normal range check
-    return quantity > 0 && quantity <= 10;
+    return result;
   }
 
   private isResultComplete(result: NutritionParseResult): boolean {
@@ -934,22 +1188,22 @@ export class OCRService {
 
   private scoreResult(result: NutritionParseResult): number {
     let score = 0;
-    if (result.servingQuantity !== null) score += 2;
-    if (result.servingMeasure !== null) score += 2;
-    if (result.standardMeasureValue !== null) score += 1;
+    if (result.servingQuantity !== null) score += 3;
+    if (result.servingMeasure !== null) score += 3;
+    if (result.standardMeasureValue !== null) score += 2;
     if (result.standardMeasureUnit !== null) score += 1;
-    if (result.calcium !== null) score += 3;
+    if (result.calcium !== null) score += 4;
     return score;
   }
 
   private calculateConfidence(result: NutritionParseResult): 'low' | 'medium' | 'high' {
     const score = this.scoreResult(result);
-    const maxScore = 9;
+    const maxScore = 13; // Updated max score
     
     const percentage = score / maxScore;
     
-    if (percentage >= 0.8) return 'high';
-    if (percentage >= 0.5) return 'medium';
+    if (percentage >= 0.85) return 'high';
+    if (percentage >= 0.6) return 'medium';
     return 'low';
   }
 
