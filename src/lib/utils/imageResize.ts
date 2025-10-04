@@ -24,6 +24,15 @@ interface ResizeCalculation {
   quality: number;
 }
 
+interface ImageAnalysis {
+  needsPreprocessing: boolean;
+  estimatedDPI: number;
+  hasLowContrast: boolean;
+  isNoisy: boolean;
+  isSkewed: boolean;
+  reasons: string[];
+}
+
 export class ImageResizer {
   static async resizeForOCR(file: File, maxSizeBytes: number = 1024 * 1024): Promise<File> {
     // If file is already under limit, return as-is
@@ -158,5 +167,337 @@ export class ImageResizer {
     }
 
     return currentFile;
+  }
+
+  static async analyzeImageQuality(file: File): Promise<ImageAnalysis> {
+    return new Promise((resolve) => {
+      const img = new Image();
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+
+      img.onload = () => {
+        canvas.width = Math.min(img.width, 400);  // Sample at reasonable size
+        canvas.height = Math.min(img.height, 400);
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const analysis = this.performQuickAnalysis(imageData, img.width, img.height, file.size);
+        resolve(analysis);
+      };
+
+      img.src = URL.createObjectURL(file);
+    });
+  }
+
+  private static performQuickAnalysis(imageData: ImageData, originalWidth: number, originalHeight: number, fileSize: number): ImageAnalysis {
+    const pixels = imageData.data;
+    const analysis: ImageAnalysis = {
+      needsPreprocessing: false,
+      estimatedDPI: this.estimateDPI(originalWidth, originalHeight, fileSize),
+      hasLowContrast: false,
+      isNoisy: false,
+      isSkewed: false,
+      reasons: []
+    };
+
+    // Quick contrast check (sample every 10th pixel)
+    let contrastSum = 0;
+    let samples = 0;
+    for (let i = 0; i < pixels.length; i += 40) { // Every 10th pixel, 4 bytes per pixel
+      const gray = (pixels[i] + pixels[i + 1] + pixels[i + 2]) / 3;
+      contrastSum += gray;
+      samples++;
+    }
+
+    const avgBrightness = contrastSum / samples;
+    analysis.hasLowContrast = avgBrightness < 50 || avgBrightness > 200;
+
+    if (analysis.hasLowContrast) {
+      analysis.reasons.push('Low contrast detected');
+      analysis.needsPreprocessing = true;
+    }
+
+    if (analysis.estimatedDPI < 150) {
+      analysis.reasons.push('Low resolution detected');
+      analysis.needsPreprocessing = true;
+    }
+
+    return analysis;
+  }
+
+  private static estimateDPI(width: number, height: number, fileSize: number): number {
+    // Rough DPI estimation based on dimensions and file size
+    const megapixels = (width * height) / 1000000;
+    const bytesPerPixel = fileSize / (width * height);
+
+    // Typical DPI ranges based on image characteristics
+    if (megapixels < 1 && bytesPerPixel < 1) return 96;   // Screenshot-like
+    if (megapixels < 2 && bytesPerPixel < 2) return 150;  // Phone camera, compressed
+    if (megapixels > 3 && bytesPerPixel > 2) return 300;  // High quality scan/photo
+
+    return 200; // Default estimate
+  }
+
+  static async enhanceContrastIfNeeded(file: File, analysis: ImageAnalysis): Promise<File> {
+    if (!analysis.hasLowContrast) {
+      console.log('Image has good contrast, skipping enhancement');
+      return file;
+    }
+
+    console.log('Applying contrast enhancement...');
+
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+
+      img.onload = () => {
+        canvas.width = img.width;
+        canvas.height = img.height;
+        ctx.drawImage(img, 0, 0);
+
+        // Simple contrast enhancement using canvas filters
+        ctx.filter = 'contrast(150%) brightness(110%)';
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.drawImage(canvas, 0, 0);
+
+        canvas.toBlob((blob) => {
+          if (blob) {
+            const enhancedFile = new File([blob], file.name, {
+              type: file.type,
+              lastModified: Date.now()
+            });
+            console.log('Contrast enhancement complete');
+            resolve(enhancedFile);
+          } else {
+            reject(new Error('Failed to enhance contrast'));
+          }
+        }, file.type, 0.9);
+      };
+
+      img.onerror = () => reject(new Error('Failed to load image for enhancement'));
+      img.src = URL.createObjectURL(file);
+    });
+  }
+
+  static async binarizeIfNeeded(file: File, analysis: ImageAnalysis): Promise<File> {
+    // Only binarize if image is very unclear or noisy
+    if (!analysis.hasLowContrast && !analysis.isNoisy) {
+      return file;
+    }
+
+    console.log('Applying binarization for text clarity...');
+
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+
+      img.onload = () => {
+        canvas.width = img.width;
+        canvas.height = img.height;
+        ctx.drawImage(img, 0, 0);
+
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const pixels = imageData.data;
+
+        // Simple Otsu-like thresholding
+        let threshold = this.calculateOtsuThreshold(pixels);
+
+        for (let i = 0; i < pixels.length; i += 4) {
+          const gray = (pixels[i] + pixels[i + 1] + pixels[i + 2]) / 3;
+          const binary = gray > threshold ? 255 : 0;
+          pixels[i] = pixels[i + 1] = pixels[i + 2] = binary;
+        }
+
+        ctx.putImageData(imageData, 0, 0);
+
+        canvas.toBlob((blob) => {
+          if (blob) {
+            const binarizedFile = new File([blob], file.name, {
+              type: file.type,
+              lastModified: Date.now()
+            });
+            resolve(binarizedFile);
+          } else {
+            reject(new Error('Failed to binarize image'));
+          }
+        }, file.type, 0.9);
+      };
+
+      img.onerror = () => reject(new Error('Failed to load image for binarization'));
+      img.src = URL.createObjectURL(file);
+    });
+  }
+
+  private static calculateOtsuThreshold(pixels: Uint8ClampedArray): number {
+    // Simplified Otsu thresholding - compute histogram and find optimal threshold
+    const histogram = new Array(256).fill(0);
+    const total = pixels.length / 4;
+
+    // Build histogram
+    for (let i = 0; i < pixels.length; i += 4) {
+      const gray = Math.round((pixels[i] + pixels[i + 1] + pixels[i + 2]) / 3);
+      histogram[gray]++;
+    }
+
+    let sum = 0;
+    for (let i = 0; i < 256; i++) {
+      sum += i * histogram[i];
+    }
+
+    let sumB = 0;
+    let wB = 0;
+    let wF = 0;
+    let maxVariance = 0;
+    let threshold = 0;
+
+    for (let t = 0; t < 256; t++) {
+      wB += histogram[t];
+      if (wB === 0) continue;
+
+      wF = total - wB;
+      if (wF === 0) break;
+
+      sumB += t * histogram[t];
+
+      const mB = sumB / wB;
+      const mF = (sum - sumB) / wF;
+
+      const variance = wB * wF * (mB - mF) * (mB - mF);
+
+      if (variance > maxVariance) {
+        maxVariance = variance;
+        threshold = t;
+      }
+    }
+
+    return threshold;
+  }
+
+  static async deskewIfNeeded(file: File, analysis: ImageAnalysis): Promise<File> {
+    if (!analysis.isSkewed) {
+      return file;
+    }
+
+    console.log('Applying deskew correction...');
+
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+
+      img.onload = () => {
+        // For now, implement a simple rotation detection
+        // In production, this would use line detection algorithms
+        canvas.width = img.width;
+        canvas.height = img.height;
+
+        // Placeholder: slight rotation correction
+        // Real implementation would detect text line angles
+        ctx.translate(canvas.width / 2, canvas.height / 2);
+        ctx.rotate(0.02); // Small correction, ~1 degree
+        ctx.translate(-canvas.width / 2, -canvas.height / 2);
+        ctx.drawImage(img, 0, 0);
+
+        canvas.toBlob((blob) => {
+          if (blob) {
+            const deskewedFile = new File([blob], file.name, {
+              type: file.type,
+              lastModified: Date.now()
+            });
+            resolve(deskewedFile);
+          } else {
+            reject(new Error('Failed to deskew image'));
+          }
+        }, file.type, 0.9);
+      };
+
+      img.onerror = () => reject(new Error('Failed to load image for deskewing'));
+      img.src = URL.createObjectURL(file);
+    });
+  }
+
+  static async reduceNoiseIfNeeded(file: File, analysis: ImageAnalysis): Promise<File> {
+    if (!analysis.isNoisy) {
+      return file;
+    }
+
+    console.log('Applying noise reduction...');
+
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+
+      img.onload = () => {
+        canvas.width = img.width;
+        canvas.height = img.height;
+        ctx.drawImage(img, 0, 0);
+
+        // Simple noise reduction using canvas filter
+        ctx.filter = 'blur(0.5px)';
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.drawImage(canvas, 0, 0);
+
+        canvas.toBlob((blob) => {
+          if (blob) {
+            const cleanFile = new File([blob], file.name, {
+              type: file.type,
+              lastModified: Date.now()
+            });
+            resolve(cleanFile);
+          } else {
+            reject(new Error('Failed to reduce noise'));
+          }
+        }, file.type, 0.9);
+      };
+
+      img.onerror = () => reject(new Error('Failed to load image for noise reduction'));
+      img.src = URL.createObjectURL(file);
+    });
+  }
+
+  static async preprocessForOCR(file: File): Promise<File> {
+    console.log('Starting intelligent image preprocessing...');
+
+    // Step 1: Analyze image quality (fast)
+    const analysis = await this.analyzeImageQuality(file);
+
+    console.log('Image analysis results:', {
+      needsPreprocessing: analysis.needsPreprocessing,
+      estimatedDPI: analysis.estimatedDPI,
+      reasons: analysis.reasons
+    });
+
+    // Early bailout for high-quality images
+    if (!analysis.needsPreprocessing) {
+      console.log('Image quality is good, skipping preprocessing');
+      return file;
+    }
+
+    // Step 2: Apply optimizations conditionally
+    let processedFile = file;
+
+    try {
+      // Enhance contrast if needed (fast)
+      processedFile = await this.enhanceContrastIfNeeded(processedFile, analysis);
+
+      // Reduce noise if needed (medium speed)
+      processedFile = await this.reduceNoiseIfNeeded(processedFile, analysis);
+
+      // Binarize for very unclear images (medium speed)
+      processedFile = await this.binarizeIfNeeded(processedFile, analysis);
+
+      // Deskew if needed (slower, only for clearly skewed images)
+      processedFile = await this.deskewIfNeeded(processedFile, analysis);
+
+      console.log('Preprocessing completed successfully');
+      return processedFile;
+
+    } catch (error) {
+      console.warn('Preprocessing failed, using original image:', error);
+      return file; // Fallback to original
+    }
   }
 }

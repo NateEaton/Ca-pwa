@@ -89,10 +89,15 @@ export class OCRService {
         throw new Error('OCR API key not configured');
       }
 
-      // Compress if needed
+      // Apply intelligent preprocessing
       let processedFile: File = file;
-      if (file.size > 1024 * 1024) {
-        processedFile = await ImageResizer.compressWithFallback(file, 1024 * 1024, 3);
+
+      // Step 1: Apply OCR-specific preprocessing (conditional)
+      processedFile = await ImageResizer.preprocessForOCR(file);
+
+      // Step 2: Compress if needed (existing logic)
+      if (processedFile.size > 1024 * 1024) {
+        processedFile = await ImageResizer.compressWithFallback(processedFile, 1024 * 1024, 3);
       }
 
       const formData = new FormData();
@@ -102,6 +107,8 @@ export class OCRService {
       formData.append('isTable', 'true');
       formData.append('isOverlayRequired', 'true');
       formData.append('iscreatesearchablepdf', 'false');
+      formData.append('scale', 'true');
+      formData.append('detectOrientation', 'true');
 
       console.log('OCR: Making API request...');
 
