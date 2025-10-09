@@ -45,6 +45,13 @@
     }
   }
 
+  function handleBackdropKeydown(event) {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      handleBackdropClick(event);
+    }
+  }
+
   function formatDate(dateString) {
     if (!dateString) return 'Unknown';
     try {
@@ -62,7 +69,7 @@
 <svelte:window on:keydown={handleKeydown} />
 
 {#if show && food}
-  <div class="modal-backdrop" on:click={handleBackdropClick}>
+  <div class="modal-backdrop" on:click={handleBackdropClick} on:keydown={handleBackdropKeydown} role="button" tabindex="0">
     <div class="modal-dialog">
       <div class="modal-header">
         <h3 class="modal-title">
