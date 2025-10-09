@@ -89,3 +89,6 @@ source_data/canada-nutrition-config.json
 source_data/iof-calcium-config.json
 source_data/iof-calcium-parsed.csv
 source_data/migrated-migration-report.json
+
+ocr/
+calcium-dev.eatonfamily.net.conf
