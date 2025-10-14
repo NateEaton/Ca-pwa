@@ -28,6 +28,7 @@
   import { OCRService } from '$lib/services/OCRService.ts';
   import { FDC_CONFIG } from '$lib/config/fdc.js';
   import { OCR_CONFIG } from '$lib/config/ocr.js';
+  import TestDataCollector from './TestDataCollector.svelte';
 
   export let show = false;
 
@@ -67,6 +68,10 @@
   let longPressTimer = null;
   let isLongPressing = false;
 
+  // --- Test Data Collector State ---
+  let testCollectorRef = null;
+  let isTestMode = false;
+
   // --- General Modal State ---
   let isLoading = false;
   let error = null;
@@ -84,6 +89,9 @@
 
     const lastSource = localStorage.getItem('upc-data-source');
     if (lastSource) selectedSource = lastSource;
+
+    // Initialize test mode
+    isTestMode = import.meta.env.DEV || window.location.search.includes('testmode=1');
   });
 
   onDestroy(() => {
@@ -286,10 +294,31 @@
       }
 
       if (productResult) {
-        console.log('SmartScanModal: Dispatching scanComplete event with data:', { ...productResult, method: 'UPC' });
-        dispatch('scanComplete', { ...productResult, method: 'UPC' });
-        // Add small delay to ensure event is processed before modal closes
-        setTimeout(() => closeModal(true), 100);
+        // Notify test collector if in test mode
+        if (isTestMode && testCollectorRef) {
+          testCollectorRef.handleUPCScan({
+            detail: {
+              upc: code,
+              product_name: productResult.productName,
+              brands: productResult.brandName || productResult.brandOwner,
+              serving_size: productResult.servingSize,
+              nutrients: {
+                calcium_serving: productResult.calciumPerServing,
+                calcium_100g: null, // Not available from FDC/OFF in this format
+                calcium_unit: 'mg'
+              }
+            }
+          });
+
+          // In test mode, don't close the modal - let user continue to OCR scan
+          console.log('SmartScanModal: Test mode - keeping modal open for OCR scan');
+        } else {
+          // Normal mode - dispatch and close
+          console.log('SmartScanModal: Dispatching scanComplete event with data:', { ...productResult, method: 'UPC' });
+          dispatch('scanComplete', { ...productResult, method: 'UPC' });
+          // Add small delay to ensure event is processed before modal closes
+          setTimeout(() => closeModal(true), 100);
+        }
       } else {
         throw new Error(`Product not found in ${selectedSource === 'usda' ? 'USDA' : 'OpenFoodFacts'} database.`);
       }
@@ -386,7 +415,7 @@
     const fileName = file ? file.name : null;
 
     try {
-      const result = await ocrService.processImage(file);
+      const result = await ocrService.processImage(file, isTestMode);
       if (result) {
         // Capture comprehensive debug data
         debugData = {
@@ -418,8 +447,20 @@
           }
         }
                 
-        // Don't close modal if in debug mode - let user examine results
-        if (!debugMode) {
+        // Notify test collector if in test mode
+        if (isTestMode && testCollectorRef && result.imageBlob) {
+          testCollectorRef.handleOCRScan({
+            detail: {
+              rawText: result.rawText,
+              spatialResults: result.spatialResults,
+              imageBlob: result.imageBlob
+            }
+          });
+
+          // In test mode, don't close the modal - let user download test data
+          console.log('SmartScanModal: Test mode - keeping modal open for test data download');
+        } else if (!debugMode) {
+          // Normal mode (not debug, not test) - dispatch and close
           const ocrData = {
             ...result,
             method: 'OCR',
@@ -896,6 +937,11 @@
       </div>
     </div>
   </div>
+
+  <!-- Test Data Collector (dev-only) -->
+  {#if isTestMode}
+    <TestDataCollector bind:this={testCollectorRef} />
+  {/if}
 {/if}
 
 <style>

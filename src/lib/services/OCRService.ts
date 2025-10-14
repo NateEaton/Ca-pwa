@@ -65,6 +65,7 @@ interface NutritionParseResult {
   calciumValue?: number;
   spatialResults?: TextElement[];
   fullApiResponse?: OCRResponse;
+  imageBlob?: Blob;
 }
 
 export class OCRService {
@@ -77,7 +78,7 @@ export class OCRService {
     this.apiEndpoint = 'https://api.ocr.space/parse/image';
   }
 
-  async processImage(file: File): Promise<NutritionParseResult> {
+  async processImage(file: File, captureImage: boolean = false): Promise<NutritionParseResult> {
     console.log('OCR: Starting enhanced multi-strategy processing...');
 
     try {
@@ -93,6 +94,17 @@ export class OCRService {
       let processedFile: File = file;
       if (file.size > 1024 * 1024) {
         processedFile = await ImageResizer.compressWithFallback(file, 1024 * 1024, 3);
+      }
+
+      // Capture image blob when requested (for test data collection)
+      // NOTE: We need to clone the file before reading it, otherwise FormData will fail
+      let imageBlob: Blob | undefined;
+      if (captureImage) {
+        // Create a new blob from the file without consuming the original
+        const arrayBuffer = await processedFile.arrayBuffer();
+        imageBlob = new Blob([arrayBuffer], { type: processedFile.type });
+        // Recreate the file for FormData since we consumed the original
+        processedFile = new File([arrayBuffer], processedFile.name, { type: processedFile.type });
       }
 
       const formData = new FormData();
@@ -133,10 +145,20 @@ export class OCRService {
 
       // Use enhanced parsing with multiple strategies
       if (overlay?.HasOverlay && overlay.Lines) {
-        return this.parseWithMultipleStrategies(rawText, overlay.Lines, result);
+        const parseResult = this.parseWithMultipleStrategies(rawText, overlay.Lines, result);
+        // Add captured image blob to result if available
+        if (captureImage && imageBlob) {
+          parseResult.imageBlob = imageBlob;
+        }
+        return parseResult;
       } else {
         console.log('OCR: No overlay data, using fallback parsing');
-        return this.parseNutritionDataFallback(rawText, result);
+        const parseResult = this.parseNutritionDataFallback(rawText, result);
+        // Add captured image blob to result if available
+        if (captureImage && imageBlob) {
+          parseResult.imageBlob = imageBlob;
+        }
+        return parseResult;
       }
 
     } catch (error) {
@@ -144,6 +166,111 @@ export class OCRService {
       throw error;
     }
   }
+
+  // Add this public method to OCRService class (after processImage, before parseWithMultipleStrategies)
+
+  /**
+   * Parse nutrition data from cached OCR results (for batch testing)
+   * Bypasses image processing and API calls - only executes parsing logic
+   * 
+   * @param cachedData Pre-captured OCR data with rawText and words array
+   * @returns Parsed nutrition result using same logic as live OCR
+   */
+  public parseFromCachedOCR(cachedData: {
+    rawText: string;
+    words: Array<{t: string; x: number; y: number; w: number; h: number}>;
+  }): NutritionParseResult {
+    console.log('OCR: Parsing from cached OCR data...');
+    console.log('OCR: Word count:', cachedData.words.length);
+    
+    // Reconstruct Lines structure from cached words
+    const lines = this.reconstructLinesFromWords(cachedData.words);
+    
+    // Create minimal API response structure for parseWithMultipleStrategies
+    const mockResponse: OCRResponse = {
+      ParsedResults: [{
+        ParsedText: cachedData.rawText,
+        ErrorMessage: '',
+        ErrorDetails: '',
+        TextOverlay: {
+          HasOverlay: true,
+          Lines: lines
+        }
+      }],
+      IsErroredOnProcessing: false
+    };
+    
+    // Use existing parsing logic
+    return this.parseWithMultipleStrategies(
+      cachedData.rawText,
+      lines,
+      mockResponse
+    );
+  }
+
+  /**
+   * Reconstruct OCR.space API Lines format from cached word array
+   * Groups words into lines based on Y-coordinate proximity
+   * 
+   * @param words Array of word objects with text and coordinates
+   * @returns Array of Line objects in OCR.space API format
+   */
+  private reconstructLinesFromWords(
+    words: Array<{t: string; x: number; y: number; w: number; h: number}>
+  ): any[] {
+    // Group words by Y coordinate (lines)
+    const lineMap = new Map<number, typeof words>();
+    const yTolerance = 15; // Same tolerance as in original run_tests.js
+    
+    for (const word of words) {
+      let foundLine = false;
+      
+      // Try to find existing line within tolerance
+      for (const [lineY, lineWords] of lineMap.entries()) {
+        if (Math.abs(word.y - lineY) <= yTolerance) {
+          lineWords.push(word);
+          foundLine = true;
+          break;
+        }
+      }
+      
+      // Create new line if no match found
+      if (!foundLine) {
+        lineMap.set(word.y, [word]);
+      }
+    }
+    
+    // Convert to OCR.space API Lines format
+    const lines = [];
+    for (const [y, lineWords] of lineMap.entries()) {
+      // Sort words left to right
+      lineWords.sort((a, b) => a.x - b.x);
+      
+      // Calculate line properties
+      const minTop = Math.min(...lineWords.map(w => w.y));
+      const maxHeight = Math.max(...lineWords.map(w => w.h));
+      const lineText = lineWords.map(w => w.t).join(' ');
+      
+      lines.push({
+        LineText: lineText,
+        MinTop: minTop,
+        MaxHeight: maxHeight,
+        Words: lineWords.map(w => ({
+          WordText: w.t,
+          Left: w.x,
+          Top: w.y,
+          Width: w.w,
+          Height: w.h
+        }))
+      });
+    }
+    
+    // Sort lines top to bottom
+    lines.sort((a, b) => a.MinTop - b.MinTop);
+    
+    console.log('OCR: Reconstructed', lines.length, 'lines from', words.length, 'words');
+    return lines;
+  }  
 
   private parseWithMultipleStrategies(rawText: string, lines: any[], apiResponse: OCRResponse): NutritionParseResult {
     const textElements: TextElement[] = this.extractTextElements(lines);
@@ -245,7 +372,7 @@ export class OCRService {
     result.calciumValue = result.calcium;
     result.spatialResults = textElements;
     result.fullApiResponse = apiResponse;
-    
+
     console.log('OCR: Final result:', {
       servingQuantity: result.servingQuantity,
       servingMeasure: result.servingMeasure,
@@ -253,7 +380,7 @@ export class OCRService {
       calcium: result.calcium,
       confidence: result.confidence
     });
-    
+
     return result;
   }
 
