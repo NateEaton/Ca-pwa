@@ -71,7 +71,7 @@
 
     const upc = upcScanResult.upc;
 
-    // Create metadata JSON
+    // Create metadata JSON with source tracking
     const metadata = {
       upc: upc,
       product_name: upcScanResult.product_name,
@@ -81,6 +81,15 @@
         per_serving: upcScanResult.calcium_per_serving,
         per_100g: upcScanResult.calcium_per_100g,
         unit: upcScanResult.calcium_unit
+      },
+      source: 'app_capture',
+      priority: 'high',
+      collection_method: {
+        type: 'pwa',
+        user_agent: navigator.userAgent,
+        viewport: `${window.innerWidth}x${window.innerHeight}`,
+        device_pixel_ratio: window.devicePixelRatio,
+        platform: navigator.platform
       },
       source_url: `https://world.openfoodfacts.org/product/${upc}`,
       captured_at: new Date().toISOString()

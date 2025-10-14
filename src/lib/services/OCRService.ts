@@ -40,6 +40,13 @@ interface ParseStrategy {
   parser: (textElements: TextElement[], rawText: string, result: NutritionParseResult) => boolean;
 }
 
+interface ServingInfo {
+  quantity: number;
+  measure: string;
+  standardValue?: number;
+  standardUnit?: string;
+}
+
 interface OCRResponse {
   ParsedResults: Array<{
     ParsedText: string;
@@ -272,34 +279,24 @@ export class OCRService {
     return lines;
   }  
 
+  /**
+   * NEW IMPLEMENTATION: Simple 3-layer waterfall parsing
+   * Replaces the old strategy-based approach with clear sequential execution
+   */
   private parseWithMultipleStrategies(rawText: string, lines: any[], apiResponse: OCRResponse): NutritionParseResult {
+    console.log('=== Starting 3-Layer Waterfall Parse ===');
+    console.log('OCR: Raw text length:', rawText.length);
+
+    // Extract and preprocess spatial elements
     const textElements: TextElement[] = this.extractTextElements(lines);
-    
-    // Enhanced debug logging for API structure
-    console.log('OCR: Raw text preview:', rawText.substring(0, 200) + '...');
-    console.log('OCR: API Response structure:', {
-      totalLines: lines.length,
-      sampleLines: lines.slice(0, 5).map(line => ({
-        text: line.LineText,
-        wordCount: line.Words?.length || 0,
-        sampleWords: line.Words?.slice(0, 3).map(w => w.WordText) || []
-      }))
+    textElements.forEach(el => {
+      el.text = this.preprocessSpatialText(el);
     });
-    
-    // Log serving size related elements
-    const servingElements = textElements.filter(el => 
-      /serving|size|cup|tbsp|tsp|ml|mL|\d+|\(/.test(el.text)
-    );
-    console.log('OCR: Serving-related elements:', 
-      servingElements.map(e => `"${e.text}"@(${e.x},${e.y})`));
-    
-    // Log calcium related elements  
-    const calciumElements = textElements.filter(el =>
-      /calcium|mg|\d+/i.test(el.text)
-    );
-    console.log('OCR: Calcium-related elements:', 
-      calciumElements.slice(0, 10).map(e => `"${e.text}"@(${e.x},${e.y})`));
-    
+
+    const preprocessedText = this.preprocessText(rawText);
+    console.log('OCR: Preprocessed', textElements.length, 'spatial elements');
+
+    // Initialize result
     const result: NutritionParseResult = {
       rawText: rawText,
       servingQuantity: null,
@@ -307,76 +304,59 @@ export class OCRService {
       standardMeasureValue: null,
       standardMeasureUnit: null,
       calcium: null,
-      confidence: 'low'
+      confidence: 'low',
+      spatialResults: textElements,
+      fullApiResponse: apiResponse
     };
-    
-    // Apply preprocessing to all elements
-    textElements.forEach(el => {
-      el.text = this.preprocessSpatialText(el);
+
+    // LAYER 1: Spatial Structure Parsing
+    console.log('\n--- LAYER 1: Spatial Structure ---');
+    const spatialResult = this.spatialParse(textElements, preprocessedText);
+    Object.assign(result, spatialResult);
+
+    const afterLayer1 = this.isComplete(result);
+    console.log('After Layer 1:', {
+      servingQuantity: result.servingQuantity,
+      servingMeasure: result.servingMeasure,
+      calcium: result.calcium,
+      complete: afterLayer1
     });
-    
-    const preprocessedText = this.preprocessText(rawText);
-    console.log('OCR: Preprocessed', textElements.length, 'spatial elements');
-    
-    // Define parsing strategies in order of preference
-    const strategies: ParseStrategy[] = [
-      {
-        name: 'table_structure',
-        priority: 1,
-        parser: (elements, text, res) => this.parseWithTableStructure(elements, res)
-      },
-      {
-        name: 'line_based_spatial',  // NEW: Line-based parsing
-        priority: 2,
-        parser: (elements, text, res) => this.parseWithLineBasedSpatial(elements, res)
-      },
-      {
-        name: 'spatial_alignment',
-        priority: 3,
-        parser: (elements, text, res) => this.parseWithSpatialAlignment(elements, res)
-      },
-      {
-        name: 'regex_enhanced',
-        priority: 4,
-        parser: (elements, text, res) => this.parseWithEnhancedRegex(text, res)
-      },
-      {
-        name: 'fuzzy_matching',
-        priority: 5,
-        parser: (elements, text, res) => this.parseWithFuzzyMatching(elements, text, res)
-      }
-    ];
-    
-    // Try each strategy until we get good results
-    for (const strategy of strategies) {
-      console.log(`OCR: Trying ${strategy.name} strategy...`);
-      
-      const beforeState = { ...result };
-      const success = strategy.parser(textElements, preprocessedText, result);
-      
-      if (this.isResultComplete(result)) {
-        console.log(`OCR: ${strategy.name} strategy succeeded with complete results`);
-        break;
-      } else if (success && this.isResultBetter(result, beforeState)) {
-        console.log(`OCR: ${strategy.name} strategy provided partial improvement`);
-        // Keep improvements and try next strategy
-      } else {
-        console.log(`OCR: ${strategy.name} strategy failed, reverting changes`);
-        Object.assign(result, beforeState);
-      }
+
+    // LAYER 2: Text Pattern Matching (fill gaps)
+    if (!afterLayer1) {
+      console.log('\n--- LAYER 2: Text Patterns ---');
+      this.regexParse(preprocessedText, result);
+
+      const afterLayer2 = this.isComplete(result);
+      console.log('After Layer 2:', {
+        servingQuantity: result.servingQuantity,
+        servingMeasure: result.servingMeasure,
+        calcium: result.calcium,
+        complete: afterLayer2
+      });
     }
-    
-    // Finalize result
+
+    // LAYER 3: Fuzzy Recovery (last resort)
+    if (!this.isComplete(result)) {
+      console.log('\n--- LAYER 3: Fuzzy Recovery ---');
+      this.fuzzyParse(textElements, preprocessedText, result);
+
+      console.log('After Layer 3:', {
+        servingQuantity: result.servingQuantity,
+        servingMeasure: result.servingMeasure,
+        calcium: result.calcium,
+        complete: this.isComplete(result)
+      });
+    }
+
+    // Calculate confidence and finalize
     result.confidence = this.calculateConfidence(result);
     result.servingSize = this.buildLegacyServingSize(result);
     result.calciumValue = result.calcium;
-    result.spatialResults = textElements;
-    result.fullApiResponse = apiResponse;
 
-    console.log('OCR: Final result:', {
-      servingQuantity: result.servingQuantity,
-      servingMeasure: result.servingMeasure,
-      standardMeasure: (result.standardMeasureValue || '') + (result.standardMeasureUnit || ''),
+    console.log('\n=== Parse Complete ===');
+    console.log('Final result:', {
+      servingSize: result.servingSize,
       calcium: result.calcium,
       confidence: result.confidence
     });
@@ -384,150 +364,21 @@ export class OCRService {
     return result;
   }
 
-  // === NEW: Line-based sequential parsing (handles reversed order) ===
-  private getLineElements(textElements: TextElement[]): TextLine[] {
-    if (!textElements || textElements.length === 0) return [];
-
-    // Sort elements by Y then X to process them in reading order
-    const sortedElements = [...textElements].sort((a, b) => {
-      if (a.y < b.y) return -1;
-      if (a.y > b.y) return 1;
-      return a.x - b.x;
-    });
-
-    const lines: TextLine[] = [];
-    let currentLine: TextLine = { text: '', elements: [], y: -1, height: -1 };
-    const yTolerance = 15; // Vertical tolerance to group words into the same line
-
-    for (const el of sortedElements) {
-      if (currentLine.elements.length === 0) {
-        // Start a new line
-        currentLine = { text: el.text, elements: [el], y: el.y, height: el.height };
-      } else {
-        const lineCenterY = currentLine.y + currentLine.height / 2;
-        const elCenterY = el.y + el.height / 2;
-
-        // Check if the element is vertically aligned with the current line
-        if (Math.abs(elCenterY - lineCenterY) < yTolerance) {
-          currentLine.elements.push(el);
-          currentLine.text += ' ' + el.text;
-          // Update line's average Y and max height
-          currentLine.y = (currentLine.y * (currentLine.elements.length - 1) + el.y) / currentLine.elements.length;
-          currentLine.height = Math.max(currentLine.height, el.height);
-        } else {
-          // Finish the current line and start a new one
-          lines.push(currentLine);
-          currentLine = { text: el.text, elements: [el], y: el.y, height: el.height };
-        }
-      }
+  /**
+   * Build legacy servingSize string for backward compatibility
+   */
+  private buildLegacyServingSize(result: NutritionParseResult): string | undefined {
+    if (!result.servingQuantity || !result.servingMeasure) {
+      return undefined;
     }
-    // Add the last line
-    if (currentLine.elements.length > 0) {
-      lines.push(currentLine);
+
+    let serving = `${result.servingQuantity} ${result.servingMeasure}`;
+
+    if (result.standardMeasureValue && result.standardMeasureUnit) {
+      serving += ` (${result.standardMeasureValue}${result.standardMeasureUnit})`;
     }
-    
-    return lines;
-  }
 
-  private parseWithLineBasedSpatial(textElements: TextElement[], result: NutritionParseResult): boolean {
-    console.log('OCR: Using line-based spatial alignment strategy');
-    const lines = this.getLineElements(textElements);
-
-    let servingParsed = false;
-    let calciumParsed = false;
-
-    for (const line of lines) {
-      const lineText = line.text.toLowerCase();
-      const lineElements = line.elements;
-
-      // --- PARSE SERVING SIZE (IMPROVED SEQUENTIAL LOGIC) ---
-      if (!servingParsed && (lineText.includes('serving') || lineText.includes('size'))) {
-        let startIndex = lineElements.findIndex(el => /size/i.test(el.text));
-        if (startIndex === -1) {
-          startIndex = lineElements.findIndex(el => /serving/i.test(el.text));
-        }
-        
-        if (startIndex !== -1) {
-          // Sequentially find quantity, then measure, then standard measure from the keyword's position
-          let quantityIndex = -1;
-          let measureIndex = -1;
-
-          // 1. Find the first valid quantity immediately after the keyword
-          for (let i = startIndex + 1; i < lineElements.length; i++) {
-            const elText = lineElements[i].text.trim();
-            const quantity = this.parseFraction(elText);
-            if (quantity !== null && this.validateServingQuantity(quantity, elText)) {
-              result.servingQuantity = quantity;
-              quantityIndex = i;
-              console.log('OCR: Found aligned serving quantity:', quantity);
-              break; 
-            }
-          }
-
-          // 2. If quantity is found, find the first valid measure immediately after it
-          if (quantityIndex !== -1) {
-            for (let i = quantityIndex + 1; i < lineElements.length; i++) {
-              const elText = lineElements[i].text.trim().toLowerCase().replace(/s$/, '');
-              if (/^(cup|tbsp|tsp|bottle|slice|oz|fl|g|ml|mL|container)$/i.test(elText)) {
-                result.servingMeasure = elText;
-                measureIndex = i;
-                console.log('OCR: Found aligned serving measure:', elText);
-                break;
-              }
-            }
-          }
-          
-          // 3. Find the first parenthetical standard measure after the keyword
-          const searchElementsForStandard = lineElements.slice(startIndex + 1);
-          for (const element of searchElementsForStandard) {
-            const standardMatch = element.text.match(/\(?(\d+(?:\.\d+)?)\s*([a-zA-Z]+)\)?/);
-            if (standardMatch && /^(g|ml|mL|oz)$/i.test(standardMatch[2])) {
-              result.standardMeasureValue = parseFloat(standardMatch[1]);
-              result.standardMeasureUnit = standardMatch[2].toLowerCase();
-              console.log('OCR: Found aligned standard measure:', result.standardMeasureValue + result.standardMeasureUnit);
-              break; 
-            }
-          }
-          
-          if (result.servingQuantity && result.servingMeasure) {
-            servingParsed = true;
-          }
-        }
-      }
-
-      // --- PARSE CALCIUM (ENHANCED WITH COMPACT PATTERNS) ---
-      if (!calciumParsed && lineText.includes('calcium')) {
-        const calciumIndex = lineElements.findIndex(el => /calcium/i.test(el.text));
-        if (calciumIndex !== -1) {
-          // Look for the first valid value immediately following "Calcium" on the same line
-          for (let i = calciumIndex + 1; i < lineElements.length; i++) {
-            const elementText = lineElements[i].text.trim();
-            
-            // Pattern: "380mg" or "190mg"
-            const mgMatch = elementText.match(/^(\d+)mg$/i);
-            if (mgMatch && parseInt(mgMatch[1]) <= 2000) {
-              result.calcium = parseInt(mgMatch[1]);
-              calciumParsed = true;
-              console.log('OCR: Found calcium via line-based mg:', result.calcium);
-              break;
-            }
-            
-            // Pattern: "2%" (compact format)
-            const percentMatch = elementText.match(/^(\d+)%$/);
-            if (percentMatch && parseInt(percentMatch[1]) <= 100) {
-              result.calcium = Math.round((parseInt(percentMatch[1]) / 100) * this.CALCIUM_DV_MG);
-              calciumParsed = true;
-              console.log('OCR: Found calcium via line-based %:', result.calcium);
-              break;
-            }
-          }
-        }
-      }
-
-      if (servingParsed && calciumParsed) break;
-    }
-    
-    return servingParsed || calciumParsed;
+    return serving;
   }
 
   private extractTextElements(lines: any[]): TextElement[] {
@@ -689,360 +540,6 @@ export class OCRService {
     return columns;
   }
 
-  private parseWithTableStructure(textElements: TextElement[], result: NutritionParseResult): boolean {
-    const { columns, rows } = this.detectTableStructure(textElements);
-    
-    if (columns.length < 2 || rows.length < 3) {
-      console.log('OCR: Insufficient table structure detected');
-      return false;
-    }
-    
-    let servingParsed = false;
-    let calciumParsed = false;
-    
-    // Find serving size row
-    const servingRow = rows.find(row => 
-      row.elements.some(el => /serving\s*size/i.test(el.text))
-    );
-    
-    if (servingRow) {
-      this.parseServingFromTableRow(servingRow, columns, result);
-      servingParsed = result.servingQuantity !== null && result.servingMeasure !== null;
-      console.log('OCR: Table serving parsed:', servingParsed);
-    }
-    
-    // Find calcium row
-    const calciumRow = rows.find(row => 
-      row.elements.some(el => /^calcium$/i.test(el.text.trim()))
-    );
-    
-    if (calciumRow) {
-      this.parseCalciumFromTableRow(calciumRow, columns, result);
-      calciumParsed = result.calcium !== null;
-      console.log('OCR: Table calcium parsed:', calciumParsed);
-    }
-    
-    return servingParsed && calciumParsed;
-  }
-
-  private parseServingFromTableRow(row: NutrientRow, columns: TableColumn[], result: NutritionParseResult): void {
-    const valueElements = row.elements.filter(el => 
-      columns.some(col => col.type !== 'label' && 
-        Math.abs(el.x - col.x) <= col.width / 2)
-    ).sort((a, b) => a.x - b.x);
-    
-    console.log('OCR: Serving row value elements:', valueElements.map(e => e.text));
-    
-    for (const element of valueElements) {
-      const text = element.text.trim();
-      
-      if (!result.servingQuantity && /^[\d\.\/]+$/.test(text)) {
-        result.servingQuantity = this.parseFraction(text);
-        console.log('OCR: Found table serving quantity:', result.servingQuantity);
-        continue;
-      }
-      
-      if (!result.servingMeasure && /^(cup|tbsp|tsp|bottle|slice|oz|fl|g|ml|mL)s?$/i.test(text)) {
-        result.servingMeasure = text.toLowerCase().replace(/s$/, '');
-        console.log('OCR: Found table serving measure:', result.servingMeasure);
-        continue;
-      }
-      
-      // Look for parenthetical standard measure
-      const parentheticalMatch = text.match(/^\(?(\d+(?:\.\d+)?)\s*([a-zA-Z]+)\)?$/);
-      if (parentheticalMatch && !result.standardMeasureValue) {
-        result.standardMeasureValue = parseFloat(parentheticalMatch[1]);
-        result.standardMeasureUnit = parentheticalMatch[2].toLowerCase();
-        console.log('OCR: Found table standard measure:', 
-          result.standardMeasureValue, result.standardMeasureUnit);
-      }
-    }
-  }
-
-  private parseCalciumFromTableRow(row: NutrientRow, columns: TableColumn[], result: NutritionParseResult): void {
-    const valueElements = row.elements.filter(el => 
-      columns.some(col => col.type === 'value' && 
-        Math.abs(el.x - col.x) <= col.width / 2)
-    );
-    
-    const percentElements = row.elements.filter(el => 
-      columns.some(col => col.type === 'percent' && 
-        Math.abs(el.x - col.x) <= col.width / 2)
-    );
-    
-    console.log('OCR: Calcium value elements:', valueElements.map(e => e.text));
-    console.log('OCR: Calcium percent elements:', percentElements.map(e => e.text));
-    
-    // First priority: direct mg values
-    for (const element of valueElements) {
-      const text = element.text.trim();
-      const mgMatch = text.match(/^(\d+(?:\.\d+)?)mg$/i);
-      if (mgMatch) {
-        result.calcium = Math.round(parseFloat(mgMatch[1]));
-        console.log('OCR: Found table calcium mg:', result.calcium);
-        return;
-      }
-      
-      const numberMatch = text.match(/^(\d+(?:\.\d+)?)$/);
-      if (numberMatch) {
-        const value = parseFloat(numberMatch[1]);
-        if (value >= 1 && value <= 2000) {
-          result.calcium = Math.round(value);
-          console.log('OCR: Found table calcium number (assuming mg):', result.calcium);
-          return;
-        }
-      }
-    }
-    
-    // Second priority: percentage conversion
-    for (const element of percentElements) {
-      const text = element.text.trim();
-      const percentMatch = text.match(/^(\d+(?:\.\d+)?)%$/);
-      if (percentMatch) {
-        const percent = parseFloat(percentMatch[1]);
-        result.calcium = Math.round((percent / 100) * this.CALCIUM_DV_MG);
-        console.log('OCR: Converted calcium percentage to mg:', percent + '%', '→', result.calcium + 'mg');
-        return;
-      }
-    }
-  }
-
-  private groupByAlignment(textElements: TextElement[]): TextElement[][] {
-    const groups: TextElement[][] = [];
-    const yTolerance = 8;
-    
-    for (const element of textElements) {
-      let foundGroup = false;
-      for (const group of groups) {
-        if (group.some(el => Math.abs(el.y - element.y) <= yTolerance)) {
-          group.push(element);
-          foundGroup = true;
-          break;
-        }
-      }
-      if (!foundGroup) {
-        groups.push([element]);
-      }
-    }
-    
-    // Sort elements within each group by X coordinate
-    groups.forEach(group => group.sort((a, b) => a.x - b.x));
-    
-    return groups;
-  }
-
-  private parseWithSpatialAlignment(textElements: TextElement[], result: NutritionParseResult): boolean {
-    const alignmentGroups = this.groupByAlignment(textElements);
-    
-    let servingParsed = false;
-    let calciumParsed = false;
-    
-    for (const group of alignmentGroups) {
-      const groupText = group.map(el => el.text).join(' ');
-      
-      if (/serving\s*size/i.test(groupText)) {
-        this.parseServingFromAlignedElements(group, result);
-        servingParsed = result.servingQuantity !== null && result.servingMeasure !== null;
-      }
-      
-      if (/calcium/i.test(groupText)) {
-        this.parseCalciumFromAlignedElements(group, result);
-        calciumParsed = result.calcium !== null;
-      }
-    }
-    
-    return servingParsed && calciumParsed;
-  }
-
-  private parseServingFromAlignedElements(elements: TextElement[], result: NutritionParseResult): void {
-    const sortedElements = elements.sort((a, b) => a.x - b.x);
-    
-    for (let i = 0; i < sortedElements.length; i++) {
-      const element = sortedElements[i];
-      const text = element.text.trim();
-      
-      if (!result.servingQuantity) {
-        const quantity = this.parseFraction(text);
-        if (quantity !== null && this.validateServingQuantity(quantity, text)) {
-          result.servingQuantity = quantity;
-          console.log('OCR: Found aligned serving quantity:', quantity);
-          continue;
-        }
-      }
-      
-      if (!result.servingMeasure && /^(cup|tbsp|tsp|bottle|slice|oz|fl|g|ml|mL)s?$/i.test(text)) {
-        result.servingMeasure = text.toLowerCase().replace(/s$/, '');
-        console.log('OCR: Found aligned serving measure:', result.servingMeasure);
-        continue;
-      }
-      
-      // Look for parenthetical standard measure
-      if (!result.standardMeasureValue) {
-        const parenMatch = text.match(/^\(?(\d+(?:\.\d+)?)\s*([a-zA-Z]+)\)?$/);
-        if (parenMatch && /^(g|ml|mL|oz)$/i.test(parenMatch[2])) {
-          const value = parseFloat(parenMatch[1]);
-          if (value >= 10 && value <= 2000) {
-            result.standardMeasureValue = value;
-            result.standardMeasureUnit = parenMatch[2].toLowerCase();
-            console.log('OCR: Found aligned standard measure:', 
-              result.standardMeasureValue + result.standardMeasureUnit);
-          }
-        }
-      }
-    }
-  }
-
-  private parseCalciumFromAlignedElements(elements: TextElement[], result: NutritionParseResult): void {
-    for (const element of elements) {
-      const text = element.text.trim();
-      
-      const mgMatch = text.match(/^(\d+(?:\.\d+)?)mg$/i);
-      if (mgMatch) {
-        result.calcium = Math.round(parseFloat(mgMatch[1]));
-        console.log('OCR: Found aligned calcium mg:', result.calcium);
-        return;
-      }
-      
-      const percentMatch = text.match(/^(\d+(?:\.\d+)?)%$/);
-      if (percentMatch) {
-        const percent = parseFloat(percentMatch[1]);
-        result.calcium = Math.round((percent / 100) * this.CALCIUM_DV_MG);
-        console.log('OCR: Found aligned calcium %:', percent + '% =', result.calcium + 'mg');
-        return;
-      }
-      
-      const numberMatch = text.match(/^(\d+(?:\.\d+)?)$/);
-      if (numberMatch && element.x > 200) {
-        const value = parseFloat(numberMatch[1]);
-        if (value >= 1 && value <= 2000) {
-          result.calcium = Math.round(value);
-          console.log('OCR: Found aligned calcium number:', result.calcium);
-          return;
-        }
-      }
-    }
-  }
-
-  private parseWithEnhancedRegex(text: string, result: NutritionParseResult): boolean {
-    let servingParsed = false;
-    let calciumParsed = false;
-    
-    // Enhanced serving size patterns
-    const servingPatterns = [
-      /Serving\s*size\s*[:\-]?\s*([\d\.\/]+|1\/2|1\/3|1\/4|2\/3|3\/4)\s*(cup|tbsp|tsp|bottle|slice|container|oz|fl\s*oz|g|ml|mL)(?:\s*\(([0-9\.]+)\s*([a-zA-Z]+)\))?/i,
-      /Serving\s*size\s*[:\-]?\s*(\d+(?:\.\d+)?)\s*(cup|tbsp|tsp|bottle|slice|container|oz|fl\s*oz|g|ml|mL)\s*\(([0-9\.]+)\s*([a-zA-Z]+)\)/i,
-      /Serving\s*size\s*[:\-]?\s*([\d\.\/]+)\s*(cup|tbsp|tsp|bottle|slice|container|oz|fl|g|ml|mL)/i,
-    ];
-    
-    for (const pattern of servingPatterns) {
-      const match = text.match(pattern);
-      if (match) {
-        if (match[1]) {
-          const quantity = this.parseFraction(match[1].trim());
-          if (quantity !== null && this.validateServingQuantity(quantity, match[1])) {
-            result.servingQuantity = quantity;
-          }
-        }
-        if (match[2]) result.servingMeasure = match[2].trim().toLowerCase().replace(/s$/, '');
-        if (match[3]) result.standardMeasureValue = parseFloat(match[3]);
-        if (match[4]) result.standardMeasureUnit = match[4].trim().toLowerCase();
-        servingParsed = result.servingQuantity !== null && result.servingMeasure !== null;
-        console.log('OCR: Enhanced regex found serving:', match[0]);
-        break;
-      }
-    }
-    
-    // Enhanced calcium patterns (NEW: compact bullet format)
-    const calciumPatterns = [
-      { type: 'mg', pattern: /Calcium\s*[:\-]?\s*(\d+(?:\.\d+)?)mg/i },
-      { type: 'mg', pattern: /Calcium\s*[:\-]?\s*(\d+(?:\.\d+)?)\s*mg/i },
-      { type: 'percent', pattern: /Calcium\s*[:\-]?\s*(\d+(?:\.\d+)?)%/i },
-      { type: 'mg', pattern: /Calcium\s+(\d+(?:\.\d+)?)mg/i },
-      { type: 'mg', pattern: /Calcium[^\d]*(\d+(?:\.\d+)?)mg/i },
-      { type: 'percent', pattern: /Calcium[^\d]*(\d+(?:\.\d+)?)%/i },
-      
-      // NEW: Compact bullet format patterns
-      { type: 'mg', pattern: /•\s*Calcium\s+(\d+)mg/i },
-      { type: 'percent', pattern: /•\s*Calcium.*?(\d+)%/i },
-      { type: 'percent', pattern: /Calcium\s+(\d+)%/i }, // Without bullet
-    ];
-    
-    for (const { type, pattern } of calciumPatterns) {
-      const match = text.match(pattern);
-      if (match) {
-        const value = parseFloat(match[1]);
-        if (type === 'mg' && value > 0 && value <= 2000) {
-          result.calcium = Math.round(value);
-        } else if (type === 'percent' && value > 0 && value <= 100) {
-          result.calcium = Math.round((value / 100) * this.CALCIUM_DV_MG);
-        }
-        calciumParsed = result.calcium !== null;
-        console.log('OCR: Enhanced regex found calcium:', match[0]);
-        break;
-      }
-    }
-    
-    return servingParsed && calciumParsed;
-  }
-
-  private parseWithFuzzyMatching(textElements: TextElement[], text: string, result: NutritionParseResult): boolean {
-    console.log('OCR: Using fuzzy matching as last resort');
-    
-    const servingElements = textElements.filter(el => 
-      this.fuzzyMatch(el.text.toLowerCase(), 'serving') ||
-      this.fuzzyMatch(el.text.toLowerCase(), 'size')
-    );
-    
-    const calciumElements = textElements.filter(el => 
-      this.fuzzyMatch(el.text.toLowerCase(), 'calcium') ||
-      el.text.toLowerCase().includes('calc')
-    );
-    
-    let hasResults = false;
-    
-    if (servingElements.length > 0) {
-      const proximityThreshold = 100;
-      for (const keyElement of servingElements) {
-        const nearby = textElements.filter(el => {
-          const distance = Math.sqrt(
-            Math.pow(el.x - keyElement.x, 2) + Math.pow(el.y - keyElement.y, 2)
-          );
-          return distance <= proximityThreshold && el !== keyElement;
-        }).sort((a, b) => {
-          const distA = Math.sqrt(Math.pow(a.x - keyElement.x, 2) + Math.pow(a.y - keyElement.y, 2));
-          const distB = Math.sqrt(Math.pow(b.x - keyElement.x, 2) + Math.pow(b.y - keyElement.y, 2));
-          return distA - distB;
-        });
-        
-        this.parseServingFromAlignedElements(nearby, result);
-        if (result.servingQuantity && result.servingMeasure) {
-          hasResults = true;
-          break;
-        }
-      }
-    }
-    
-    if (calciumElements.length > 0) {
-      const proximityThreshold = 100;
-      for (const keyElement of calciumElements) {
-        const nearby = textElements.filter(el => {
-          const distance = Math.sqrt(
-            Math.pow(el.x - keyElement.x, 2) + Math.pow(el.y - keyElement.y, 2)
-          );
-          return distance <= proximityThreshold && el !== keyElement;
-        });
-        
-        this.parseCalciumFromAlignedElements(nearby, result);
-        if (result.calcium) {
-          hasResults = true;
-          break;
-        }
-      }
-    }
-    
-    return hasResults;
-  }
-
   private fuzzyMatch(text: string, target: string, threshold: number = 0.6): boolean {
     const distance = this.levenshteinDistance(text, target);
     const similarity = 1 - distance / Math.max(text.length, target.length);
@@ -1075,6 +572,843 @@ export class OCRService {
     }
     
     return matrix[b.length][a.length];
+  }
+
+  // ============================================================================
+  // CENTRALIZED PARSERS (3-Layer Architecture)
+  // ============================================================================
+
+  /**
+   * Centralized calcium parser - handles ALL calcium parsing patterns
+   * Works with both raw text and spatial elements
+   *
+   * @param text - Raw text to parse (preprocessed)
+   * @param elements - Optional spatial elements for coordinate-based parsing
+   * @returns Calcium value in mg, or null if not found
+   */
+  private parseCalcium(text: string, elements?: TextElement[]): number | null {
+    console.log('parseCalcium: Starting with text:', text.substring(0, 100));
+
+    // Priority 1: Direct mg values from spatial elements (if available)
+    if (elements && elements.length > 0) {
+      const mgValue = this.parseCalciumFromSpatialElements(elements);
+      if (mgValue !== null) {
+        console.log('parseCalcium: Found via spatial elements:', mgValue);
+        return mgValue;
+      }
+    }
+
+    // Priority 2: Pattern matching on text
+    const textValue = this.parseCalciumFromText(text);
+    if (textValue !== null) {
+      console.log('parseCalcium: Found via text patterns:', textValue);
+      return textValue;
+    }
+
+    console.log('parseCalcium: No calcium value found');
+    return null;
+  }
+
+  /**
+   * Parse calcium from spatial elements using coordinate-based logic
+   */
+  private parseCalciumFromSpatialElements(elements: TextElement[]): number | null {
+    // Format 1: Direct mg value (highest confidence)
+    // Example: "390mg", "320mg", "60mg"
+    const mgElements = elements.filter(el => /^\d+mg$/i.test(el.text.trim()));
+
+    for (const mgEl of mgElements) {
+      // Check if there's a "calcium" label nearby (within reasonable Y distance)
+      const hasCalciumLabel = elements.some(el =>
+        /calcium/i.test(el.text) &&
+        Math.abs(el.y - mgEl.y) < 20 // Same line tolerance
+      );
+
+      if (hasCalciumLabel) {
+        const mgValue = parseInt(mgEl.text.replace(/[^\d]/g, ''));
+        if (this.isValidCalciumValue(mgValue)) {
+          return mgValue;
+        }
+      }
+    }
+
+    // Format 2: Compact inline format (mg stuck to percentage)
+    // Example: "320mg25%", "390mg30%"
+    const compactElements = elements.filter(el =>
+      /^\d+mg\d+%$/i.test(el.text.trim())
+    );
+
+    for (const compactEl of compactElements) {
+      const match = compactEl.text.match(/^(\d+)mg/i);
+      if (match) {
+        const mgValue = parseInt(match[1]);
+        if (this.isValidCalciumValue(mgValue)) {
+          return mgValue;
+        }
+      }
+    }
+
+    // Format 3: Percentage to mg conversion
+    // Example: "25%" near "Calcium" (convert assuming 1300mg = 100%)
+    const calciumElements = elements.filter(el => /calcium/i.test(el.text));
+
+    for (const calciumEl of calciumElements) {
+      // Find nearby percentage
+      const nearbyPercent = elements.find(el =>
+        /^\d+%$/i.test(el.text.trim()) &&
+        Math.abs(el.y - calciumEl.y) < 20 &&
+        el.x > calciumEl.x // Usually to the right
+      );
+
+      if (nearbyPercent) {
+        const percent = parseInt(nearbyPercent.text.replace(/[^\d]/g, ''));
+        const mgValue = Math.round((percent / 100) * 1300); // FDA DV for calcium
+        if (this.isValidCalciumValue(mgValue)) {
+          return mgValue;
+        }
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * Parse calcium from raw text using comprehensive regex patterns
+   */
+  private parseCalciumFromText(text: string): number | null {
+    // Format 1: "Calcium XXXmg" (with various separators)
+    // Matches: "Calcium 390mg", "Calcium: 320mg", "Calcium\t180mg", "• Calcium 60mg"
+    const directMgPatterns = [
+      /calcium[:\s\t]+(\d+)\s*mg/i,
+      /calcium[:\s\t]+(\d+)mg/i,
+      /[•·]\s*calcium\s+(\d+)\s*mg/i,
+      /calcium\s+(\d+)\s*mg/i
+    ];
+
+    for (const pattern of directMgPatterns) {
+      const match = text.match(pattern);
+      if (match) {
+        const mgValue = parseInt(match[1]);
+        if (this.isValidCalciumValue(mgValue)) {
+          return mgValue;
+        }
+      }
+    }
+
+    // Format 2: "Calcium XXXmgYY%" (compact inline)
+    // Matches: "Calcium 320mg25%", "Calcium390mg30%"
+    const compactPattern = /calcium\s*(\d+)mg\d+%/i;
+    const compactMatch = text.match(compactPattern);
+    if (compactMatch) {
+      const mgValue = parseInt(compactMatch[1]);
+      if (this.isValidCalciumValue(mgValue)) {
+        return mgValue;
+      }
+    }
+
+    // Format 3: "Calcium XXX mg YY%" (with space before mg)
+    // Matches: "Calcium 180 mg 15%", "Calcium 130 mg"
+    const spacedPattern = /calcium[:\s]+(\d+)\s+mg/i;
+    const spacedMatch = text.match(spacedPattern);
+    if (spacedMatch) {
+      const mgValue = parseInt(spacedMatch[1]);
+      if (this.isValidCalciumValue(mgValue)) {
+        return mgValue;
+      }
+    }
+
+    // Format 4: Percentage only (convert to mg)
+    // Matches: "Calcium 25%", "Calcium: 30%"
+    // Only use if no mg value found (lower confidence)
+    const percentPattern = /calcium[:\s]+(\d+)%/i;
+    const percentMatch = text.match(percentPattern);
+    if (percentMatch) {
+      const percent = parseInt(percentMatch[1]);
+      if (percent > 0 && percent <= 100) {
+        const mgValue = Math.round((percent / 100) * 1300); // FDA DV
+        return mgValue;
+      }
+    }
+
+    // Format 5: Reversed order "XXmg Calcium"
+    // Less common but appears in some formats
+    const reversedPattern = /(\d+)\s*mg\s+calcium/i;
+    const reversedMatch = text.match(reversedPattern);
+    if (reversedMatch) {
+      const mgValue = parseInt(reversedMatch[1]);
+      if (this.isValidCalciumValue(mgValue)) {
+        return mgValue;
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * Validate calcium value is within reasonable range
+   * Typical range: 0-2000mg (most products have 0-130% DV)
+   */
+  private isValidCalciumValue(value: number): boolean {
+    return value > 0 && value <= 2000;
+  }
+
+  /**
+   * Centralized serving size parser - handles ALL serving size patterns
+   * Returns structured object with quantity, measure, and optional standard measure
+   *
+   * @param text - Raw text to parse (preprocessed)
+   * @param elements - Optional spatial elements for coordinate-based parsing
+   * @returns ServingInfo object or null if not found
+   */
+  private parseServingSize(text: string, elements?: TextElement[]): ServingInfo | null {
+    console.log('parseServingSize: Starting with text:', text.substring(0, 100));
+
+    // Priority 1: Spatial parsing (if elements available)
+    if (elements && elements.length > 0) {
+      const spatialResult = this.parseServingSizeFromSpatialElements(elements);
+      if (spatialResult) {
+        console.log('parseServingSize: Found via spatial elements:', spatialResult);
+        return spatialResult;
+      }
+    }
+
+    // Priority 2: Text pattern matching
+    const textResult = this.parseServingSizeFromText(text);
+    if (textResult) {
+      console.log('parseServingSize: Found via text patterns:', textResult);
+      return textResult;
+    }
+
+    console.log('parseServingSize: No serving size found');
+    return null;
+  }
+
+  /**
+   * Parse serving size from spatial elements using coordinate-based logic
+   */
+  private parseServingSizeFromSpatialElements(elements: TextElement[]): ServingInfo | null {
+    // Find the "serving size" keyword line
+    const servingKeywordEl = elements.find(el =>
+      /serving/i.test(el.text) || /size/i.test(el.text)
+    );
+
+    if (!servingKeywordEl) return null;
+
+    // Get elements on the same line (within Y tolerance)
+    const yTolerance = 15;
+    const sameLine = elements.filter(el =>
+      Math.abs(el.y - servingKeywordEl.y) < yTolerance
+    ).sort((a, b) => a.x - b.x); // Left to right
+
+    // Find keyword index
+    const keywordIndex = sameLine.findIndex(el =>
+      el.x === servingKeywordEl.x && el.y === servingKeywordEl.y
+    );
+
+    if (keywordIndex === -1) return null;
+
+    // Parse sequentially: quantity → measure → standard measure
+    let quantity: number | null = null;
+    let measure: string | null = null;
+    let standardValue: number | undefined;
+    let standardUnit: string | undefined;
+
+    // Look for quantity (first valid number after keyword)
+    for (let i = keywordIndex + 1; i < sameLine.length; i++) {
+      const text = sameLine[i].text.trim();
+      const parsedQty = this.parseFraction(text);
+
+      if (parsedQty !== null && this.validateServingQuantity(parsedQty, text)) {
+        quantity = parsedQty;
+        break;
+      }
+    }
+
+    if (!quantity) return null;
+
+    // Look for measure (first valid unit after quantity)
+    const qtyIndex = sameLine.findIndex(el => {
+      const parsed = this.parseFraction(el.text.trim());
+      return parsed === quantity;
+    });
+
+    for (let i = qtyIndex + 1; i < sameLine.length; i++) {
+      const text = sameLine[i].text.trim();
+      if (/^(cup|tbsp|tsp|bottle|slice|container|oz|fl|g|ml|mL)s?$/i.test(text)) {
+        measure = text.toLowerCase().replace(/s$/, '');
+        break;
+      }
+    }
+
+    if (!measure) return null;
+
+    // Look for standard measure (parenthetical format)
+    for (let i = keywordIndex + 1; i < sameLine.length; i++) {
+      const standard = this.parseStandardMeasure(sameLine[i].text);
+      if (standard) {
+        standardValue = standard.value;
+        standardUnit = standard.unit;
+        break;
+      }
+    }
+
+    return { quantity, measure, standardValue, standardUnit };
+  }
+
+  /**
+   * Parse serving size from raw text using comprehensive regex patterns
+   */
+  private parseServingSizeFromText(text: string): ServingInfo | null {
+    // Pattern 1: Standard format with optional parenthetical
+    // "Serving size 1/2 cup (120g)", "Serving size 2 tbsp (30ml)"
+    const patterns = [
+      /serving\s*size\s*[:\-]?\s*([\d\.\/]+)\s*(cup|tbsp|tsp|bottle|slice|container|oz|fl\s*oz|g|ml|mL)(?:\s*\((\d+(?:\.\d+)?)\s*([a-zA-Z]+)\))?/i,
+
+      // Pattern 2: Parenthetical first, then measure
+      // "Serving size (240mL) 1 cup"
+      /serving\s*size\s*\((\d+(?:\.\d+)?)\s*([a-zA-Z]+)\)\s*([\d\.\/]+)\s*(cup|tbsp|tsp|bottle|slice|container)/i,
+
+      // Pattern 3: Quantity and measure only
+      // "Serving size 1 bottle"
+      /serving\s*size\s*[:\-]?\s*([\d\.\/]+)\s*(cup|tbsp|tsp|bottle|slice|container|oz|g|ml|mL)/i,
+
+      // Pattern 4: Just quantity with parenthetical
+      // "1 bottle (296ml)"
+      /^([\d\.\/]+)\s*(bottle|cup|tbsp|tsp|slice|container)\s*\((\d+(?:\.\d+)?)\s*([a-zA-Z]+)\)/i
+    ];
+
+    for (const pattern of patterns) {
+      const match = text.match(pattern);
+      if (match) {
+        let quantity: number | null = null;
+        let measure: string | null = null;
+        let standardValue: number | undefined;
+        let standardUnit: string | undefined;
+
+        // Extract based on pattern structure
+        if (pattern.source.includes('\\(.*\\).*cup')) {
+          // Pattern 2: parenthetical first
+          standardValue = parseFloat(match[1]);
+          standardUnit = match[2].toLowerCase();
+          quantity = this.parseFraction(match[3]);
+          measure = match[4].toLowerCase();
+        } else {
+          // Patterns 1, 3, 4: quantity first
+          quantity = this.parseFraction(match[1]);
+          measure = match[2].toLowerCase().replace(/s$/, '');
+
+          if (match[3] && match[4]) {
+            standardValue = parseFloat(match[3]);
+            standardUnit = match[4].toLowerCase();
+          }
+        }
+
+        if (quantity && measure && this.validateServingQuantity(quantity, text)) {
+          return { quantity, measure, standardValue, standardUnit };
+        }
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * Extract standard measure from parenthetical format
+   * Examples: "(240mL)", "(30g)", "(8 oz)"
+   */
+  private parseStandardMeasure(text: string): {value: number, unit: string} | null {
+    const patterns = [
+      /\((\d+(?:\.\d+)?)\s*([a-zA-Z]+)\)/,  // "(240mL)" or "(30 g)"
+      /\((\d+(?:\.\d+)?)\s*([a-zA-Z]+)\)/,  // No space variant
+    ];
+
+    for (const pattern of patterns) {
+      const match = text.match(pattern);
+      if (match) {
+        const value = parseFloat(match[1]);
+        const unit = match[2].toLowerCase();
+
+        // Validate unit is a standard measure
+        if (/^(g|ml|mL|oz|fl)$/i.test(unit)) {
+          return { value, unit };
+        }
+      }
+    }
+
+    return null;
+  }
+
+  // ============================================================================
+  // LAYER 1: SPATIAL STRUCTURE PARSING
+  // ============================================================================
+
+  /**
+   * Layer 1: Spatial structure parsing using OCR word coordinates
+   * Tries table structure detection first, falls back to line-based grouping
+   * High confidence (0.8-1.0)
+   *
+   * @param elements - Spatial text elements with coordinates
+   * @param preprocessedText - Preprocessed text for context
+   * @returns Partial result with fields found via spatial analysis
+   */
+  private spatialParse(elements: TextElement[], preprocessedText: string): Partial<NutritionParseResult> {
+    console.log('Layer 1: Starting spatial parse with', elements.length, 'elements');
+
+    const result: Partial<NutritionParseResult> = {
+      servingQuantity: null,
+      servingMeasure: null,
+      standardMeasureValue: null,
+      standardMeasureUnit: null,
+      calcium: null
+    };
+
+    // Strategy 1: Try table structure detection
+    const tableResult = this.parseViaTableStructure(elements);
+    if (tableResult.servingQuantity !== null || tableResult.calcium !== null) {
+      console.log('Layer 1: Table structure found data');
+      Object.assign(result, tableResult);
+
+      // If we found everything, return early
+      if (this.isComplete(result)) {
+        console.log('Layer 1: Complete via table structure');
+        return result;
+      }
+    }
+
+    // Strategy 2: Line-based grouping (for non-table layouts)
+    if (!this.isComplete(result)) {
+      const lineResult = this.parseViaLineGrouping(elements);
+      console.log('Layer 1: Line-based grouping results:', lineResult);
+
+      // Merge line results (don't overwrite existing values)
+      if (result.servingQuantity === null && lineResult.servingQuantity !== null) {
+        result.servingQuantity = lineResult.servingQuantity;
+      }
+      if (result.servingMeasure === null && lineResult.servingMeasure !== null) {
+        result.servingMeasure = lineResult.servingMeasure;
+      }
+      if (result.standardMeasureValue === null && lineResult.standardMeasureValue !== null) {
+        result.standardMeasureValue = lineResult.standardMeasureValue;
+        result.standardMeasureUnit = lineResult.standardMeasureUnit;
+      }
+      if (result.calcium === null && lineResult.calcium !== null) {
+        result.calcium = lineResult.calcium;
+      }
+    }
+
+    console.log('Layer 1: Spatial parse complete:', result);
+    return result;
+  }
+
+  /**
+   * Parse using table structure detection (columns and rows)
+   */
+  private parseViaTableStructure(elements: TextElement[]): Partial<NutritionParseResult> {
+    const result: Partial<NutritionParseResult> = {
+      servingQuantity: null,
+      servingMeasure: null,
+      standardMeasureValue: null,
+      standardMeasureUnit: null,
+      calcium: null
+    };
+
+    // Detect table structure
+    const { columns, rows } = this.detectTableStructure(elements);
+
+    if (columns.length < 2 || rows.length < 3) {
+      console.log('Layer 1: Insufficient table structure');
+      return result;
+    }
+
+    console.log(`Layer 1: Detected ${columns.length} columns, ${rows.length} rows`);
+
+    // Find serving size row
+    const servingRow = rows.find(row =>
+      row.elements.some(el => /serving\s*size/i.test(el.text))
+    );
+
+    if (servingRow) {
+      const servingText = servingRow.elements.map(e => e.text).join(' ');
+      const servingInfo = this.parseServingSize(servingText, servingRow.elements);
+
+      if (servingInfo) {
+        result.servingQuantity = servingInfo.quantity;
+        result.servingMeasure = servingInfo.measure;
+        result.standardMeasureValue = servingInfo.standardValue;
+        result.standardMeasureUnit = servingInfo.standardUnit;
+        console.log('Layer 1: Found serving via table:', servingInfo);
+      }
+    }
+
+    // Find calcium row
+    const calciumRow = rows.find(row =>
+      row.elements.some(el => /calcium/i.test(el.text))
+    );
+
+    if (calciumRow) {
+      const calciumText = calciumRow.elements.map(e => e.text).join(' ');
+      const calciumValue = this.parseCalcium(calciumText, calciumRow.elements);
+
+      if (calciumValue !== null) {
+        result.calcium = calciumValue;
+        console.log('Layer 1: Found calcium via table:', calciumValue);
+      }
+    }
+
+    return result;
+  }
+
+  /**
+   * Parse using line-based grouping (for non-table layouts)
+   */
+  private parseViaLineGrouping(elements: TextElement[]): Partial<NutritionParseResult> {
+    const result: Partial<NutritionParseResult> = {
+      servingQuantity: null,
+      servingMeasure: null,
+      standardMeasureValue: null,
+      standardMeasureUnit: null,
+      calcium: null
+    };
+
+    const lines = this.groupElementsIntoLines(elements);
+    console.log(`Layer 1: Grouped into ${lines.length} lines`);
+
+    for (const line of lines) {
+      const lineText = line.elements.map(e => e.text).join(' ');
+
+      // Parse serving size
+      if (!result.servingQuantity && /serving|size/i.test(lineText)) {
+        const servingInfo = this.parseServingSize(lineText, line.elements);
+
+        if (servingInfo) {
+          result.servingQuantity = servingInfo.quantity;
+          result.servingMeasure = servingInfo.measure;
+          result.standardMeasureValue = servingInfo.standardValue;
+          result.standardMeasureUnit = servingInfo.standardUnit;
+          console.log('Layer 1: Found serving via line:', servingInfo);
+        }
+      }
+
+      // Parse calcium
+      if (!result.calcium && /calcium/i.test(lineText)) {
+        const calciumValue = this.parseCalcium(lineText, line.elements);
+
+        if (calciumValue !== null) {
+          result.calcium = calciumValue;
+          console.log('Layer 1: Found calcium via line:', calciumValue);
+        }
+      }
+
+      // Stop if we found everything
+      if (this.isComplete(result)) break;
+    }
+
+    return result;
+  }
+
+  /**
+   * Group elements into lines based on Y coordinate proximity
+   */
+  private groupElementsIntoLines(elements: TextElement[]): TextLine[] {
+    if (!elements || elements.length === 0) return [];
+
+    // Sort by Y then X (reading order)
+    const sorted = [...elements].sort((a, b) => {
+      if (Math.abs(a.y - b.y) < 5) return a.x - b.x;
+      return a.y - b.y;
+    });
+
+    const lines: TextLine[] = [];
+    let currentLine: TextLine | null = null;
+    const yTolerance = 15;
+
+    for (const el of sorted) {
+      if (!currentLine) {
+        currentLine = { text: el.text, elements: [el], y: el.y, height: el.height };
+      } else {
+        const lineCenterY = currentLine.y + currentLine.height / 2;
+        const elCenterY = el.y + el.height / 2;
+
+        if (Math.abs(elCenterY - lineCenterY) < yTolerance) {
+          // Add to current line
+          currentLine.elements.push(el);
+          currentLine.text += ' ' + el.text;
+          currentLine.height = Math.max(currentLine.height, el.height);
+        } else {
+          // Start new line
+          lines.push(currentLine);
+          currentLine = { text: el.text, elements: [el], y: el.y, height: el.height };
+        }
+      }
+    }
+
+    if (currentLine) {
+      lines.push(currentLine);
+    }
+
+    return lines;
+  }
+
+  /**
+   * Check if result has all required fields
+   */
+  private isComplete(result: Partial<NutritionParseResult>): boolean {
+    return result.servingQuantity !== null &&
+           result.servingMeasure !== null &&
+           result.calcium !== null;
+  }
+
+  // ============================================================================
+  // LAYER 2: TEXT PATTERN MATCHING
+  // ============================================================================
+
+  /**
+   * Layer 2: Regex pattern matching on raw text
+   * Uses comprehensive patterns to find missing fields
+   * Medium confidence (0.5-0.7)
+   *
+   * @param text - Preprocessed text
+   * @param result - Partial result to fill gaps in
+   */
+  private regexParse(text: string, result: Partial<NutritionParseResult>): void {
+    console.log('Layer 2: Starting regex parse on text');
+
+    // Parse serving size if not found
+    if (!result.servingQuantity || !result.servingMeasure) {
+      const servingInfo = this.parseServingSize(text);
+
+      if (servingInfo) {
+        if (!result.servingQuantity) {
+          result.servingQuantity = servingInfo.quantity;
+          console.log('Layer 2: Found serving quantity:', servingInfo.quantity);
+        }
+        if (!result.servingMeasure) {
+          result.servingMeasure = servingInfo.measure;
+          console.log('Layer 2: Found serving measure:', servingInfo.measure);
+        }
+        if (!result.standardMeasureValue && servingInfo.standardValue) {
+          result.standardMeasureValue = servingInfo.standardValue;
+          result.standardMeasureUnit = servingInfo.standardUnit;
+          console.log('Layer 2: Found standard measure:', servingInfo.standardValue + servingInfo.standardUnit);
+        }
+      }
+    }
+
+    // Parse calcium if not found
+    if (!result.calcium) {
+      const calciumValue = this.parseCalcium(text);
+
+      if (calciumValue !== null) {
+        result.calcium = calciumValue;
+        console.log('Layer 2: Found calcium:', calciumValue);
+      }
+    }
+
+    console.log('Layer 2: Regex parse complete');
+  }
+
+  // ============================================================================
+  // LAYER 3: FUZZY RECOVERY
+  // ============================================================================
+
+  /**
+   * Layer 3: Fuzzy matching and OCR error correction
+   * Last resort for missing fields
+   * Low confidence (0.2-0.4)
+   *
+   * @param elements - Spatial elements (if available)
+   * @param text - Preprocessed text
+   * @param result - Partial result to fill remaining gaps
+   */
+  private fuzzyParse(elements: TextElement[], text: string, result: Partial<NutritionParseResult>): void {
+    console.log('Layer 3: Starting fuzzy recovery');
+
+    // OCR error corrections for common misreads
+    const correctedText = this.applyOCRCorrections(text);
+
+    // Try parsing again with corrected text
+    if (!result.servingQuantity || !result.servingMeasure) {
+      const servingInfo = this.parseServingSize(correctedText);
+
+      if (servingInfo) {
+        if (!result.servingQuantity) {
+          result.servingQuantity = servingInfo.quantity;
+          console.log('Layer 3: Found serving quantity via OCR correction:', servingInfo.quantity);
+        }
+        if (!result.servingMeasure) {
+          result.servingMeasure = servingInfo.measure;
+          console.log('Layer 3: Found serving measure via OCR correction:', servingInfo.measure);
+        }
+      }
+    }
+
+    if (!result.calcium) {
+      const calciumValue = this.parseCalcium(correctedText);
+
+      if (calciumValue !== null) {
+        result.calcium = calciumValue;
+        console.log('Layer 3: Found calcium via OCR correction:', calciumValue);
+      }
+    }
+
+    // Fuzzy keyword matching (if elements available)
+    if (elements && elements.length > 0) {
+      if (!result.calcium) {
+        const fuzzyCalcium = this.fuzzyMatchCalcium(elements, correctedText);
+        if (fuzzyCalcium !== null) {
+          result.calcium = fuzzyCalcium;
+          console.log('Layer 3: Found calcium via fuzzy matching:', fuzzyCalcium);
+        }
+      }
+
+      if (!result.servingQuantity || !result.servingMeasure) {
+        const fuzzyServing = this.fuzzyMatchServing(elements);
+        if (fuzzyServing) {
+          if (!result.servingQuantity) {
+            result.servingQuantity = fuzzyServing.quantity;
+          }
+          if (!result.servingMeasure) {
+            result.servingMeasure = fuzzyServing.measure;
+          }
+          console.log('Layer 3: Found serving via fuzzy matching:', fuzzyServing);
+        }
+      }
+    }
+
+    console.log('Layer 3: Fuzzy recovery complete');
+  }
+
+  /**
+   * Apply common OCR error corrections
+   */
+  private applyOCRCorrections(text: string): string {
+    const corrections: [RegExp, string][] = [
+      // Common number misreads
+      [/\bO(\d)/g, '0$1'],           // O0 → 00
+      [/(\d)O\b/g, '$10'],           // 1O → 10
+      [/\bl(\d)/g, '1$1'],           // l1 → 11
+      [/(\d)l\b/g, '$11'],           // 2l → 21
+
+      // Unit misreads
+      [/(\d+)\s*rng\b/gi, '$1mg'],   // rng → mg
+      [/(\d+)\s*fog\b/gi, '$1mg'],   // fog → mg
+      [/(\d+)\s*rag\b/gi, '$1mg'],   // rag → mg
+      [/(\d+)\s*rnL\b/gi, '$1mL'],   // rnL → mL
+
+      // Calcium keyword variations
+      [/ca1cium/gi, 'calcium'],
+      [/calclum/gi, 'calcium'],
+      [/ca[li]c[il]um/gi, 'calcium'],
+
+      // Serving size variations
+      [/serv[il]ng/gi, 'serving'],
+      [/s[il]ze/gi, 'size'],
+
+      // Measure unit variations
+      [/tb5p/gi, 'tbsp'],
+      [/t5p/gi, 'tsp'],
+      [/bott1e/gi, 'bottle'],
+      [/s1ice/gi, 'slice'],
+    ];
+
+    let corrected = text;
+    for (const [pattern, replacement] of corrections) {
+      corrected = corrected.replace(pattern, replacement);
+    }
+
+    return corrected;
+  }
+
+  /**
+   * Fuzzy match calcium using proximity and keyword similarity
+   */
+  private fuzzyMatchCalcium(elements: TextElement[], text: string): number | null {
+    // Find elements that might be "calcium" (fuzzy match)
+    const calciumCandidates = elements.filter(el => {
+      const normalized = el.text.toLowerCase().replace(/[^a-z]/g, '');
+      return this.fuzzyMatch(normalized, 'calcium', 0.7); // 70% similarity
+    });
+
+    if (calciumCandidates.length === 0) return null;
+
+    // For each candidate, look for nearby numeric values
+    for (const candidate of calciumCandidates) {
+      const nearby = elements.filter(el =>
+        Math.abs(el.y - candidate.y) < 20 && // Same line
+        el.x > candidate.x && // To the right
+        el.x - candidate.x < 200 // Reasonable distance
+      );
+
+      // Look for mg values
+      for (const el of nearby) {
+        const mgMatch = el.text.match(/(\d+)\s*mg/i);
+        if (mgMatch) {
+          const value = parseInt(mgMatch[1]);
+          if (this.isValidCalciumValue(value)) {
+            return value;
+          }
+        }
+      }
+
+      // Look for percentages
+      for (const el of nearby) {
+        const percentMatch = el.text.match(/(\d+)\s*%/);
+        if (percentMatch) {
+          const percent = parseInt(percentMatch[1]);
+          if (percent > 0 && percent <= 100) {
+            return Math.round((percent / 100) * 1300);
+          }
+        }
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * Fuzzy match serving size using keyword similarity
+   */
+  private fuzzyMatchServing(elements: TextElement[]): { quantity: number; measure: string } | null {
+    // Find "serving" or "size" keywords (fuzzy)
+    const servingCandidates = elements.filter(el => {
+      const normalized = el.text.toLowerCase().replace(/[^a-z]/g, '');
+      return this.fuzzyMatch(normalized, 'serving', 0.7) ||
+             this.fuzzyMatch(normalized, 'size', 0.7);
+    });
+
+    if (servingCandidates.length === 0) return null;
+
+    // For each candidate, look for nearby quantities and measures
+    for (const candidate of servingCandidates) {
+      const nearby = elements.filter(el =>
+        Math.abs(el.y - candidate.y) < 20 && // Same line
+        el.x > candidate.x // To the right
+      ).sort((a, b) => a.x - b.x); // Left to right
+
+      let quantity: number | null = null;
+      let measure: string | null = null;
+
+      // Sequential search
+      for (const el of nearby) {
+        if (!quantity) {
+          quantity = this.parseFraction(el.text.trim());
+          if (quantity && this.validateServingQuantity(quantity, el.text)) {
+            continue;
+          } else {
+            quantity = null;
+          }
+        }
+
+        if (quantity && !measure) {
+          if (/^(cup|tbsp|tsp|bottle|slice|container|oz|g|ml|mL)s?$/i.test(el.text.trim())) {
+            measure = el.text.toLowerCase().replace(/s$/, '');
+            return { quantity, measure };
+          }
+        }
+      }
+    }
+
+    return null;
   }
 
   private parseFraction(text: string): number | null {
@@ -1149,18 +1483,6 @@ export class OCRService {
     return result;
   }
 
-  private isResultComplete(result: NutritionParseResult): boolean {
-    return result.servingQuantity !== null && 
-           result.servingMeasure !== null && 
-           result.calcium !== null;
-  }
-
-  private isResultBetter(current: NutritionParseResult, previous: NutritionParseResult): boolean {
-    const currentScore = this.scoreResult(current);
-    const previousScore = this.scoreResult(previous);
-    return currentScore > previousScore;
-  }
-
   private scoreResult(result: NutritionParseResult): number {
     let score = 0;
     if (result.servingQuantity !== null) score += 2;
@@ -1174,25 +1496,11 @@ export class OCRService {
   private calculateConfidence(result: NutritionParseResult): 'low' | 'medium' | 'high' {
     const score = this.scoreResult(result);
     const maxScore = 9;
-    
+
     const percentage = score / maxScore;
-    
+
     if (percentage >= 0.8) return 'high';
     if (percentage >= 0.5) return 'medium';
     return 'low';
-  }
-
-  private buildLegacyServingSize(result: NutritionParseResult): string | undefined {
-    if (!result.servingQuantity || !result.servingMeasure) {
-      return undefined;
-    }
-    
-    let servingSize = `${result.servingQuantity} ${result.servingMeasure}`;
-    
-    if (result.standardMeasureValue && result.standardMeasureUnit) {
-      servingSize += ` (${result.standardMeasureValue}${result.standardMeasureUnit})`;
-    }
-    
-    return servingSize;
   }
 }
