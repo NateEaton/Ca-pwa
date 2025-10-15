@@ -20,11 +20,12 @@
   import { createEventDispatcher, onMount } from "svelte";
   import { calciumState, calciumService, showToast } from "$lib/stores/calcium";
   import { isOnline } from "$lib/stores/networkStatus";
-  import { DEFAULT_FOOD_DATABASE, getPrimaryMeasure, getAllMeasures, hasMultipleMeasures } from "$lib/data/foodDatabase";
+  import { DEFAULT_FOOD_DATABASE, getPrimaryMeasure, getAllMeasures, hasMultipleMeasures, formatCalcium } from "$lib/data/foodDatabase";
   import { SearchService } from "$lib/services/SearchService";
   import UnitConverter from "$lib/services/UnitConverter";
   import ConfirmDialog from "./ConfirmDialog.svelte";
   import SmartScanModal from './SmartScanModal.svelte';
+  import SourceIndicator from "./SourceIndicator.svelte";
 
   /** Whether the modal is visible */
   export let show = false;
@@ -72,6 +73,76 @@
 
   // Smart Scanning (UPC → OCR → Manual)
   let showSmartScanModal = false;
+
+  // Create a temporary food object for source indicator display
+  $: displayFoodForIndicator = (() => {
+    console.log('AddFoodModal: displayFoodForIndicator computing...', {
+      editingFood,
+      currentFoodData,
+      scanContext,
+      customFoodsCount: $calciumState.customFoods.length
+    });
+
+    // If editing an existing food from journal, look up the full custom food
+    if (editingFood?.isCustom) {
+      const lookupId = editingFood.customFoodId || editingFood.id;
+      console.log('AddFoodModal: Looking up custom food by ID:', lookupId);
+
+      let customFood = null;
+
+      // Try ID lookup first
+      if (lookupId) {
+        customFood = $calciumState.customFoods.find(f => f.id === lookupId);
+        console.log('AddFoodModal: Found customFood by ID:', customFood);
+      }
+
+      // If no ID or not found, try matching by name and calcium
+      if (!customFood && editingFood.name) {
+        console.log('AddFoodModal: Attempting name+calcium match for:', editingFood.name, editingFood.calcium);
+        customFood = $calciumState.customFoods.find(f =>
+          f.name === editingFood.name &&
+          Math.abs(f.calcium - editingFood.calcium) < 0.01
+        );
+        console.log('AddFoodModal: Found customFood by name+calcium:', customFood);
+      }
+
+      if (customFood?.sourceMetadata) {
+        console.log('AddFoodModal: Returning customFood with sourceMetadata:', customFood.sourceMetadata);
+        return customFood;
+      }
+    }
+
+    // If editing an existing food object that already has sourceMetadata
+    if (editingFood?.isCustom && editingFood?.sourceMetadata) {
+      console.log('AddFoodModal: Returning editingFood with sourceMetadata');
+      return editingFood;
+    }
+
+    // If we have currentFoodData (selected from search), use that
+    if (currentFoodData?.isCustom && currentFoodData?.sourceMetadata) {
+      console.log('AddFoodModal: Returning currentFoodData with sourceMetadata');
+      return currentFoodData;
+    }
+
+    // If we have a scan context (new scan), create temporary food object for display
+    if (scanContext?.method) {
+      const sourceType =
+        (scanContext.method === 'UPC' || scanContext.method === 'Manual UPC')
+          ? 'upc_scan'
+          : scanContext.method === 'OCR'
+            ? 'ocr_scan'
+            : 'manual';
+
+      console.log('AddFoodModal: Returning scan context food with sourceType:', sourceType);
+      return {
+        isCustom: true,
+        sourceMetadata: { sourceType }
+      };
+    }
+
+    console.log('AddFoodModal: No displayFoodForIndicator found, returning null');
+    return null;
+  })();
 
   // Initialize component on mount
   onMount(async () => {
@@ -736,23 +807,28 @@
         <div class="form-group">
           <div class="form-label-row">
             <label class="form-label" for="foodName">Food Name</label>
-            {#if !isCustomMode && currentFoodData && !currentFoodData.isCustom}
-              <button
-                class="favorite-modal-btn"
-                class:favorite={$calciumState.favorites.has(currentFoodData.id)}
-                on:click={toggleCurrentFoodFavorite}
-                title={$calciumState.favorites.has(currentFoodData.id)
-                  ? "Remove from favorites"
-                  : "Add to favorites"}
-                type="button"
-              >
-                <span class="material-icons">
-                  {$calciumState.favorites.has(currentFoodData.id)
-                    ? "star"
-                    : "star_border"}
-                </span>
-              </button>
-            {/if}
+            <div class="label-row-right">
+              {#if displayFoodForIndicator}
+                <SourceIndicator food={displayFoodForIndicator} size="small" />
+              {/if}
+              {#if !isCustomMode && currentFoodData && !currentFoodData.isCustom}
+                <button
+                  class="favorite-modal-btn"
+                  class:favorite={$calciumState.favorites.has(currentFoodData.id)}
+                  on:click={toggleCurrentFoodFavorite}
+                  title={$calciumState.favorites.has(currentFoodData.id)
+                    ? "Remove from favorites"
+                    : "Add to favorites"}
+                  type="button"
+                >
+                  <span class="material-icons">
+                    {$calciumState.favorites.has(currentFoodData.id)
+                      ? "star"
+                      : "star_border"}
+                  </span>
+                </button>
+              {/if}
+            </div>
           </div>
           <input
             id="foodName"
@@ -781,9 +857,12 @@
                   <div class="search-item-content">
                     <div class="search-item-name">
                       {food.name}
+                      {#if food.isCustom && food.sourceMetadata}
+                        <SourceIndicator {food} size="small" />
+                      {/if}
                     </div>
                     <div class="search-item-details">
-                      {Math.round(getPrimaryMeasure(food).calcium)}mg per {getPrimaryMeasure(food).measure}
+                      {formatCalcium(getPrimaryMeasure(food).calcium)}mg per {getPrimaryMeasure(food).measure}
                       {#if hasMultipleMeasures(food)}
                         <span class="measure-count">({getAllMeasures(food).length} servings)</span>
                       {/if}
@@ -812,7 +891,7 @@
             >
               {#each availableMeasures as measure, index}
                 <option value={index}>
-                  {Math.round(measure.calcium)}mg per {measure.measure}
+                  {formatCalcium(measure.calcium)}mg per {measure.measure}
                 </option>
               {/each}
             </select>
@@ -1122,6 +1201,12 @@
     margin-bottom: var(--spacing-sm);
   }
 
+  .label-row-right {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
   .form-label {
     font-weight: 500;
     color: var(--text-primary);
@@ -1214,6 +1299,9 @@
   .search-item-name {
     font-weight: 500;
     color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
   }
 
   .search-item-details {

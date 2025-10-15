@@ -19,9 +19,11 @@
 <script>
   import { onMount, onDestroy } from "svelte";
   import { calciumState, showToast, calciumService } from "$lib/stores/calcium";
-  import { DEFAULT_FOOD_DATABASE, getPrimaryMeasure, getAllMeasures, hasMultipleMeasures } from "$lib/data/foodDatabase";
+  import { DEFAULT_FOOD_DATABASE, getPrimaryMeasure, getAllMeasures, hasMultipleMeasures, formatCalcium } from "$lib/data/foodDatabase";
   import { SearchService } from "$lib/services/SearchService";
   import { goto } from "$app/navigation";
+  import SourceIndicator from "$lib/components/SourceIndicator.svelte";
+  import MetadataPopup from "$lib/components/MetadataPopup.svelte";
 
   let searchQuery = "";
   let selectedFilter = "available"; // New default filter
@@ -45,6 +47,10 @@
   // Delete confirmation modal state
   let showDeleteModal = false;
   let foodToDelete = null;
+
+  // Metadata popup state
+  let showMetadataPopup = false;
+  let selectedFoodForMetadata = null;
 
   // Get food type for sorting based on current filter context
   function getFoodTypeForSort(food) {
@@ -326,6 +332,11 @@
   function cancelDelete() {
     showDeleteModal = false;
     foodToDelete = null;
+  }
+
+  function handleInfoClick(food) {
+    selectedFoodForMetadata = food;
+    showMetadataPopup = true;
   }
 
   async function handleDeleteFood() {
@@ -797,7 +808,22 @@
               </div>
             {/if}
             <div class="food-info">
-              <div class="food-name">{food.name}</div>
+              <div class="food-name">
+                {food.name}
+                {#if food.isCustom && food.sourceMetadata}
+                  <SourceIndicator {food} size="small" />
+                  <button
+                    class="info-button"
+                    on:click={(e) => {
+                      e.stopPropagation();
+                      handleInfoClick(food);
+                    }}
+                    aria-label="View source details"
+                  >
+                    <span class="material-icons">info</span>
+                  </button>
+                {/if}
+              </div>
               <div class="food-measure">
                 {getPrimaryMeasure(food).measure}
                 {#if hasMultipleMeasures(food)}
@@ -807,7 +833,7 @@
             </div>
             <div class="food-calcium">
               <div class="calcium-amount" title="{getPrimaryMeasure(food).calcium}mg">
-                {Math.round(getPrimaryMeasure(food).calcium)}mg
+                {formatCalcium(getPrimaryMeasure(food).calcium)}mg
               </div>
               <div class="food-type">
                 {food.isCustom ? "User" : "Database"}
@@ -891,6 +917,17 @@
       </div>
     </div>
   </div>
+{/if}
+
+{#if showMetadataPopup && selectedFoodForMetadata && selectedFoodForMetadata.sourceMetadata}
+  <MetadataPopup
+    show={showMetadataPopup}
+    food={selectedFoodForMetadata}
+    on:close={() => {
+      showMetadataPopup = false;
+      selectedFoodForMetadata = null;
+    }}
+  />
 {/if}
 
 <svelte:window on:click={handleClickOutside} />
@@ -1090,6 +1127,33 @@
     color: var(--text-primary);
     margin-bottom: 4px;
     line-height: 1.4;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .info-button {
+    background: none;
+    border: none;
+    padding: 0.25rem;
+    border-radius: 50%;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 24px;
+    height: 24px;
+  }
+
+  .info-button:hover {
+    background-color: var(--hover);
+    color: var(--text-primary);
+  }
+
+  .info-button .material-icons {
+    font-size: 16px;
   }
 
   .food-measure {

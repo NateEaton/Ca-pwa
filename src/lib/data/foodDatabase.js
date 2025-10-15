@@ -343,5 +343,21 @@ export function hasMultipleMeasures(food) {
   return food.measures && Array.isArray(food.measures) && food.measures.length > 1;
 }
 
+/**
+ * Formats calcium value to at most 1 decimal place
+ * Removes trailing .0 for whole numbers
+ * @param {number} calcium - The calcium value in mg
+ * @returns {string} Formatted calcium value
+ */
+export function formatCalcium(calcium) {
+  if (calcium == null || isNaN(calcium)) return '0';
+
+  // Round to 1 decimal place
+  const rounded = Math.round(calcium * 10) / 10;
+
+  // Convert to string and remove trailing .0
+  return rounded % 1 === 0 ? rounded.toString() : rounded.toFixed(1);
+}
+
 // For legacy compatibility, maintain the original loadFoodDatabase export
 export { loadFoodDatabase };

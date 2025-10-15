@@ -64,6 +64,16 @@
   $: metadata = food?.sourceMetadata;
   $: scanData = metadata?.scanData;
   $: processingNotes = metadata?.processingNotes;
+
+  $: {
+    console.log('MetadataPopup: Data update', {
+      food,
+      metadata,
+      scanData,
+      processingNotes,
+      confidenceScores: processingNotes?.confidence
+    });
+  }
 </script>
 
 <svelte:window on:keydown={handleKeydown} />
@@ -92,8 +102,8 @@
           <div class="info-item">
             <span class="label">Source Type:</span>
             <span class="value">
-              {#if $calciumService}
-                {$calciumService.formatSourceMetadata(food)}
+              {#if calciumService}
+                {calciumService.formatSourceMetadata(food)}
               {:else}
                 Unknown
               {/if}
@@ -206,9 +216,15 @@
               <div class="confidence-scores">
                 <span class="label">Confidence Scores:</span>
                 <div class="confidence-grid">
-                  <span>Name: {Math.round(processingNotes.confidence.name * 100)}%</span>
-                  <span>Calcium: {Math.round(processingNotes.confidence.calcium * 100)}%</span>
-                  <span>Measure: {Math.round(processingNotes.confidence.measure * 100)}%</span>
+                  {#if processingNotes.confidence.name !== undefined}
+                    <span>Name: {Math.round(processingNotes.confidence.name * 100)}%</span>
+                  {/if}
+                  {#if processingNotes.confidence.calcium !== undefined}
+                    <span>Calcium: {Math.round(processingNotes.confidence.calcium * 100)}%</span>
+                  {/if}
+                  {#if processingNotes.confidence.measure !== undefined}
+                    <span>Measure: {Math.round(processingNotes.confidence.measure * 100)}%</span>
+                  {/if}
                 </div>
               </div>
             {/if}

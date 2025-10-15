@@ -1820,12 +1820,28 @@ private async clearAllData(): Promise<void> {
   }
 
   /**
+   * Converts confidence string to numeric value.
+   */
+  private parseConfidence(confidence: any): number {
+    if (typeof confidence === 'number') return confidence;
+    if (typeof confidence === 'string') {
+      const lower = confidence.toLowerCase();
+      if (lower === 'high') return 0.9;
+      if (lower === 'medium') return 0.7;
+      if (lower === 'low') return 0.5;
+    }
+    return 0.8; // Default
+  }
+
+  /**
    * Creates source metadata for an OCR scan food entry.
    */
   createOCRSourceMetadata(scanData: any): CustomFood['sourceMetadata'] {
+    const confidenceValue = this.parseConfidence(scanData.confidence);
+
     const metadata: CustomFood['sourceMetadata'] = {
       sourceType: 'ocr_scan',
-      confidence: scanData.confidence || 0.8 // Default confidence if not provided
+      confidence: confidenceValue
     };
 
     // Add scan processing details
@@ -1850,8 +1866,8 @@ private async clearAllData(): Promise<void> {
           : null,
         confidence: {
           name: 0.5, // OCR doesn't provide names
-          calcium: scanData.confidence || 0.8,
-          measure: scanData.confidence || 0.8
+          calcium: confidenceValue,
+          measure: confidenceValue
         }
       };
     }

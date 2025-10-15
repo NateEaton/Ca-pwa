@@ -18,6 +18,7 @@
 
 <script>
   import { createEventDispatcher } from "svelte";
+  import { formatCalcium } from "$lib/data/foodDatabase";
   import SourceIndicator from "./SourceIndicator.svelte";
   import MetadataPopup from "./MetadataPopup.svelte";
 
@@ -79,7 +80,7 @@
     </div>
 
     <div class="food-calcium">
-      <span class="calcium-amount">{Math.round(food.calcium)}</span>
+      <span class="calcium-amount">{formatCalcium(food.calcium)}</span>
       <span class="calcium-unit">mg</span>
     </div>
   </div>

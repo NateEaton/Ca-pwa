@@ -27,9 +27,9 @@
   // Direct source type mapping (no dependency on store)
   function getSourceColor(sourceType) {
     switch (sourceType) {
-      case 'manual': return 'var(--primary)';
-      case 'upc_scan': return 'var(--success)';
-      case 'ocr_scan': return 'var(--warning)';
+      case 'manual': return 'var(--primary-color)';
+      case 'upc_scan': return 'var(--success-color)';
+      case 'ocr_scan': return 'var(--warning-color)';
       default: return 'var(--text-secondary)';
     }
   }
