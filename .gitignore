@@ -91,4 +91,12 @@ source_data/iof-calcium-parsed.csv
 source_data/migrated-migration-report.json
 
 ocr/
+!ocr/fetch_labels.js
+!ocr/generate_ocr_dataset.js
+!ocr/merge_test_data.js
+!ocr/extract_upcs.js
+!ocr/run_tests.ts
+!ocr/package.json
+!ocr/tsconfig.json
+
 calcium-dev.eatonfamily.net.conf

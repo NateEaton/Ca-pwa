@@ -1,0 +1,31 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ES2022",
+    "moduleResolution": "bundler",
+    "lib": ["ES2022"],
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "allowSyntheticDefaultImports": true,
+    "isolatedModules": true,
+    "allowJs": true,
+    "types": ["node"],
+    "paths": {
+      "$lib/*": ["../src/lib/*"]
+    },
+    "baseUrl": "."
+  },
+  "include": [
+    "*.ts",
+    "../src/lib/services/OCRService.ts",
+    "../src/lib/utils/imageResize.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "../node_modules",
+    "../.svelte-kit"
+  ]
+}
