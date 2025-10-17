@@ -117,13 +117,6 @@
             </div>
           {/if}
 
-          {#if metadata?.confidence}
-            <div class="info-item">
-              <span class="label">Confidence:</span>
-              <span class="value">{Math.round(metadata.confidence * 100)}%</span>
-            </div>
-          {/if}
-
           {#if metadata?.upc}
             <div class="info-item">
               <span class="label">UPC Code:</span>
@@ -143,9 +136,9 @@
           <div class="metadata-section">
             <h5>Scan Details</h5>
 
-            {#if scanData.originalName}
+            {#if scanData.originalName && metadata?.sourceType !== 'ocr_scan'}
               <div class="info-item">
-                <span class="label">Original Name:</span>
+                <span class="label">Product Name:</span>
                 <span class="value">{scanData.originalName}</span>
               </div>
             {/if}
@@ -161,6 +154,20 @@
               <div class="info-item">
                 <span class="label">Serving Size:</span>
                 <span class="value">{scanData.servingSize}</span>
+              </div>
+            {/if}
+
+            {#if scanData.selectedNutrientPer}
+              <div class="info-item">
+                <span class="label">Standard Measure:</span>
+                <span class="value">{scanData.selectedNutrientPer}</span>
+              </div>
+            {/if}
+
+            {#if food.calcium}
+              <div class="info-item">
+                <span class="label">Calcium per Serving:</span>
+                <span class="value">{food.calcium}mg</span>
               </div>
             {/if}
 
@@ -216,14 +223,11 @@
               <div class="confidence-scores">
                 <span class="label">Confidence Scores:</span>
                 <div class="confidence-grid">
-                  {#if processingNotes.confidence.name !== undefined}
-                    <span>Name: {Math.round(processingNotes.confidence.name * 100)}%</span>
-                  {/if}
                   {#if processingNotes.confidence.calcium !== undefined}
                     <span>Calcium: {Math.round(processingNotes.confidence.calcium * 100)}%</span>
                   {/if}
                   {#if processingNotes.confidence.measure !== undefined}
-                    <span>Measure: {Math.round(processingNotes.confidence.measure * 100)}%</span>
+                    <span>Serving Measure: {Math.round(processingNotes.confidence.measure * 100)}%</span>
                   {/if}
                 </div>
               </div>

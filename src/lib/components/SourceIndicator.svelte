@@ -17,12 +17,18 @@
 -->
 
 <script>
+  import { createEventDispatcher } from "svelte";
+
   /** The custom food to display source indicator for */
   export let food;
   /** Size variant: 'small' or 'medium' */
   export let size = 'small';
   /** Whether to show label text alongside icon */
   export let showLabel = false;
+  /** Whether the indicator is clickable */
+  export let clickable = false;
+
+  const dispatch = createEventDispatcher();
 
   // Direct source type mapping (no dependency on store)
   function getSourceColor(sourceType) {
@@ -52,18 +58,40 @@
     }
   }
 
+  function handleClick(event) {
+    if (clickable) {
+      event.stopPropagation();
+      dispatch('click', { food });
+    }
+  }
+
   $: sourceType = food.sourceMetadata?.sourceType;
   $: sourceColor = getSourceColor(sourceType);
   $: sourceIcon = getSourceIcon(sourceType);
   $: sourceLabel = formatSourceLabel(sourceType);
 </script>
 
-<div class="source-indicator {size}" style="--source-color: {sourceColor}">
-  <span class="material-icons icon">{sourceIcon}</span>
-  {#if showLabel}
-    <span class="label">{sourceLabel}</span>
-  {/if}
-</div>
+{#if clickable}
+  <button
+    class="source-indicator {size} clickable"
+    style="--source-color: {sourceColor}"
+    on:click={handleClick}
+    aria-label="View source details"
+    title="View source details"
+  >
+    <span class="material-icons icon">{sourceIcon}</span>
+    {#if showLabel}
+      <span class="label">{sourceLabel}</span>
+    {/if}
+  </button>
+{:else}
+  <div class="source-indicator {size}" style="--source-color: {sourceColor}">
+    <span class="material-icons icon">{sourceIcon}</span>
+    {#if showLabel}
+      <span class="label">{sourceLabel}</span>
+    {/if}
+  </div>
+{/if}
 
 <style>
   .source-indicator {
@@ -71,6 +99,21 @@
     align-items: center;
     gap: 0.25rem;
     color: var(--source-color);
+  }
+
+  .source-indicator.clickable {
+    background: none;
+    border: none;
+    padding: 0.25rem;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    min-width: 24px;
+    height: 24px;
+  }
+
+  .source-indicator.clickable:hover {
+    background-color: var(--hover);
   }
 
   .source-indicator.small .icon {

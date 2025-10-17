@@ -179,7 +179,7 @@ export class OCRService {
   /**
    * Parse nutrition data from cached OCR results (for batch testing)
    * Bypasses image processing and API calls - only executes parsing logic
-   * 
+   *
    * @param cachedData Pre-captured OCR data with rawText and words array
    * @returns Parsed nutrition result using same logic as live OCR
    */
@@ -189,10 +189,10 @@ export class OCRService {
   }): NutritionParseResult {
     console.log('OCR: Parsing from cached OCR data...');
     console.log('OCR: Word count:', cachedData.words.length);
-    
+
     // Reconstruct Lines structure from cached words
     const lines = this.reconstructLinesFromWords(cachedData.words);
-    
+
     // Create minimal API response structure for parseWithMultipleStrategies
     const mockResponse: OCRResponse = {
       ParsedResults: [{
@@ -206,13 +206,33 @@ export class OCRService {
       }],
       IsErroredOnProcessing: false
     };
-    
+
     // Use existing parsing logic
     return this.parseWithMultipleStrategies(
       cachedData.rawText,
       lines,
       mockResponse
     );
+  }
+
+  /**
+   * Parse nutrition data from full OCR.space API response (for batch testing)
+   * Uses the complete API response structure including pre-grouped Lines with LineText
+   * This is the preferred method for testing as it matches the live app data flow exactly
+   *
+   * @param apiResponse Full OCR.space API response with Lines structure intact
+   * @returns Parsed nutrition result using same logic as live OCR
+   */
+  public parseFromFullAPIResponse(apiResponse: OCRResponse): NutritionParseResult {
+    console.log('OCR: Parsing from full API response...');
+
+    const rawText = apiResponse.ParsedResults[0].ParsedText;
+    const lines = apiResponse.ParsedResults[0].TextOverlay?.Lines || [];
+
+    console.log('OCR: Using', lines.length, 'pre-grouped lines from API');
+
+    // Use existing parsing logic with full API structure
+    return this.parseWithMultipleStrategies(rawText, lines, apiResponse);
   }
 
   /**
@@ -287,13 +307,17 @@ export class OCRService {
     console.log('=== Starting 3-Layer Waterfall Parse ===');
     console.log('OCR: Raw text length:', rawText.length);
 
+    // Normalize OCR text to fix common mistakes BEFORE any parsing
+    const normalizedText = this.normalizeOCRText(rawText);
+
     // Extract and preprocess spatial elements
     const textElements: TextElement[] = this.extractTextElements(lines);
     textElements.forEach(el => {
       el.text = this.preprocessSpatialText(el);
+      el.text = this.normalizeOCRText(el.text); // Also normalize spatial text
     });
 
-    const preprocessedText = this.preprocessText(rawText);
+    const preprocessedText = this.preprocessText(normalizedText);
     console.log('OCR: Preprocessed', textElements.length, 'spatial elements');
 
     // Initialize result
@@ -677,12 +701,13 @@ export class OCRService {
    */
   private parseCalciumFromText(text: string): number | null {
     // Format 1: "Calcium XXXmg" (with various separators)
-    // Matches: "Calcium 390mg", "Calcium: 320mg", "Calcium\t180mg", "• Calcium 60mg"
+    // Matches: "Calcium 390mg", "Calcium: 320mg", "Calcium\t180mg", "• Calcium 60mg", "calcium60mg"
     const directMgPatterns = [
       /calcium[:\s\t]+(\d+)\s*mg/i,
       /calcium[:\s\t]+(\d+)mg/i,
       /[•·]\s*calcium\s+(\d+)\s*mg/i,
-      /calcium\s+(\d+)\s*mg/i
+      /calcium\s+(\d+)\s*mg/i,
+      /calcium(\d+)mg/i  // No space/colon: "calcium60mg", "calcium19mg"
     ];
 
     for (const pattern of directMgPatterns) {
@@ -717,16 +742,25 @@ export class OCRService {
       }
     }
 
-    // Format 4: Percentage only (convert to mg)
-    // Matches: "Calcium 25%", "Calcium: 30%"
-    // Only use if no mg value found (lower confidence)
-    const percentPattern = /calcium[:\s]+(\d+)%/i;
-    const percentMatch = text.match(percentPattern);
-    if (percentMatch) {
-      const percent = parseInt(percentMatch[1]);
-      if (percent > 0 && percent <= 100) {
-        const mgValue = Math.round((percent / 100) * 1300); // FDA DV
-        return mgValue;
+    // Format 4: Percentage-based fallback (convert %DV to mg)
+    // Matches: "Calcium 25%", "Calcium: 30%", "calcium omg 15%" (corrupted mg)
+    // Also handles cases where mg value is corrupted but %DV is readable
+    // %DV is based on FDA Daily Value of 1300mg for calcium
+    const percentPatterns = [
+      /calcium[:\s]+(\d+)%/i,              // Standard: "Calcium 25%"
+      /calcium[:\s]+\w+\s+(\d+)%/i,        // Corrupted mg: "calcium omg 15%"
+      /calcium.*?(\d+)%/i                  // Flexible: any text between calcium and %
+    ];
+
+    for (const pattern of percentPatterns) {
+      const percentMatch = text.match(pattern);
+      if (percentMatch) {
+        const percent = parseInt(percentMatch[1]);
+        // Sanity check: DV% should be 0-200 (some fortified foods exceed 100%)
+        if (percent >= 0 && percent <= 200) {
+          const mgValue = Math.round((percent / 100) * 1300); // FDA DV for calcium
+          return mgValue;
+        }
       }
     }
 
@@ -856,25 +890,71 @@ export class OCRService {
   }
 
   /**
+   * Normalize common OCR mistakes to improve parsing accuracy
+   * CONSERVATIVE approach to avoid breaking valid patterns
+   */
+  private normalizeOCRText(text: string): string {
+    let normalized = text;
+
+    // Fix "0" mistaken as "o" or "O" in numeric contexts ONLY
+    // "calcium omg" → "calcium 0mg" (only when followed by mg)
+    normalized = normalized.replace(/(\bcalcium\s+)omg\b/gi, '$10mg');
+    normalized = normalized.replace(/(\d+\s*)omg\b/gi, '$10mg');
+
+    // Fix "I" or "l" to "1" ONLY in specific serving size contexts
+    // "Serving size I packet" → "Serving size 1 packet"
+    // More conservative than before - only for common single-word measures
+    normalized = normalized.replace(/\bserving\s+size\s+([il])\s+(packet|pouch|bar|bottle|container|portion)\b/gi, 'Serving size 1 $2');
+
+    // Fix common typos in "Serving size" keyword
+    // "Servinq site" → "Serving size", "Serving sixo" → "Serving size"
+    normalized = normalized.replace(/servin[gq]\s*si[tzx]e/gi, 'Serving size');
+
+    return normalized;
+  }
+
+  /**
    * Parse serving size from raw text using comprehensive regex patterns
    */
   private parseServingSizeFromText(text: string): ServingInfo | null {
-    // Pattern 1: Standard format with optional parenthetical
-    // "Serving size 1/2 cup (120g)", "Serving size 2 tbsp (30ml)"
+    // Enhanced patterns to handle quantity-first formats without "Serving size" keyword
+    // Parenthetical patterns made forgiving to handle OCR corruption: (28g/abc → captures 28g)
     const patterns = [
-      /serving\s*size\s*[:\-]?\s*([\d\.\/]+)\s*(cup|tbsp|tsp|bottle|slice|container|oz|fl\s*oz|g|ml|mL)(?:\s*\((\d+(?:\.\d+)?)\s*([a-zA-Z]+)\))?/i,
+      // Pattern 0: Quantity-first with controlled wildcard for measures
+      // "1.5 Cup (39 g)", "55 pieces (30 g)", "27 crackers (30g)", "1 package (28g"
+      // Allows 1-2 word measures with length constraints to prevent greedy matching
+      // Forgiving: captures value+unit even if closing paren is missing or has garbage
+      /([\d\.\/]+)\s+([a-zA-Z]{2,15}(?:\s+[a-zA-Z]{2,15})?)\s*\((\d+(?:\.\d+)?)\s*([gG]|ml|mL|oz|fl\s*oz)/i,
+
+      // Pattern 1: Standard format with optional parenthetical
+      // "Serving size 1/2 cup (120g)", "Serving size 2 tbsp (30ml", "Serving size 1 oz (28g/abc"
+      // Forgiving: accepts corrupted parentheticals like (28g/abc or (85g extra text)
+      /serving\s*size\s*[:\-]?\s*([\d\.\/]+)\s*(cup|tbsp|tsp|bottle|slice|container|oz|fl\s*oz|g|ml|mL|pieces|crackers|bars|cookies|pretzels|chips)(?:\s*\((\d+(?:\.\d+)?)\s*([a-zA-Z]+))?/i,
 
       // Pattern 2: Parenthetical first, then measure
-      // "Serving size (240mL) 1 cup"
-      /serving\s*size\s*\((\d+(?:\.\d+)?)\s*([a-zA-Z]+)\)\s*([\d\.\/]+)\s*(cup|tbsp|tsp|bottle|slice|container)/i,
+      // "Serving size (240mL) 1 cup", "Serving size (30g 1 tbsp"
+      // Forgiving: doesn't require closing paren
+      /serving\s*size\s*\((\d+(?:\.\d+)?)\s*([a-zA-Z]+)\s*([\d\.\/]+)\s*(cup|tbsp|tsp|bottle|slice|container|pieces|crackers|bars)/i,
 
       // Pattern 3: Quantity and measure only
       // "Serving size 1 bottle"
-      /serving\s*size\s*[:\-]?\s*([\d\.\/]+)\s*(cup|tbsp|tsp|bottle|slice|container|oz|g|ml|mL)/i,
+      /serving\s*size\s*[:\-]?\s*([\d\.\/]+)\s*(cup|tbsp|tsp|bottle|slice|container|oz|g|ml|mL|pieces|crackers|bars|cookies)/i,
 
-      // Pattern 4: Just quantity with parenthetical
-      // "1 bottle (296ml)"
-      /^([\d\.\/]+)\s*(bottle|cup|tbsp|tsp|slice|container)\s*\((\d+(?:\.\d+)?)\s*([a-zA-Z]+)\)/i
+      // Pattern 4: Just quantity with parenthetical (single word measure)
+      // "1 bottle (296ml)", "2 cup (240g/abc"
+      // Forgiving: doesn't require closing paren or clean text after unit
+      /^([\d\.\/]+)\s*(bottle|cup|tbsp|tsp|slice|container)\s*\((\d+(?:\.\d+)?)\s*([a-zA-Z]+)/i,
+
+      // Pattern 5: Space-separated fractions with measure
+      // "1 1/2 cup", "2 1/4 tbsp (30ml)", "1 1/2 cup (120g/extra"
+      // Forgiving: handles corrupted parenthetical
+      /serving\s*size\s*[:\-]?\s*(\d+)\s+(\d+\/\d+)\s+(cup|tbsp|tsp|bottle)(?:\s*\((\d+(?:\.\d+)?)\s*([a-zA-Z]+))?/i,
+
+      // Pattern 6: Measure with parenthetical but missing quantity (assume 1)
+      // "packet (34g)", "pouch (200g", "bar (24g/text"
+      // Safety net for cases where OCR missed the quantity
+      // Forgiving: doesn't require closing paren
+      /serving\s*size\s*[:\-]?\s*(packet|pouch|bar|bottle|container|portion|serving)\s*\((\d+(?:\.\d+)?)\s*([gG]|ml|mL|oz|fl\s*oz)/i
     ];
 
     for (const pattern of patterns) {
@@ -892,8 +972,34 @@ export class OCRService {
           standardUnit = match[2].toLowerCase();
           quantity = this.parseFraction(match[3]);
           measure = match[4].toLowerCase();
+        } else if (pattern.source.startsWith('([\\d')) {
+          // Pattern 0: Quantity-first with any measure word(s) and parenthetical
+          // Example match: ["1.5 Cup (39 g)", "1.5", "Cup", "39", "g"]
+          quantity = this.parseFraction(match[1]);
+          measure = match[2].trim().toLowerCase().replace(/s$/, ''); // Normalize measure
+          standardValue = parseFloat(match[3]);
+          standardUnit = match[4].toLowerCase();
+        } else if (pattern.source.includes('(\\d+)\\s+(\\d+\\/\\d+)')) {
+          // Pattern 5: Space-separated fraction
+          // Example match: ["Serving size 1 1/2 cup", "1", "1/2", "cup", "120", "g"]
+          const wholePart = parseFloat(match[1]);
+          const fractionPart = this.parseFraction(match[2]);
+          quantity = wholePart + fractionPart;
+          measure = match[3].toLowerCase();
+
+          if (match[4] && match[5]) {
+            standardValue = parseFloat(match[4]);
+            standardUnit = match[5].toLowerCase();
+          }
+        } else if (pattern.source.includes('(packet|pouch|bar|bottle|container|portion')) {
+          // Pattern 6: Missing quantity - assume 1
+          // Example match: ["Serving size packet (34g)", "packet", "34", "g"]
+          quantity = 1; // Default to 1 when quantity is missing
+          measure = match[1].toLowerCase();
+          standardValue = parseFloat(match[2]);
+          standardUnit = match[3].toLowerCase();
         } else {
-          // Patterns 1, 3, 4: quantity first
+          // Patterns 1, 3, 4: quantity first (traditional)
           quantity = this.parseFraction(match[1]);
           measure = match[2].toLowerCase().replace(/s$/, '');
 
@@ -914,24 +1020,20 @@ export class OCRService {
 
   /**
    * Extract standard measure from parenthetical format
-   * Examples: "(240mL)", "(30g)", "(8 oz)"
+   * Examples: "(240mL)", "(30g)", "(30 g)", "(8 oz)", "(39 g)"
    */
   private parseStandardMeasure(text: string): {value: number, unit: string} | null {
-    const patterns = [
-      /\((\d+(?:\.\d+)?)\s*([a-zA-Z]+)\)/,  // "(240mL)" or "(30 g)"
-      /\((\d+(?:\.\d+)?)\s*([a-zA-Z]+)\)/,  // No space variant
-    ];
+    // Single pattern with optional space handles all variants
+    const pattern = /\((\d+(?:\.\d+)?)\s*([a-zA-Z]+(?:\s+[a-zA-Z]+)?)\)/;
 
-    for (const pattern of patterns) {
-      const match = text.match(pattern);
-      if (match) {
-        const value = parseFloat(match[1]);
-        const unit = match[2].toLowerCase();
+    const match = text.match(pattern);
+    if (match) {
+      const value = parseFloat(match[1]);
+      const unit = match[2].trim().toLowerCase();
 
-        // Validate unit is a standard measure
-        if (/^(g|ml|mL|oz|fl)$/i.test(unit)) {
-          return { value, unit };
-        }
+      // Validate unit is a standard measure (handle "fl oz" as well)
+      if (/^(g|ml|mL|oz|fl\s*oz)$/i.test(unit)) {
+        return { value, unit };
       }
     }
 

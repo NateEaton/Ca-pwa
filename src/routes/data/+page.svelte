@@ -811,17 +811,7 @@
               <div class="food-name">
                 {food.name}
                 {#if food.isCustom && food.sourceMetadata}
-                  <SourceIndicator {food} size="small" />
-                  <button
-                    class="info-button"
-                    on:click={(e) => {
-                      e.stopPropagation();
-                      handleInfoClick(food);
-                    }}
-                    aria-label="View source details"
-                  >
-                    <span class="material-icons">info</span>
-                  </button>
+                  <SourceIndicator {food} size="small" clickable={true} on:click={() => handleInfoClick(food)} />
                 {/if}
               </div>
               <div class="food-measure">
@@ -1130,30 +1120,6 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
-  }
-
-  .info-button {
-    background: none;
-    border: none;
-    padding: 0.25rem;
-    border-radius: 50%;
-    color: var(--text-secondary);
-    cursor: pointer;
-    transition: all 0.2s ease;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 24px;
-    height: 24px;
-  }
-
-  .info-button:hover {
-    background-color: var(--hover);
-    color: var(--text-primary);
-  }
-
-  .info-button .material-icons {
-    font-size: 16px;
   }
 
   .food-measure {

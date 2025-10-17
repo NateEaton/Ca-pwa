@@ -111,39 +111,13 @@ async function parseOCRData(
   upc: string
 ): Promise<ParsedResult | null> {
   const ocrService = new OCRService('MOCK_KEY');
-  
-  try {
-    // Extract necessary data for parseFromCachedOCR
-    const parsedResult = ocrData.ParsedResults?.[0];
-    if (!parsedResult) {
-      throw new Error('No ParsedResults in OCR data');
-    }
 
-    const rawText = parsedResult.ParsedText || '';
-    const lines = parsedResult.TextOverlay?.Lines || [];
-    
-    // Convert Lines to words array for parseFromCachedOCR
-    const words: Array<{t: string; x: number; y: number; w: number; h: number}> = [];
-    
-    for (const line of lines) {
-      if (line.Words) {
-        for (const word of line.Words) {
-          words.push({
-            t: word.WordText,
-            x: word.Left,
-            y: word.Top,
-            w: word.Width,
-            h: word.Height
-          });
-        }
-      }
-    }
-    
-    const result = ocrService.parseFromCachedOCR({
-      rawText,
-      words
-    });
-    
+  try {
+    // Use parseFromFullAPIResponse to maintain data fidelity
+    // This method uses the complete API response with pre-grouped Lines
+    // matching the exact data flow used by the live app
+    const result = ocrService.parseFromFullAPIResponse(ocrData);
+
     return result;
   } catch (error) {
     console.error(`    Parse error for ${upc}:`, (error as Error).message);
