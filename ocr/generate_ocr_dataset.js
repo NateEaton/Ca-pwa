@@ -11,7 +11,67 @@ import 'dotenv/config';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const LABELS_DIR = path.join(__dirname, 'nutrition_labels');
+// Parse command-line arguments
+function parseArgs() {
+  const args = process.argv.slice(2);
+  const options = {
+    labelsDir: 'nutrition_labels',
+    help: false
+  };
+
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i];
+
+    if (arg === '--help' || arg === '-h') {
+      options.help = true;
+    } else if (arg === '--labels-dir') {
+      if (i + 1 < args.length) {
+        options.labelsDir = args[i + 1];
+        i++; // Skip next arg since we consumed it
+      } else {
+        console.error('Error: --labels-dir requires a path argument');
+        process.exit(1);
+      }
+    } else {
+      console.error(`Unknown argument: ${arg}`);
+      console.error('Use --help for usage information');
+      process.exit(1);
+    }
+  }
+
+  return options;
+}
+
+function showHelp() {
+  console.log(`
+OCR Dataset Generator - Create test datasets from nutrition label images
+
+Usage: node generate_ocr_dataset.js [options]
+
+Options:
+  --labels-dir <path>    Path to directory containing nutrition label images
+                         (default: nutrition_labels)
+
+  --help, -h             Show this help message
+
+Examples:
+  node generate_ocr_dataset.js
+  node generate_ocr_dataset.js --labels-dir ./my_labels
+  node generate_ocr_dataset.js --labels-dir /absolute/path/to/labels
+
+The script expects image files named: <UPC>_nutrition.(jpg|png)
+And metadata files named: <UPC>_metadata.json
+`);
+}
+
+const cliOptions = parseArgs();
+
+if (cliOptions.help) {
+  showHelp();
+  process.exit(0);
+}
+
+const LABELS_DIR = path.resolve(__dirname, cliOptions.labelsDir);
 const OUTPUT_FILE = path.join(__dirname, 'ocr_dataset.json');
 const CHECKPOINT_FILE = path.join(__dirname, '.ocr_checkpoint.json');
 const OCR_ENDPOINT = 'https://api.ocr.space/parse/image';
@@ -118,8 +178,9 @@ async function callOCRAPI(imagePath) {
     const result = await response.json();
     
     if (result.IsErroredOnProcessing) {
-      const errorMsg = result.ErrorMessage?.join(', ') || 'Unknown error';
-      const errorDetails = result.ErrorDetails?.join(', ') || 'No details';
+      // ErrorMessage and ErrorDetails are strings, not arrays
+      const errorMsg = result.ErrorMessage || 'Unknown error';
+      const errorDetails = result.ErrorDetails || 'No details';
       throw new Error(`OCR processing failed: ${errorMsg} | ${errorDetails}`);
     }
     
@@ -187,6 +248,17 @@ async function main() {
 
   if (!API_KEY) {
     console.error('Error: VITE_OCR_API_KEY not found in .env');
+    process.exit(1);
+  }
+
+  // Verify labels directory exists
+  try {
+    await fs.access(LABELS_DIR);
+    console.log(`\nLabels directory: ${LABELS_DIR}`);
+  } catch (error) {
+    console.error(`\nError: Labels directory not found: ${LABELS_DIR}`);
+    console.error('Use --labels-dir to specify a different directory');
+    console.error('Use --help for more information');
     process.exit(1);
   }
 

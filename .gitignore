@@ -93,6 +93,7 @@ source_data/migrated-migration-report.json
 ocr/*
 !ocr/fetch_labels.js
 !ocr/generate_ocr_dataset.js
+!ocr/analyze_ocr_failures.js
 !ocr/merge_test_data.js
 !ocr/extract_upcs.js
 !ocr/run_tests.ts

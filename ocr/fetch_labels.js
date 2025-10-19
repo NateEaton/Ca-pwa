@@ -76,7 +76,8 @@ async function getRandomUpcs(count, existingUpcs = new Set()) {
     const upcs = new Set();
     const categories = [
         'breakfast-cereals', 'dairy', 'beverages', 'snacks', 'meals', 'breads',
-        'yogurts', 'cheeses', 'plant-based-foods', 'desserts', 'sauces', 'frozen-foods'
+        'yogurts', 'cheeses', 'plant-based-foods', 'desserts', 'sauces', 'frozen-foods',
+        'soups', 'seafood', 'meat', 'fruits', 'vegetables'
     ];
     // Fetch from a random starting page to get more variety
     const randomPage = Math.floor(Math.random() * 20) + 1;

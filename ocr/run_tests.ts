@@ -10,7 +10,8 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const DATASET_FILE = path.join(__dirname, 'ocr_dataset.json');
-const EXCLUSION_FILE = path.join(__dirname, 'ocr_scan_failures.txt');
+const EXCLUSION_FILE_JSON = path.join(__dirname, 'ocr_scan_failures.json');
+const EXCLUSION_FILE_TXT = path.join(__dirname, 'ocr_scan_failures.txt'); // Legacy fallback
 
 // Type definitions for FULL API format
 interface OCRApiResponse {
@@ -456,24 +457,80 @@ function getOutputFilename(parserVersion: string, datasetVersion: string): strin
   return path.join(__dirname, `parse_results_${parserVersion}_${datasetVersion}.json`);
 }
 
-async function loadExclusionList(): Promise<Set<string>> {
+/**
+ * Load exclusion list for a specific dataset version
+ * Tries versioned JSON format first, falls back to legacy .txt format
+ */
+async function loadExclusionList(datasetVersion: string): Promise<Set<string>> {
   const exclusions = new Set<string>();
 
+  // Try new JSON format first
   try {
-    const content = await fs.readFile(EXCLUSION_FILE, 'utf-8');
-    const lines = content.split('\n');
+    const content = await fs.readFile(EXCLUSION_FILE_JSON, 'utf-8');
+    const data = JSON.parse(content);
 
-    for (const line of lines) {
-      const trimmed = line.trim();
-      // Skip empty lines and comments
-      if (trimmed && !trimmed.startsWith('#')) {
-        exclusions.add(trimmed);
+    // Look for exact version match
+    if (data.datasets && data.datasets[datasetVersion]) {
+      const versionData = data.datasets[datasetVersion];
+      const upcs = versionData.excluded_upcs || [];
+
+      for (const upc of upcs) {
+        exclusions.add(upc);
+      }
+
+      console.log(`Loaded ${exclusions.size} UPCs from exclusion list (version ${datasetVersion})`);
+
+      // Show metadata if available
+      if (versionData.metadata) {
+        const meta = versionData.metadata;
+        console.log(`  Exclusion metadata:`);
+        console.log(`    Generated: ${meta.generated || 'unknown'}`);
+        console.log(`    Total failures: ${meta.total_failures || 'unknown'}`);
+        console.log(`    Failure rate: ${meta.failure_rate ? meta.failure_rate + '%' : 'unknown'}`);
+      }
+
+      return exclusions;
+    } else {
+      // Version not found in JSON, try to find latest version
+      const availableVersions = Object.keys(data.datasets || {});
+      if (availableVersions.length > 0) {
+        const latestVersion = availableVersions.sort().reverse()[0];
+        console.log(`⚠ No exclusion list for dataset version ${datasetVersion}`);
+        console.log(`  Available versions: ${availableVersions.join(', ')}`);
+        console.log(`  Using latest version: ${latestVersion}`);
+
+        const versionData = data.datasets[latestVersion];
+        const upcs = versionData.excluded_upcs || [];
+
+        for (const upc of upcs) {
+          exclusions.add(upc);
+        }
+
+        console.log(`Loaded ${exclusions.size} UPCs from exclusion list (version ${latestVersion})`);
+        return exclusions;
+      } else {
+        throw new Error('No datasets found in JSON file');
       }
     }
+  } catch (jsonError) {
+    // JSON format failed, try legacy .txt format
+    try {
+      const content = await fs.readFile(EXCLUSION_FILE_TXT, 'utf-8');
+      const lines = content.split('\n');
 
-    console.log(`Loaded ${exclusions.size} UPCs from exclusion list`);
-  } catch (error) {
-    console.log('No exclusion list found - processing all UPCs');
+      for (const line of lines) {
+        const trimmed = line.trim();
+        // Skip empty lines and comments
+        if (trimmed && !trimmed.startsWith('#')) {
+          exclusions.add(trimmed);
+        }
+      }
+
+      console.log(`Loaded ${exclusions.size} UPCs from exclusion list (legacy .txt format)`);
+      console.log(`⚠ Consider migrating to versioned JSON format using migrate_failure_list.js`);
+    } catch (txtError) {
+      console.log('No exclusion list found - processing all UPCs');
+    }
   }
 
   return exclusions;
@@ -494,8 +551,8 @@ async function main() {
   const datasetVersion = getDatasetVersion(dataset);
   const outputFile = getOutputFilename(parserVersion, datasetVersion);
 
-  // Load exclusion list
-  const excludedUpcs = await loadExclusionList();
+  // Load exclusion list (versioned by dataset)
+  const excludedUpcs = await loadExclusionList(datasetVersion);
 
   const allUpcs = Object.keys(dataset.data).sort();
   const upcs = allUpcs.filter(upc => !excludedUpcs.has(upc));
