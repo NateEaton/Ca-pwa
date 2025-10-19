@@ -1545,6 +1545,7 @@
 
   .debug-content {
     padding: 0.75rem;
+    color: #1f2937;
   }
 
   .debug-section {
@@ -1575,6 +1576,7 @@
     margin: 0;
     font-size: 0.7rem;
     line-height: 1.3;
+    color: #1f2937;
   }
 
   .debug-grid {
@@ -1582,12 +1584,17 @@
     grid-template-columns: auto 1fr;
     gap: 0.25rem 0.5rem;
     font-size: 0.75rem;
+    color: #1f2937;
   }
 
   .debug-grid span:nth-child(odd) {
     font-weight: bold;
-    color: #7c2d12;
+    color: #92400e;
   }
+
+  .debug-grid span:nth-child(even) {
+    color: #1f2937; 
+  }  
 
   .debug-value {
     font-weight: bold;

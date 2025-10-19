@@ -9,6 +9,8 @@ interface TextElement {
   y: number;
   width: number;
   height: number;
+  lineIndex?: number; // Track which API Line this element came from
+  wordIndex?: number; // Track position within the original Line
 }
 
 interface TextLine {
@@ -407,21 +409,25 @@ export class OCRService {
 
   private extractTextElements(lines: any[]): TextElement[] {
     const elements: TextElement[] = [];
-    
-    for (const line of lines) {
+
+    for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
+      const line = lines[lineIndex];
       if (line.Words && line.Words.length > 0) {
-        for (const word of line.Words) {
+        for (let wordIndex = 0; wordIndex < line.Words.length; wordIndex++) {
+          const word = line.Words[wordIndex];
           elements.push({
             text: word.WordText,
             x: word.Left,
             y: word.Top,
             width: word.Width,
-            height: word.Height
+            height: word.Height,
+            lineIndex: lineIndex,      // Preserve original line
+            wordIndex: wordIndex        // Preserve position within line
           });
         }
       }
     }
-    
+
     return elements;
   }
 
@@ -832,7 +838,19 @@ export class OCRService {
     const yTolerance = 15;
     const sameLine = elements.filter(el =>
       Math.abs(el.y - servingKeywordEl.y) < yTolerance
-    ).sort((a, b) => a.x - b.x); // Left to right
+    ).sort((a, b) => {
+      // Preserve original API order when available (same lineIndex)
+      if (a.lineIndex !== undefined && b.lineIndex !== undefined) {
+        if (a.lineIndex === b.lineIndex) {
+          // Same line - preserve word order from API
+          return (a.wordIndex || 0) - (b.wordIndex || 0);
+        }
+        // Different lines - sort by line index
+        return a.lineIndex - b.lineIndex;
+      }
+      // Fallback to X-coordinate if no lineIndex (backward compatibility)
+      return a.x - b.x;
+    });
 
     // Find keyword index
     const keywordIndex = sameLine.findIndex(el =>
@@ -1214,10 +1232,24 @@ export class OCRService {
   private groupElementsIntoLines(elements: TextElement[]): TextLine[] {
     if (!elements || elements.length === 0) return [];
 
-    // Sort by Y then X (reading order)
+    // Sort by Y then preserve API order when available
     const sorted = [...elements].sort((a, b) => {
-      if (Math.abs(a.y - b.y) < 5) return a.x - b.x;
-      return a.y - b.y;
+      const yDiff = a.y - b.y;
+      // Elements on different vertical positions
+      if (Math.abs(yDiff) >= 5) return yDiff;
+
+      // Elements on same Y level - preserve API order if available
+      if (a.lineIndex !== undefined && b.lineIndex !== undefined) {
+        if (a.lineIndex === b.lineIndex) {
+          // Same original line - preserve word order
+          return (a.wordIndex || 0) - (b.wordIndex || 0);
+        }
+        // Different lines - sort by line index
+        return a.lineIndex - b.lineIndex;
+      }
+
+      // Fallback to X-coordinate for backward compatibility
+      return a.x - b.x;
     });
 
     const lines: TextLine[] = [];

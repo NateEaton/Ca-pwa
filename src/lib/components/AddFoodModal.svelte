@@ -518,8 +518,8 @@
     }
 
     const calciumValue = parseFloat(calcium);
-    if (!calciumValue || calciumValue <= 0 || calciumValue > 10000) {
-      errorMessage = "Please enter a calcium amount between 0.01 and 10,000 mg";
+    if (isNaN(calciumValue) || calciumValue < 0 || calciumValue > 10000) {
+      errorMessage = "Please enter a calcium amount between 0 and 10,000 mg";
       return;
     }
 
@@ -909,7 +909,7 @@
             class="form-input"
             bind:value={calcium}
             placeholder="0"
-            min="0.01"
+            min="0.00"
             step="0.01"
             disabled={isSubmitting ||
               (!isCustomMode && !editingFood && !isSelectedFromSearch)}
