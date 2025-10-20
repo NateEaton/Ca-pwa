@@ -538,13 +538,19 @@ export class OCRService {
 
   private identifyColumns(xPositions: number[]): TableColumn[] {
     // Cluster X positions to identify column boundaries
+    // Reduced tolerance from 50 to 35 to better distinguish multi-column tables
+    const clusterTolerance = 35;
+
+    // Sort X positions first to improve clustering
+    const sortedX = [...xPositions].sort((a, b) => a - b);
     const clusters: number[][] = [];
-    const clusterTolerance = 50;
-    
-    for (const x of xPositions) {
+
+    for (const x of sortedX) {
       let foundCluster = false;
       for (const cluster of clusters) {
-        if (cluster.some(cx => Math.abs(cx - x) <= clusterTolerance)) {
+        // Check against cluster center to avoid chain-linking
+        const clusterCenter = cluster.reduce((sum, cx) => sum + cx, 0) / cluster.length;
+        if (Math.abs(clusterCenter - x) <= clusterTolerance) {
           cluster.push(x);
           foundCluster = true;
           break;
@@ -554,19 +560,19 @@ export class OCRService {
         clusters.push([x]);
       }
     }
-    
+
     // Convert clusters to column definitions
     const columns: TableColumn[] = clusters.map((cluster, index) => {
       const avgX = cluster.reduce((sum, x) => sum + x, 0) / cluster.length;
       return {
         x: avgX,
         width: Math.max(...cluster) - Math.min(...cluster) + 50,
-        type: index === 0 ? 'label' : 
-              index === 1 ? 'value' : 
+        type: index === 0 ? 'label' :
+              index === 1 ? 'value' :
               index === 2 ? 'unit' : 'percent'
       };
     }).sort((a, b) => a.x - b.x);
-    
+
     return columns;
   }
 
@@ -644,18 +650,46 @@ export class OCRService {
    */
   private parseCalciumFromSpatialElements(elements: TextElement[]): number | null {
     // Format 1: Direct mg value (highest confidence)
-    // Example: "390mg", "320mg", "60mg"
-    const mgElements = elements.filter(el => /^\d+mg$/i.test(el.text.trim()));
+    // Example: "390mg", "320mg", "60mg", "Omg" (OCR error for 0mg)
+    const mgElements = elements.filter(el => /^\d+mg$|^Omg$/i.test(el.text.trim()));
 
-    for (const mgEl of mgElements) {
-      // Check if there's a "calcium" label nearby (within reasonable Y distance)
-      const hasCalciumLabel = elements.some(el =>
-        /calcium/i.test(el.text) &&
-        Math.abs(el.y - mgEl.y) < 20 // Same line tolerance
-      );
+    // Find calcium label for spatial reference
+    const calciumLabel = elements.find(el => /calcium/i.test(el.text));
 
-      if (hasCalciumLabel) {
-        const mgValue = parseInt(mgEl.text.replace(/[^\d]/g, ''));
+    if (calciumLabel) {
+      // Filter mg elements by spatial proximity to calcium label
+      const nearbyMgElements = mgElements.filter(mgEl => {
+        const yDistance = Math.abs(mgEl.y - calciumLabel.y);
+        const xDistance = mgEl.x - calciumLabel.x;
+
+        return (
+          yDistance < 20 &&           // Same line tolerance
+          xDistance > 0 &&            // Must be to the right of label
+          xDistance < 400             // Max distance for primary column (increased from 250 to handle wider layouts)
+        );
+      });
+
+      // Sort by X distance (closest first) to get primary column value
+      nearbyMgElements.sort((a, b) => {
+        const distA = a.x - calciumLabel.x;
+        const distB = b.x - calciumLabel.x;
+        return distA - distB;
+      });
+
+      // Use the closest mg value (primary column)
+      if (nearbyMgElements.length > 0) {
+        const elementText = nearbyMgElements[0].text.trim();
+
+        // Handle "Omg" as OCR error for "0mg"
+        let mgValue: number;
+        if (/^Omg$/i.test(elementText)) {
+          mgValue = 0;
+          console.log(`  Spatial calcium: Found "Omg" (OCR error for 0mg) at X=${nearbyMgElements[0].x}`);
+        } else {
+          mgValue = parseInt(elementText.replace(/[^\d]/g, ''));
+          console.log(`  Spatial calcium: Found ${mgValue}mg at X=${nearbyMgElements[0].x} (closest to label at X=${calciumLabel.x})`);
+        }
+
         if (this.isValidCalciumValue(mgValue)) {
           return mgValue;
         }
@@ -789,7 +823,8 @@ export class OCRService {
    * Typical range: 0-2000mg (most products have 0-130% DV)
    */
   private isValidCalciumValue(value: number): boolean {
-    return value > 0 && value <= 2000;
+    // Accept 0 as valid (products with no calcium)
+    return value >= 0 && value <= 2000;
   }
 
   /**
@@ -1142,21 +1177,34 @@ export class OCRService {
 
     console.log(`Layer 1: Detected ${columns.length} columns, ${rows.length} rows`);
 
+    // Identify the primary value column (first non-label column)
+    // Column 0 is typically labels, Column 1 is the primary values
+    const primaryValueColumn = columns.length >= 2 ? columns[1] : null;
+
+    if (primaryValueColumn) {
+      console.log(`Layer 1: Using primary value column at X=${primaryValueColumn.x.toFixed(0)}`);
+    }
+
     // Find serving size row
     const servingRow = rows.find(row =>
       row.elements.some(el => /serving\s*size/i.test(el.text))
     );
 
     if (servingRow) {
-      const servingText = servingRow.elements.map(e => e.text).join(' ');
-      const servingInfo = this.parseServingSize(servingText, servingRow.elements);
+      // Filter to primary value column only (avoid multi-column confusion)
+      const filteredElements = primaryValueColumn
+        ? this.filterElementsByColumn(servingRow.elements, primaryValueColumn)
+        : servingRow.elements;
+
+      const servingText = filteredElements.map(e => e.text).join(' ');
+      const servingInfo = this.parseServingSize(servingText, filteredElements);
 
       if (servingInfo) {
         result.servingQuantity = servingInfo.quantity;
         result.servingMeasure = servingInfo.measure;
         result.standardMeasureValue = servingInfo.standardValue;
         result.standardMeasureUnit = servingInfo.standardUnit;
-        console.log('Layer 1: Found serving via table:', servingInfo);
+        console.log('Layer 1: Found serving via table (column-aware):', servingInfo);
       }
     }
 
@@ -1166,16 +1214,41 @@ export class OCRService {
     );
 
     if (calciumRow) {
-      const calciumText = calciumRow.elements.map(e => e.text).join(' ');
-      const calciumValue = this.parseCalcium(calciumText, calciumRow.elements);
+      // Filter to primary value column only (avoid multi-column confusion)
+      const filteredElements = primaryValueColumn
+        ? this.filterElementsByColumn(calciumRow.elements, primaryValueColumn)
+        : calciumRow.elements;
+
+      const calciumText = filteredElements.map(e => e.text).join(' ');
+      const calciumValue = this.parseCalcium(calciumText, filteredElements);
 
       if (calciumValue !== null) {
         result.calcium = calciumValue;
-        console.log('Layer 1: Found calcium via table:', calciumValue);
+        console.log('Layer 1: Found calcium via table (column-aware):', calciumValue);
       }
     }
 
     return result;
+  }
+
+  /**
+   * Filter text elements to only those belonging to a specific column
+   * Used to extract values from the correct column in multi-column tables
+   */
+  private filterElementsByColumn(elements: TextElement[], column: TableColumn): TextElement[] {
+    // Include elements whose X position falls within the column's range
+    // Column range is defined as: column.x ± (column.width / 2)
+    const columnStart = column.x - (column.width / 2);
+    const columnEnd = column.x + (column.width / 2);
+
+    const filtered = elements.filter(el => {
+      const elementCenter = el.x + (el.width / 2);
+      return elementCenter >= columnStart && elementCenter <= columnEnd;
+    });
+
+    console.log(`  Filtered ${elements.length} elements to ${filtered.length} in column at X=${column.x.toFixed(0)}`);
+
+    return filtered;
   }
 
   /**
