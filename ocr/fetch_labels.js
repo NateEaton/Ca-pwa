@@ -1,13 +1,15 @@
 /**
  * OpenFoodFacts Nutrition Label Image Scraper with Metadata & OCR
- * 
+ *
  * Usage:
  * 1. With custom UPC list: node script.js --upcs "12345,67890,11111"
  * 2. With UPC file: node script.js --file upcs.txt
  * 3. Random from API: node script.js --random 10
  * 4. Add --ocr flag to run OCR processing (requires VITE_OCR_API_KEY in .env)
- * 
+ * 5. Add --folder <name> to specify output directory (default: nutrition_labels)
+ *
  * Example with OCR: node script.js --file upcs.txt --ocr
+ * Example with custom folder: node script.js --random 5 --folder test_samples
  */
 
 import fs from 'fs';
@@ -22,16 +24,12 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Configuration
-const OUTPUT_DIR = path.join(__dirname, 'nutrition_labels');
 const DELAY_MS = 200; // Delay between requests to be respectful
 const OCR_API_KEY = process.env.VITE_OCR_API_KEY;
 const OCR_ENDPOINT = 'https://api.ocr.space/parse/image';
 const MAX_OCR_FILE_SIZE = 1024 * 1024; // 1MB limit for OCR.space
 
-// Ensure output directory exists
-if (!fs.existsSync(OUTPUT_DIR)) {
-  fs.mkdirSync(OUTPUT_DIR, { recursive: true });
-}
+// OUTPUT_DIR will be set in main() based on --folder parameter
 
 // Helper: Check if URL exists using HEAD request
 function checkUrl(url) {
@@ -337,27 +335,27 @@ function createOCRJSON(ocrResult, upc) {
 }
 
 // Main function to find and download nutrition label
-async function getNutritionLabel(upc, runOCR = false) {
+async function getNutritionLabel(upc, runOCR = false, outputDir) {
   console.log(`\nProcessing UPC: ${upc}`);
-  
+
   const productData = await getProductMetadata(upc);
-  
+
   if (!productData || productData.rejectionReason) {
     return { upc, success: false, reason: productData?.rejectionReason || 'no_metadata' };
   }
-  
+
   const { metadata, nutritionImageUrl } = productData;
   console.log(`  Found image URL: ${nutritionImageUrl}`);
-  
+
   const validUrl = await checkUrl(nutritionImageUrl);
   if (!validUrl) {
     console.log(`  ✗ Image URL not accessible`);
     return { upc, success: false, reason: 'image_not_accessible' };
   }
-  
-  const imagePath = path.join(OUTPUT_DIR, `${upc}_nutrition.jpg`);
-  const metadataPath = path.join(OUTPUT_DIR, `${upc}_metadata.json`);
-  const ocrPath = path.join(OUTPUT_DIR, `${upc}_ocr.json`);
+
+  const imagePath = path.join(outputDir, `${upc}_nutrition.jpg`);
+  const metadataPath = path.join(outputDir, `${upc}_metadata.json`);
+  const ocrPath = path.join(outputDir, `${upc}_ocr.json`);
   
   try {
     await downloadImage(validUrl, imagePath);
@@ -371,9 +369,9 @@ async function getNutritionLabel(upc, runOCR = false) {
         console.log(`  ⚠ Skipping OCR: VITE_OCR_API_KEY not set in .env`);
       } else {
         console.log(`  Processing OCR...`);
-        const ocrImagePath = path.join(OUTPUT_DIR, `${upc}_nutrition_ocr.jpg`);
+        const ocrImagePath = path.join(outputDir, `${upc}_nutrition_ocr.jpg`);
         await preprocessImage(imagePath, ocrImagePath);
-        
+
         const ocrResult = await callOCRAPI(ocrImagePath);
         const ocrData = createOCRJSON(ocrResult, upc);
         if (ocrData) {
@@ -403,7 +401,22 @@ async function main() {
   const runOCR = args.includes('--ocr');
   const isRandom = args.includes('--random');
   let requestedCount = 0;
-  
+
+  // Parse --folder parameter
+  let folderName = 'nutrition_labels';
+  if (args.includes('--folder')) {
+    const idx = args.indexOf('--folder');
+    folderName = args[idx + 1] || 'nutrition_labels';
+  }
+
+  const OUTPUT_DIR = path.join(__dirname, folderName);
+
+  // Ensure output directory exists
+  if (!fs.existsSync(OUTPUT_DIR)) {
+    fs.mkdirSync(OUTPUT_DIR, { recursive: true });
+    console.log(`Created output directory: ${OUTPUT_DIR}`);
+  }
+
   if (args.includes('--upcs')) {
     const idx = args.indexOf('--upcs');
     initialUpcs = args[idx + 1].split(',').map(u => u.trim());
@@ -416,7 +429,7 @@ async function main() {
     const idx = args.indexOf('--random');
     requestedCount = parseInt(args[idx + 1], 10) || 100;
   } else {
-    console.log('Usage:\n  node script.js --upcs "123,..."\n  node script.js --file upcs.txt\n  node script.js --random 10\n\nOptions:\n  --ocr    Run OCR processing');
+    console.log('Usage:\n  node script.js --upcs "123,..."\n  node script.js --file upcs.txt\n  node script.js --random 10\n\nOptions:\n  --ocr         Run OCR processing\n  --folder <name>  Output directory (default: nutrition_labels)');
     process.exit(1);
   }
   
@@ -453,9 +466,9 @@ async function main() {
 
       const upc = upcQueue.shift();
       if (allProcessedUpcs.has(upc)) continue;
-      
+
       allProcessedUpcs.add(upc);
-      const result = await getNutritionLabel(upc, runOCR);
+      const result = await getNutritionLabel(upc, runOCR, OUTPUT_DIR);
       finalResults.push(result);
 
       if (result.success) {

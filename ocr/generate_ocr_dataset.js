@@ -312,7 +312,7 @@ async function main() {
       const metaPath = path.join(LABELS_DIR, metaFile);
       const metadataContent = await fs.readFile(metaPath, 'utf-8');
       const metadata = JSON.parse(metadataContent);
-      
+
       // Find image
       const imagePath = await findOriginalImage(upc, LABELS_DIR);
       if (!imagePath) {
@@ -322,17 +322,17 @@ async function main() {
         checkpoint.completed.add(upc);
         continue;
       }
-      
+
       console.log(`  → Calling OCR API...`);
-      
+
       // Rate limiting delay
       if (processed > 0) {
         await new Promise(resolve => setTimeout(resolve, DELAY_MS));
       }
-      
+
       // Call OCR API
       const ocrResult = await callOCRAPI(imagePath);
-      
+
       if (!ocrResult) {
         const warning = `OCR API call failed for UPC ${upc}`;
         console.log(`  ⚠ ${warning}`);
@@ -341,17 +341,23 @@ async function main() {
         continue;
       }
       
-      // Store FULL API response with source tracking
+      // Store FULL API response with split source tracking
+      // Preserve groundTruth.source from metadata (app_capture vs api_batch)
+      // Set ocr.source to 'api_batch' since this script always calls the API
+      const groundTruthSource = metadata.source || 'api_batch';
+      const priority = metadata.priority || 'normal';
+      const collectionMethod = metadata.collection_method || {
+        type: 'api',
+        script: 'generate_ocr_dataset.js',
+        api_endpoint: OCR_ENDPOINT
+      };
+
       dataset.data[upc] = {
-        source: 'api_batch',
-        priority: 'normal',
-        collection_method: {
-          type: 'api',
-          script: 'generate_ocr_dataset.js',
-          api_endpoint: OCR_ENDPOINT
-        },
+        priority: priority,
+        collection_method: collectionMethod,
         generated_at: new Date().toISOString(),
         groundTruth: {
+          source: groundTruthSource,  // Where metadata came from (affects calcium units)
           product_name: metadata.product_name,
           brands: metadata.brands,
           serving_size: metadata.serving_size,
@@ -360,7 +366,8 @@ async function main() {
           calcium_unit: metadata.calcium?.unit
         },
         ocr: {
-          original: ocrResult  // Full OCR.space API response
+          source: 'api_batch',      // OCR from generate_ocr_dataset.js API call
+          original: ocrResult       // Full OCR.space API response
         }
       };
       
@@ -445,8 +452,11 @@ async function main() {
     console.log(`\nWarnings/Errors: ${errorLog.length}`);
     errorLog.forEach(e => console.log(`  • ${e}`));
   }
-  
+
   console.log('='.repeat(60));
+
+  // Explicitly exit to avoid hanging on HTTP keep-alive connections
+  process.exit(0);
 }
 
 main().catch(console.error);

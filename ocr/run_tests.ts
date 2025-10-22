@@ -239,9 +239,10 @@ function validateResults(
     const value = groundTruth.calcium_per_serving;
     const unit = groundTruth.calcium_unit;
 
-    // OpenFoodFacts ALWAYS stores calcium in grams, regardless of unit field
-    // Always convert to mg for comparison with parser output
-    const truthMg = value * 1000;
+    // Convert to mg based on actual unit
+    // - fetch_labels.js stores OpenFoodFacts data in grams (unit='g')
+    // - app-captured data already converted to mg (unit='mg')
+    const truthMg = unit === 'g' ? value * 1000 : value;
 
     const tolerance = Math.max(1, truthMg * 0.15);
     const diff = Math.abs(parsed.calcium - truthMg);

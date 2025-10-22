@@ -111,21 +111,32 @@ async function main() {
       const metadataPath = path.join(NEW_DATA_DIR, metadataFile);
       const metadataJson = await fs.readFile(metadataPath, 'utf-8');
       const metadata = JSON.parse(metadataJson);
-      
-      // Load OCR data
+
+      // Try to load OCR data (optional - may not exist if OCR timed out)
       const ocrPath = path.join(NEW_DATA_DIR, `${upc}_ocr.json`);
-      const ocrJson = await fs.readFile(ocrPath, 'utf-8');
-      const ocrData = JSON.parse(ocrJson);
-      
-      // Validate OCR data format
-      let ocrResponse;
-      
-      // Check if it's already full API format or needs conversion
-      if (ocrData.ParsedResults) {
-        // Already full API format
-        ocrResponse = ocrData;
-        console.log(`  ✓ Using full API format OCR data`);
-      } else if (ocrData.rawText && ocrData.words) {
+      let ocrData = null;
+      let hasOcrData = false;
+
+      try {
+        const ocrJson = await fs.readFile(ocrPath, 'utf-8');
+        ocrData = JSON.parse(ocrJson);
+        hasOcrData = true;
+      } catch (error) {
+        console.log(`  ⚠ No OCR data found (will need API processing)`);
+      }
+
+      // Validate OCR data format (if present)
+      let ocrResponse = null;
+      let ocrSource = null;
+
+      if (hasOcrData) {
+        // Check if it's already full API format or needs conversion
+        if (ocrData.ParsedResults) {
+          // Already full API format
+          ocrResponse = ocrData;
+          ocrSource = 'app_capture';
+          console.log(`  ✓ Using full API format OCR data`);
+        } else if (ocrData.rawText && ocrData.words) {
         // Legacy simplified format - needs conversion
         console.log(`  ⚠ Converting legacy format to full API format`);
         
@@ -187,10 +198,15 @@ async function main() {
           }],
           IsErroredOnProcessing: false
         };
-        
+
+        ocrSource = 'app_capture';
         console.log(`  ✓ Converted ${ocrData.words.length} words to ${lines.length} lines`);
+        } else {
+          throw new Error('Invalid OCR data format - missing required fields');
+        }
       } else {
-        throw new Error('Invalid OCR data format - missing required fields');
+        // No OCR data - will be processed by generate_ocr_dataset.js
+        console.log(`  → OCR will be generated via API`);
       }
       
       // Check if image exists (optional)
@@ -207,18 +223,18 @@ async function main() {
       }
       
       // Extract source tracking info from metadata (if present)
-      const source = metadata.source || 'manual';
-      const priority = metadata.priority || (source === 'app_capture' ? 'high' : 'normal');
+      const groundTruthSource = metadata.source || 'manual';
+      const priority = metadata.priority || (groundTruthSource === 'app_capture' ? 'high' : 'normal');
       const collectionMethod = metadata.collection_method || { type: 'manual', note: 'Imported without collection details' };
       const capturedAt = metadata.captured_at || new Date().toISOString();
 
-      // Build dataset entry in full API format with source tracking
+      // Build dataset entry in full API format with split source tracking
       const entry = {
-        source: source,
         priority: priority,
         collection_method: collectionMethod,
         captured_at: capturedAt,
         groundTruth: {
+          source: groundTruthSource,  // Where metadata came from (affects calcium units)
           product_name: metadata.product_name,
           brands: metadata.brands,
           serving_size: metadata.serving_size,
@@ -227,7 +243,8 @@ async function main() {
           calcium_unit: metadata.calcium?.unit
         },
         ocr: {
-          original: ocrResponse  // Full OCR.space API response
+          source: ocrSource,        // Where OCR came from ('app_capture' or null if needs API)
+          original: ocrResponse     // Full OCR.space API response (null if needs API)
         }
       };
       
@@ -241,9 +258,9 @@ async function main() {
         
         console.log(`  ⚠ UPC already exists in dataset`);
         console.log(`    Old: ${dataset.data[upc].groundTruth.product_name}`);
-        console.log(`         [${dataset.data[upc].source || 'unknown'}/${dataset.data[upc].priority || 'unknown'}]`);
+        console.log(`         [GT: ${dataset.data[upc].groundTruth?.source || 'unknown'}, OCR: ${dataset.data[upc].ocr?.source || 'unknown'}]`);
         console.log(`    New: ${entry.groundTruth.product_name}`);
-        console.log(`         [${entry.source}/${entry.priority}]`);
+        console.log(`         [GT: ${entry.groundTruth.source}, OCR: ${entry.ocr.source || 'pending'}]`);
         
         let shouldReplace = forceOverwrite;
         
@@ -300,18 +317,22 @@ async function main() {
   }
 
   // Calculate source and priority breakdown
-  const sources = {};
+  const groundTruthSources = {};
+  const ocrSources = {};
   const priorities = {};
 
   for (const entry of Object.values(dataset.data)) {
-    const source = entry.source || 'unknown';
+    const gtSource = entry.groundTruth?.source || 'unknown';
+    const ocrSource = entry.ocr?.source || 'pending';
     const priority = entry.priority || 'unknown';
 
-    sources[source] = (sources[source] || 0) + 1;
+    groundTruthSources[gtSource] = (groundTruthSources[gtSource] || 0) + 1;
+    ocrSources[ocrSource] = (ocrSources[ocrSource] || 0) + 1;
     priorities[priority] = (priorities[priority] || 0) + 1;
   }
 
-  dataset.metadata.sources_breakdown = sources;
+  dataset.metadata.groundTruth_sources = groundTruthSources;
+  dataset.metadata.ocr_sources = ocrSources;
   dataset.metadata.priority_breakdown = priorities;
   
   // Save updated dataset
