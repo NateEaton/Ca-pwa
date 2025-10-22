@@ -87,7 +87,7 @@ export class OCRService {
     this.apiEndpoint = 'https://api.ocr.space/parse/image';
   }
 
-  async processImage(file: File, captureImage: boolean = false): Promise<NutritionParseResult> {
+  async processImage(file: File, captureImage: boolean = false, timeoutMs?: number): Promise<NutritionParseResult> {
     console.log('OCR: Starting enhanced multi-strategy processing...');
 
     try {
@@ -126,10 +126,22 @@ export class OCRService {
 
       console.log('OCR: Making API request...');
 
-      const response = await fetch(this.apiEndpoint, {
+      // Create fetch promise with optional timeout
+      const fetchPromise = fetch(this.apiEndpoint, {
         method: 'POST',
         body: formData,
       });
+
+      let response: Response;
+      if (timeoutMs) {
+        // Race fetch against timeout
+        const timeoutPromise = new Promise<never>((_, reject) => {
+          setTimeout(() => reject(new Error('OCR_TIMEOUT')), timeoutMs);
+        });
+        response = await Promise.race([fetchPromise, timeoutPromise]);
+      } else {
+        response = await fetchPromise;
+      }
 
       if (!response.ok) {
         throw new Error(`OCR API error: ${response.status}`);
@@ -650,11 +662,17 @@ export class OCRService {
    */
   private parseCalciumFromSpatialElements(elements: TextElement[]): number | null {
     // Format 1: Direct mg value (highest confidence)
-    // Example: "390mg", "320mg", "60mg", "Omg" (OCR error for 0mg)
-    const mgElements = elements.filter(el => /^\d+mg$|^Omg$/i.test(el.text.trim()));
+    // Example: "390mg", "320mg", "60mg", "21 mg" (with optional space), "Omg" (OCR error for 0mg)
+    // Also match unit typos: "mv", "mq"
+    const mgElements = elements.filter(el => /^\d+\s*m[gqv]$|^Omg$/i.test(el.text.trim()));
 
-    // Find calcium label for spatial reference
-    const calciumLabel = elements.find(el => /calcium/i.test(el.text));
+    // Find calcium label for spatial reference (with fuzzy matching)
+    // Matches: "calcium", "caloum", "caburn", "calclum", etc.
+    const calciumLabel = elements.find(el =>
+      /\bca[bl][ou]rn(?![a-z])/i.test(el.text) ||  // caburn, caourn
+      /\bcal[o0]um(?![a-z])/i.test(el.text) ||     // caloum, cal0um
+      /\bcalc?[l1i]um(?![a-z])/i.test(el.text)     // calcium, calclum, callum
+    );
 
     if (calciumLabel) {
       // Filter mg elements by spatial proximity to calcium label
@@ -714,9 +732,28 @@ export class OCRService {
 
     // Format 3: Percentage to mg conversion
     // Example: "25%" near "Calcium" (convert assuming 1300mg = 100%)
-    const calciumElements = elements.filter(el => /calcium/i.test(el.text));
+    // Use fuzzy matching for calcium keyword
+    const calciumElements = elements.filter(el =>
+      /\bca[bl][ou]rn(?![a-z])/i.test(el.text) ||  // caburn, caourn
+      /\bcal[o0]um(?![a-z])/i.test(el.text) ||     // caloum, cal0um
+      /\bcalc?[l1i]um(?![a-z])/i.test(el.text)     // calcium, calclum, callum
+    );
 
     for (const calciumEl of calciumElements) {
+      // Skip percentage conversion if there's a nearby mg value (explicit value takes precedence)
+      const nearbyMg = mgElements.find(mgEl =>
+        Math.abs(mgEl.y - calciumEl.y) < 20 &&
+        mgEl.x > calciumEl.x
+      );
+
+      // Also check if the calcium element itself contains an mg value
+      const hasMgInElement = /\d+\s*m[gqv]/i.test(calciumEl.text);
+
+      if (nearbyMg || hasMgInElement) {
+        // Don't use percentage if explicit mg value exists nearby or in same element
+        continue;
+      }
+
       // Find nearby percentage
       const nearbyPercent = elements.find(el =>
         /^\d+%$/i.test(el.text.trim()) &&
@@ -782,7 +819,21 @@ export class OCRService {
       }
     }
 
-    // Format 4: Percentage-based fallback (convert %DV to mg)
+    // Format 4: Direct number after calcium (no mg unit, but before percentage/junk)
+    // Matches: "calcium350rV5%", "calcium450 30%" where first number is mg value
+    // This must come BEFORE percentage patterns to extract mg value, not %DV
+    const directNumberPattern = /calcium(\d+)/i;  // Capture all digits after calcium
+    const directMatch = text.match(directNumberPattern);
+    if (directMatch) {
+      const mgValue = parseInt(directMatch[1]);
+      // Only use if it's a valid calcium range (not a percentage like "calcium15")
+      // Most calcium %DV values are 0-20%, so >20 likely indicates mg value
+      if (mgValue > 20 && this.isValidCalciumValue(mgValue)) {
+        return mgValue;
+      }
+    }
+
+    // Format 5: Percentage-based fallback (convert %DV to mg)
     // Matches: "Calcium 25%", "Calcium: 30%", "calcium omg 15%" (corrupted mg)
     // Also handles cases where mg value is corrupted but %DV is readable
     // %DV is based on FDA Daily Value of 1300mg for calcium
@@ -948,6 +999,37 @@ export class OCRService {
    */
   private normalizeOCRText(text: string): string {
     let normalized = text;
+
+    // Fix common OCR typos in "calcium" keyword (specific patterns)
+    // Use negative lookahead (?![a-z]) instead of \b to handle adjacent digits/symbols
+    // "caburn" → "calcium" (b instead of lci, rn instead of um)
+    normalized = normalized.replace(/\bca[bl][ou]rn(?![a-z])/gi, 'calcium');
+    // "caloum" → "calcium" (missing ci)
+    normalized = normalized.replace(/\bcal[o0]um(?![a-z])/gi, 'calcium');
+    // "calclum", "callum" → "calcium" (l instead of i)
+    normalized = normalized.replace(/\bcalc?[l1i]um(?![a-z])/gi, 'calcium');
+
+    // Fix unit typos in mg (common OCR errors)
+    // "mv" → "mg" (g misread as v)
+    // "mq" → "mg" (g misread as q)
+    // "rng" → "mg" (m misread as rn)
+    // Use lookahead instead of \b to handle cases like "110mv8" (non-letter after unit)
+    normalized = normalized.replace(/(\d+)\s*(mv|mq|rng)(?![a-z])/gi, '$1mg');
+
+    // Fix digit OCR errors in numeric values (when followed by mg or %)
+    // "3SO" → "350", "lO" → "10", "S5" → "55"
+    // Apply multiple times to handle consecutive errors like "3SO" (both S and O need fixing)
+    let prevNormalized = '';
+    while (prevNormalized !== normalized) {
+      prevNormalized = normalized;
+      normalized = normalized.replace(/(\d*)([OS])(\d*)(\s*(?:mg|mv|mq|%))/gi, (match, before, letter, after, unit) => {
+        const replacement = letter.toUpperCase() === 'O' ? '0' : '5';
+        return `${before}${replacement}${after}${unit}`;
+      });
+    }
+
+    // Fix lowercase 'l' to '1' in numbers (when followed by mg or %)
+    normalized = normalized.replace(/(\d*)l(\d*)(\s*(?:mg|mv|mq|%))/gi, '$11$2$3');
 
     // Fix "0" mistaken as "o" or "O" in numeric contexts ONLY
     // "calcium omg" → "calcium 0mg" (only when followed by mg)

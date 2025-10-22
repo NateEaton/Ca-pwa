@@ -49,6 +49,8 @@
   // --- Camera Enhancement State ---
   let torchEnabled = false;
   let torchSupported = false;
+  let focusSupported = false;
+  let currentFocusMode = null;
   let showManualUPCEntry = false;
   let manualUPCValue = '';
   let cameraStream = null;
@@ -61,6 +63,7 @@
   let cameraInput;
   let fileInput;
   let ocrLoadingState = ''; // 'compressing', 'processing', ''
+  let focusIndicatorPosition = null; // { x: number, y: number } or null
 
   // --- Debug Mode State ---
   let debugMode = false;
@@ -106,6 +109,11 @@
   function closeModal(didScan = false) {
     stopScanning();
     stopCamera();
+    // Clean up image preview URL
+    if (imagePreview) {
+      URL.revokeObjectURL(imagePreview);
+      imagePreview = null;
+    }
     showManualUPCEntry = false;
     manualUPCValue = '';
     debugMode = false; // Reset debug mode when closing
@@ -125,6 +133,12 @@
     localStorage.setItem('scan-default-tab', tab);
     error = null;
     showManualUPCEntry = false;
+
+    // Clean up image preview when switching tabs
+    if (imagePreview) {
+      URL.revokeObjectURL(imagePreview);
+      imagePreview = null;
+    }
 
     // Camera mode transition
     if (tab === 'upc' || tab === 'ocr') {
@@ -152,7 +166,8 @@
         video: {
           facingMode: 'environment',
           width: { ideal: 1280 },
-          height: { ideal: 720 }
+          height: { ideal: 720 },
+          focusMode: { ideal: 'continuous' }
         }
       };
 
@@ -161,7 +176,19 @@
       // Detect torch capability
       const track = cameraStream.getVideoTracks()[0];
       const capabilities = track.getCapabilities();
+      const settings = track.getSettings();
+
       torchSupported = capabilities.torch || false;
+
+      // Detect focus capabilities
+      focusSupported = capabilities.focusMode && capabilities.focusMode.length > 0;
+      currentFocusMode = settings.focusMode || 'unknown';
+
+      console.log('Camera capabilities:', {
+        focusModes: capabilities.focusMode,
+        currentFocusMode: currentFocusMode,
+        focusDistance: capabilities.focusDistance
+      });
 
       assignStreamToVideo();
       cameraInitialized = true;
@@ -276,6 +303,41 @@
     }
   }
 
+  async function handleTapToFocus(event) {
+    if (!cameraStream || !focusSupported || activeTab !== 'ocr') return;
+
+    const rect = event.currentTarget.getBoundingClientRect();
+    const x = event.clientX - rect.left;
+    const y = event.clientY - rect.top;
+
+    // Show focus indicator
+    focusIndicatorPosition = { x, y };
+
+    try {
+      const track = cameraStream.getVideoTracks()[0];
+
+      // Calculate normalized coordinates (0-1 range)
+      const normalizedX = x / rect.width;
+      const normalizedY = y / rect.height;
+
+      await track.applyConstraints({
+        advanced: [{
+          focusMode: 'single-shot',
+          pointsOfInterest: [{ x: normalizedX, y: normalizedY }]
+        }]
+      });
+
+      // Clear indicator after brief delay
+      setTimeout(() => {
+        focusIndicatorPosition = null;
+      }, 800);
+
+    } catch (error) {
+      console.warn('Tap-to-focus failed:', error);
+      focusIndicatorPosition = null;
+    }
+  }
+
   async function handleBarcodeDetected(code) {
     if (isProcessingBarcode) return;
     if (!FDCService.isValidUPCFormat(code)) return;
@@ -368,6 +430,12 @@
   async function captureOCRImage() {
     if (!videoElement || !cameraStream) return;
 
+    // Clean up previous preview if exists
+    if (imagePreview) {
+      URL.revokeObjectURL(imagePreview);
+      imagePreview = null;
+    }
+
     // Create canvas to capture current video frame
     const canvas = document.createElement('canvas');
     const context = canvas.getContext('2d');
@@ -380,6 +448,9 @@
     // Convert to blob and process
     canvas.toBlob(async (blob) => {
       if (blob) {
+        // Create preview URL to show captured image
+        imagePreview = URL.createObjectURL(blob);
+
         // Convert blob to proper File object with correct metadata
         const fileName = `nutrition-label-capture-${Date.now()}.jpg`;
         const file = new File(
@@ -398,6 +469,13 @@
   async function handleFileSelect(event) {
     const file = event.target.files[0];
     if (!file) return;
+
+    // Clean up previous preview if exists
+    if (imagePreview) {
+      URL.revokeObjectURL(imagePreview);
+      imagePreview = null;
+    }
+
     error = null;
     imagePreview = URL.createObjectURL(file);
     await processImage(file);
@@ -435,7 +513,13 @@
             confidence: result.confidence
           },
           timestamp: new Date().toLocaleTimeString(),
-          processingTime: Date.now() // Will be calculated later
+          processingTime: Date.now(), // Will be calculated later
+          cameraInfo: cameraStream ? {
+            focusSupported: focusSupported,
+            currentFocusMode: currentFocusMode,
+            torchSupported: torchSupported,
+            deviceId: cameraDeviceId
+          } : null
         };
         
         // Build serving size string for display
@@ -484,14 +568,19 @@
         isFile: scanType === 'file',
         fileName: fileName,
         error: err.message,
-        timestamp: new Date().toLocaleTimeString()
+        timestamp: new Date().toLocaleTimeString(),
+        cameraInfo: cameraStream ? {
+          focusSupported: focusSupported,
+          currentFocusMode: currentFocusMode,
+          torchSupported: torchSupported,
+          deviceId: cameraDeviceId
+        } : null
       };
     } finally {
       isLoading = false;
       ocrLoadingState = '';
-      if (!debugMode) {
-        imagePreview = null; // Only clear preview if not in debug mode
-      }
+      // Keep imagePreview to show captured/selected image
+      // (cleaned up on tab switch, modal close, or next capture)
     }
   }
 
@@ -761,43 +850,70 @@
         {:else if activeTab === 'ocr'}
           <!-- OCR Scanning UI - Uses shared camera section -->
           <div class="camera-section ocr-mode">
-            <video bind:this={videoElement} class="camera-video"
-                   class:ocr-mode={activeTab === 'ocr'} autoplay muted playsinline></video>
+            {#if imagePreview}
+              <!-- Show captured image -->
+              <img src={imagePreview} alt="Captured nutrition label" class="camera-video ocr-mode" />
+            {:else}
+              <!-- Show live video feed -->
+              <video bind:this={videoElement} class="camera-video"
+                     class:ocr-mode={activeTab === 'ocr'}
+                     on:click={handleTapToFocus}
+                     autoplay muted playsinline></video>
 
-            <!-- Camera Controls Overlay -->
-            <div class="camera-controls">
-              {#if torchSupported}
-                <button class="control-btn torch-btn"
-                        class:active={torchEnabled}
-                        on:click={toggleTorch}>
-                  <span class="material-icons">
-                    {torchEnabled ? 'flashlight_on' : 'flashlight_off'}
-                  </span>
-                </button>
-              {/if}
-            </div>
-
-            <!-- OCR Frame -->
-            <div class="ocr-overlay">
-              <div class="ocr-frame">
-                <div class="corner-guides">
-                  <div class="corner top-left"></div>
-                  <div class="corner top-right"></div>
-                  <div class="corner bottom-left"></div>
-                  <div class="corner bottom-right"></div>
-                </div>
+              <!-- Camera Controls Overlay (only show for live feed) -->
+              <div class="camera-controls">
+                {#if torchSupported}
+                  <button class="control-btn torch-btn"
+                          class:active={torchEnabled}
+                          on:click={toggleTorch}>
+                    <span class="material-icons">
+                      {torchEnabled ? 'flashlight_on' : 'flashlight_off'}
+                    </span>
+                  </button>
+                {/if}
               </div>
-              <p class="ocr-instruction">Align nutrition label in frame</p>
-            </div>
+
+              <!-- OCR Frame (only show for live feed) -->
+              <div class="ocr-overlay">
+                <div class="ocr-frame">
+                  <div class="corner-guides">
+                    <div class="corner top-left"></div>
+                    <div class="corner top-right"></div>
+                    <div class="corner bottom-left"></div>
+                    <div class="corner bottom-right"></div>
+                  </div>
+                </div>
+                <p class="ocr-instruction">Align nutrition label in frame</p>
+              </div>
+
+              <!-- Focus Indicator (only show for live feed) -->
+              {#if focusIndicatorPosition}
+                <div class="focus-indicator"
+                     style="left: {focusIndicatorPosition.x}px; top: {focusIndicatorPosition.y}px;">
+                </div>
+              {/if}
+            {/if}
           </div>
 
           <!-- OCR Action Buttons -->
           {#if cameraInitialized && !showManualUPCEntry && !isLoading}
             <div class="ocr-actions">
-              <button class="capture-btn primary" on:click={captureOCRImage}>
-                <span class="material-icons">camera</span>
-                Capture
-              </button>
+              {#if imagePreview}
+                <button class="capture-btn primary" on:click={() => {
+                  if (imagePreview) {
+                    URL.revokeObjectURL(imagePreview);
+                    imagePreview = null;
+                  }
+                }}>
+                  <span class="material-icons">refresh</span>
+                  Retake
+                </button>
+              {:else}
+                <button class="capture-btn primary" on:click={captureOCRImage}>
+                  <span class="material-icons">camera</span>
+                  Capture
+                </button>
+              {/if}
 
               <button class="file-select-btn" 
                       class:debug-active={debugMode}
@@ -877,6 +993,26 @@
                         {debugData.parsedElements?.confidence || 'unknown'}
                       </div>
                     </div>
+
+                    {#if debugData.cameraInfo}
+                      <div class="debug-section">
+                        <h5>📷 Camera Focus:</h5>
+                        <div class="focus-status">
+                          <div class="debug-grid">
+                            <span>Focus Supported:</span>
+                            <span class:supported={debugData.cameraInfo.focusSupported}>
+                              {debugData.cameraInfo.focusSupported ? '✓ Yes' : '✗ No'}
+                            </span>
+                            <span>Focus Mode:</span>
+                            <span>{debugData.cameraInfo.currentFocusMode}</span>
+                            <span>Torch Supported:</span>
+                            <span class:supported={debugData.cameraInfo.torchSupported}>
+                              {debugData.cameraInfo.torchSupported ? '✓ Yes' : '✗ No'}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    {/if}
 
                     <div class="debug-section">
                       <h5>🎯 Spatial Results:</h5>
@@ -1116,6 +1252,7 @@
   .camera-video {
     width: 100%;
     display: block;
+    cursor: pointer; /* Show it's interactive */
   }
   /* Mode-specific aspect ratios */
   .camera-section.upc-mode {
@@ -1265,6 +1402,30 @@
     border-radius: 1rem;
     font-size: var(--font-size-sm);
     white-space: nowrap;
+  }
+
+  /* Focus Indicator */
+  .focus-indicator {
+    position: absolute;
+    width: 80px;
+    height: 80px;
+    border: 2px solid var(--primary-color);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    animation: focus-pulse 0.8s ease-out;
+    z-index: 15;
+  }
+
+  @keyframes focus-pulse {
+    0% {
+      opacity: 1;
+      transform: translate(-50%, -50%) scale(1.5);
+    }
+    100% {
+      opacity: 0;
+      transform: translate(-50%, -50%) scale(1);
+    }
   }
 
   /* OCR Tab Styles - Removed unused selectors */
@@ -1768,7 +1929,21 @@
     font-style: italic;
     color: #9ca3af;
     padding: 1rem;
-  }  
+  }
+
+  /* Focus status styles */
+  .focus-status {
+    margin-top: var(--spacing-sm);
+    padding: var(--spacing-sm);
+    background: #f9fafb;
+    border-radius: 0.25rem;
+    font-size: var(--font-size-sm);
+  }
+
+  .focus-status .supported {
+    color: #059669;
+    font-weight: bold;
+  }
 
   /* Mobile responsive adjustments */
   @media (max-width: 480px) {
