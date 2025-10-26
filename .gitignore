@@ -74,6 +74,7 @@ worker/.env*
 !worker/.env.example
 
 # Misc dev files
+/upgrade_migration/
 /tmp/
 /test/
 /backup/
