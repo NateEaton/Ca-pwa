@@ -2,9 +2,19 @@ name = "calcium-sync-worker"
 main = "src/index.ts"
 compatibility_date = "2024-08-11"
 
-# KV namespace for storing encrypted sync docs
-# Create your KV namespace: wrangler kv:namespace create "SYNC_KV"
+# Production KV namespace for storing encrypted sync docs
+# Create your KV namespace: wrangler kv namespace create "SYNC_KV"
 # Then replace the ID below with your actual namespace ID
 [[kv_namespaces]]
 binding = "SYNC_KV"
-id = "your_kv_namespace_id_here"
+id = "your_production_kv_namespace_id_here"
+
+# Development environment
+# Create dev KV namespace: wrangler kv namespace create "SYNC_KV" --env dev
+# Then replace the ID below with your dev namespace ID
+[env.dev]
+name = "dev-calcium-sync-worker"
+
+[[env.dev.kv_namespaces]]
+binding = "SYNC_KV"
+id = "your_dev_kv_namespace_id_here"
