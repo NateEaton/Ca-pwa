@@ -141,6 +141,33 @@ html {
   --secondary-color: #ffb300;
 }
 
+/* Development environment color scheme */
+[data-env="development"] {
+  /* Orange color scheme for dev environment - impossible to miss */
+  --primary-color: #FF6F00;
+  --primary-color-light: #FFA726;
+  --primary-color-dark: #E65100;
+
+  /* Success color also uses orange in dev for consistency */
+  --success-color: var(--primary-color);
+
+  /* Update alpha overlays for orange */
+  --primary-alpha-5: rgba(255, 111, 0, 0.05);
+  --primary-alpha-10: rgba(255, 111, 0, 0.1);
+}
+
+/* Development + Dark theme combination */
+[data-env="development"][data-theme="dark"] {
+  /* Slightly brighter orange for dark mode visibility */
+  --primary-color: #FF8F00;
+  --primary-color-light: #FFB74D;
+  --primary-color-dark: #F57C00;
+
+  /* Update alpha overlays for orange in dark mode */
+  --primary-alpha-5: rgba(255, 143, 0, 0.08);
+  --primary-alpha-10: rgba(255, 143, 0, 0.15);
+}
+
 /* Base styles */
 * {
   box-sizing: border-box;

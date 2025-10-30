@@ -130,6 +130,10 @@
             <span class="build-time">
               {getFormattedBuildTime()}
             </span>
+            <br />
+            <span class="build-env" title="Build Environment">
+              Env: {buildInfo.environment}
+            </span>
           </div>
         </div>
       </div>

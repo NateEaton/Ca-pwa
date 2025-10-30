@@ -27,6 +27,7 @@ export interface BuildInfo {
   nodeVersion: string;
   buildPlatform: string;
   buildAge: number; // Minutes since build
+  environment: string;
 }
 
 /**
@@ -44,7 +45,8 @@ export function getBuildInfo(): BuildInfo {
     appVersion: __APP_VERSION__,
     nodeVersion: __NODE_VERSION__,
     buildPlatform: __BUILD_PLATFORM__,
-    buildAge
+    buildAge,
+    environment: __APP_ENV__
   };
 }
 
@@ -77,6 +79,8 @@ export function logBuildInfo(): void {
     console.log('Git Branch:', info.gitBranch || 'unknown');
     console.log('App Version:', info.appVersion);
     console.log('Build Age:', `${info.buildAge} minutes`);
+    console.log('Environment:', info.environment);
+    console.log('data-env attribute:', document.documentElement.getAttribute('data-env'));
     console.groupEnd();
   }
 }

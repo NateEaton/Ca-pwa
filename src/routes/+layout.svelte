@@ -46,6 +46,7 @@
     }
 
     initializeTheme();
+    initializeEnvironment();
 
     if (typeof window !== "undefined") {
       const { registerSW } = await import("virtual:pwa-register");
@@ -115,6 +116,11 @@
     } else {
       document.documentElement.setAttribute("data-theme", theme);
     }
+  }
+
+  function initializeEnvironment() {
+    // Apply environment attribute for dev color scheme
+    document.documentElement.setAttribute("data-env", __APP_ENV__);
   }
 </script>
 

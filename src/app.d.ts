@@ -15,6 +15,7 @@ declare global {
 	const __APP_VERSION__: string;
 	const __NODE_VERSION__: string;
 	const __BUILD_PLATFORM__: string;
+	const __APP_ENV__: string;
 }
 
 interface ImportMetaEnv {

@@ -92,7 +92,11 @@ rm -rf "$BUILD_OUTPUT_DIR"
 
 # --- CORRECTED: Execute the build command and then check its status ---
 echo "🚀 Running the SvelteKit build..."
-npm run build
+if [ "$ENVIRONMENT" = "dev" ]; then
+    npm run build:dev
+else
+    npm run build
+fi
 
 if [ $? -eq 0 ]; then
     echo "✅ Build completed successfully"

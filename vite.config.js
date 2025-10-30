@@ -106,6 +106,9 @@ export default defineConfig(({ mode }) => {
       ),
       __NODE_VERSION__: JSON.stringify(process.version),
       __BUILD_PLATFORM__: JSON.stringify(process.platform),
+
+      // Environment detection
+      __APP_ENV__: JSON.stringify(mode),
     },
     build: {
       chunkSizeWarningLimit: 750,
