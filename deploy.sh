@@ -3,10 +3,16 @@
 # My Calcium PWA - Multi-Environment Build & Deploy Script
 set -e # Exit on any error
 
-# --- Load environment variables if .env exists ---
+# --- Load environment variables needed within this script if .env exists ---
+#if [ -f .env ]; then
+#    echo "📄 Loading environment variables from .env file..."
+#    export $(grep -v '^#' .env | xargs)
+#fi
+
+# --- Load deployment paths (same for all environments) ---
 if [ -f .env ]; then
-    echo "📄 Loading environment variables from .env file..."
-    export $(grep -v '^#' .env | xargs)
+    export PROD_DEPLOY_DIR=$(grep '^PROD_DEPLOY_DIR=' .env | cut -d '=' -f2)
+    export DEV_DEPLOY_DIR=$(grep '^DEV_DEPLOY_DIR=' .env | cut -d '=' -f2)
 fi
 
 # --- Configuration ---
@@ -86,16 +92,21 @@ else
     exit 1
 fi
 
-# --- NEW: Clean the old build directory before starting a new build ---
+# --- Clean the old build directory before starting a new build ---
 echo "🧹 Cleaning previous build artifacts..."
 rm -rf "$BUILD_OUTPUT_DIR"
 
-# --- CORRECTED: Execute the build command and then check its status ---
-echo "🚀 Running the SvelteKit build..."
+# --- Execute the build command and then check its status ---
 if [ "$ENVIRONMENT" = "dev" ]; then
+    echo "📝 Using .env (dev worker URL)"
     npm run build:dev
+elif [ "$ENVIRONMENT" = "prod" ]; then
+    echo "📝 Using .env.production (prod worker URL)"
+    npm run build -- --mode production
 else
-    npm run build
+    # test mode - use dev environment
+    echo "📝 Using .env (dev worker URL for testing)"
+    npm run build:dev
 fi
 
 if [ $? -eq 0 ]; then
