@@ -203,17 +203,6 @@ export class UnitConverter {
     // Clean the string
     let cleaned = measureString.toLowerCase().trim();
 
-    // Check if this is a non-convertible measure first
-    if (this.isNonConvertible(cleaned)) {
-      return {
-        originalQuantity: 1,
-        originalUnit: measureString,
-        detectedUnit: measureString,
-        unitType: "unknown",
-        isDescriptive: true,
-      };
-    }
-
     // Extract the numeric part (handles "1.0", "0.5", etc.)
     const numericMatch = cleaned.match(/^(\d+\.?\d*)\s*/);
     const quantity = numericMatch ? parseFloat(numericMatch[1]) : 1;
@@ -230,6 +219,16 @@ export class UnitConverter {
       // If the inner measure has a convertible unit, use that instead
       const innerParsed = this.parseSimpleMeasure(innerMeasure);
       if (innerParsed.unitType !== "unknown") {
+        console.log('🔧 UnitConverter.parseUSDAMeasure() - COMPOUND CONVERTIBLE:', {
+          input: measureString,
+          quantity,
+          unitPortion,
+          containerType,
+          innerMeasure,
+          innerParsed,
+          cleanedUnit: innerParsed.detectedUnit
+        });
+
         return {
           originalQuantity: quantity,
           originalUnit: unitPortion,
@@ -243,17 +242,52 @@ export class UnitConverter {
       }
 
       // If inner measure isn't convertible, fall back to no conversion
+      console.log('🔧 UnitConverter.parseUSDAMeasure() - COMPOUND FALLBACK:', {
+        input: measureString,
+        quantity,
+        unitPortion,
+        containerType,
+        innerMeasure,
+        cleanedUnit: unitPortion,  // Show what we're setting
+        note: 'Inner measure not convertible, using full unitPortion'
+      });
+
       return {
         originalQuantity: quantity,
         originalUnit: unitPortion,
-        detectedUnit: unitPortion,
+        detectedUnit: unitPortion,  // ✓ FIXED - was referencing undefined cleanUnit
         unitType: "unknown",
         isCompound: true,
+        cleanedUnit: unitPortion,  // ✓ This is the key fix
+      };
+    }
+
+    // Check if this is a non-convertible measure 
+    if (this.isNonConvertible(cleaned)) {
+      console.log('🔧 UnitConverter.parseUSDAMeasure() - NON-CONVERTIBLE:', {
+        input: measureString,
+        note: 'Descriptive measure, no parsing needed'
+      });
+      
+      return {
+        originalQuantity: 1,
+        originalUnit: measureString,
+        detectedUnit: measureString,
+        unitType: "unknown",
+        isDescriptive: true,
       };
     }
 
     // Handle simple measurements
     const simpleParsed = this.parseSimpleMeasure(unitPortion);
+    console.log('🔧 UnitConverter.parseUSDAMeasure() - SIMPLE:', {
+      input: measureString,
+      quantity,
+      unitPortion,
+      simpleParsed,
+      cleanedUnit: simpleParsed.detectedUnit
+    });
+
     return {
       originalQuantity: quantity,
       originalUnit: unitPortion,

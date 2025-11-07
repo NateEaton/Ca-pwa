@@ -346,9 +346,9 @@
       // Parse the new measure for unit conversion
       parsedFoodMeasure = unitConverter.parseUSDAMeasure(selectedMeasure.measure);
       
-      // Update serving fields to match the selected measure
-      servingQuantity = 1; // Reset to 1 unit of the selected measure
-      servingUnit = selectedMeasure.measure;
+      // Use parsed quantity and cleaned unit (SAME AS selectFood does)
+      servingQuantity = parsedFoodMeasure.originalQuantity;
+      servingUnit = parsedFoodMeasure.cleanedUnit || parsedFoodMeasure.detectedUnit;
       
       // Recalculate calcium for the new serving size
       updateCalcium();
