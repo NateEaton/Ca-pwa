@@ -55,12 +55,12 @@ export function setSyncError(error: string) {
 // Derived store for sync icon display
 export const syncIcon = derived(syncState, ($syncState) => {
   switch ($syncState.status) {
-    case 'initializing': // <-- Add this case
-      return { icon: 'sync', color: 'var(--text-secondary)', spinning: true };
+    case 'initializing':
+      return { icon: 'sync', color: '#ffffff', spinning: true };
     case 'offline':
       return { icon: 'cloud_off', color: 'var(--text-secondary)', spinning: false };
     case 'syncing':
-      return { icon: 'sync', color: 'var(--primary-color)', spinning: true };
+      return { icon: 'sync', color: '#ffffff', spinning: true };
     case 'synced':
       return { icon: 'cloud_done', color: '#4caf50', spinning: false };
     case 'error':
