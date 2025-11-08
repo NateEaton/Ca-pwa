@@ -1104,7 +1104,34 @@
     height: 18px;
     margin: 0;
     cursor: pointer;
-    accent-color: var(--primary-color);
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    border: 2px solid var(--divider);
+    border-radius: 3px;
+    background-color: var(--surface);
+    position: relative;
+    transition: all 0.2s ease;
+  }
+
+  .hide-checkbox:hover {
+    border-color: var(--primary-color);
+  }
+
+  .hide-checkbox:checked {
+    background-color: var(--error-color);
+    border-color: var(--error-color);
+  }
+
+  .hide-checkbox:checked::after {
+    content: '✕';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: white;
+    font-size: 12px;
+    font-weight: bold;
   }
 
   .food-info {

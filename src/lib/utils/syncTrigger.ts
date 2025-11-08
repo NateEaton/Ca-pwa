@@ -32,7 +32,10 @@ import { getMonthKey } from '$lib/types/sync';
  * - 'all' changes: full bidirectional sync
  */
 export class SyncTrigger {
-  private static debounceTimer: number | null = null;
+  // Separate timers for each sync type to prevent cancellation
+  private static journalDebounceTimer: number | null = null;
+  private static persistentDebounceTimer: number | null = null;
+  private static allDebounceTimer: number | null = null;
   private static readonly DEBOUNCE_DELAY = 2000; // 2 seconds
 
   /**
@@ -44,57 +47,94 @@ export class SyncTrigger {
    * @returns {void}
    */
   static triggerDataSync(changeType: 'journal' | 'persistent' | 'all' = 'all', dateString?: string): void {
-    // Clear existing timer
-    if (this.debounceTimer) {
-      clearTimeout(this.debounceTimer);
+    // Select and clear the appropriate timer for this sync type
+    let timer: number | null = null;
+
+    if (changeType === 'all') {
+      if (this.allDebounceTimer) clearTimeout(this.allDebounceTimer);
+      timer = window.setTimeout(async () => {
+        this.allDebounceTimer = null;
+        await this.executeSync('all');
+      }, this.DEBOUNCE_DELAY);
+      this.allDebounceTimer = timer;
+    } else if (changeType === 'persistent') {
+      if (this.persistentDebounceTimer) clearTimeout(this.persistentDebounceTimer);
+      timer = window.setTimeout(async () => {
+        this.persistentDebounceTimer = null;
+        await this.executeSync('persistent');
+      }, this.DEBOUNCE_DELAY);
+      this.persistentDebounceTimer = timer;
+    } else if (changeType === 'journal' && dateString) {
+      if (this.journalDebounceTimer) clearTimeout(this.journalDebounceTimer);
+      const monthKey = getMonthKey(dateString);
+      timer = window.setTimeout(async () => {
+        this.journalDebounceTimer = null;
+        await this.executeSync('journal', monthKey);
+      }, this.DEBOUNCE_DELAY);
+      this.journalDebounceTimer = timer;
+    } else {
+      // Invalid parameters, fallback to full sync
+      console.warn('[SYNC TRIGGER] Invalid parameters, falling back to full sync');
+      if (this.allDebounceTimer) clearTimeout(this.allDebounceTimer);
+      timer = window.setTimeout(async () => {
+        this.allDebounceTimer = null;
+        await this.executeSync('all');
+      }, this.DEBOUNCE_DELAY);
+      this.allDebounceTimer = timer;
     }
+  }
 
-    // Set new timer
-    this.debounceTimer = window.setTimeout(async () => {
-      try {
-        const currentSyncState = get(syncState);
-        if (!currentSyncState.isEnabled) {
-          // Sync is not enabled, no need to sync or log anything
-          return;
-        }
-
-        const syncService = SyncService.getInstance();
-
-        // Smart routing based on change type
-        if (changeType === 'all') {
-          // Full sync
-          console.log('[SYNC TRIGGER] Full bidirectional sync triggered');
-          await syncService.performBidirectionalSync();
-        } else if (changeType === 'persistent') {
-          // Only sync persistent data (settings, custom foods, favorites)
-          console.log('[SYNC TRIGGER] Persistent data sync triggered');
-          await syncService.syncPersistentData();
-        } else if (changeType === 'journal' && dateString) {
-          // Only sync affected month
-          const monthKey = getMonthKey(dateString);
-          console.log('[SYNC TRIGGER] Month sync triggered for', monthKey);
-          await syncService.syncMonth(monthKey);
-        } else {
-          // Fallback to full sync if parameters are invalid
-          console.warn('[SYNC TRIGGER] Invalid parameters, falling back to full sync');
-          await syncService.performBidirectionalSync();
-        }
-      } catch (error) {
-        console.warn('Automatic data change sync failed:', error);
+  /**
+   * Execute the appropriate sync operation
+   * @private
+   */
+  private static async executeSync(changeType: 'journal' | 'persistent' | 'all', monthKey?: string): Promise<void> {
+    try {
+      const currentSyncState = get(syncState);
+      if (!currentSyncState.isEnabled) {
+        // Sync is not enabled, no need to sync or log anything
+        return;
       }
-    }, this.DEBOUNCE_DELAY);
+
+      const syncService = SyncService.getInstance();
+
+      // Smart routing based on change type
+      if (changeType === 'all') {
+        // Full sync
+        console.log('[SYNC TRIGGER] Full bidirectional sync triggered');
+        await syncService.performBidirectionalSync();
+      } else if (changeType === 'persistent') {
+        // Only sync persistent data (settings, custom foods, favorites)
+        console.log('[SYNC TRIGGER] Persistent data sync triggered');
+        await syncService.syncPersistentData();
+      } else if (changeType === 'journal' && monthKey) {
+        // Only sync affected month
+        console.log('[SYNC TRIGGER] Month sync triggered for', monthKey);
+        await syncService.syncMonth(monthKey);
+      }
+    } catch (error) {
+      console.warn('Automatic data change sync failed:', error);
+    }
   }
 
   /**
    * Cancel any pending sync operation.
    * Useful when the component is being unmounted or sync is no longer needed.
-   * 
+   *
    * @returns {void}
    */
   static cancelPendingSync(): void {
-    if (this.debounceTimer) {
-      clearTimeout(this.debounceTimer);
-      this.debounceTimer = null;
+    if (this.journalDebounceTimer) {
+      clearTimeout(this.journalDebounceTimer);
+      this.journalDebounceTimer = null;
+    }
+    if (this.persistentDebounceTimer) {
+      clearTimeout(this.persistentDebounceTimer);
+      this.persistentDebounceTimer = null;
+    }
+    if (this.allDebounceTimer) {
+      clearTimeout(this.allDebounceTimer);
+      this.allDebounceTimer = null;
     }
   }
 }
