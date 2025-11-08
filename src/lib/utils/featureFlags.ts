@@ -24,7 +24,13 @@ export const FEATURES = {
    * Sync functionality enabled when Cloudflare Worker URL is configured
    * Determines whether sync UI elements and functionality are available
    */
-  SYNC_ENABLED: Boolean(import.meta.env.VITE_WORKER_URL?.trim())
+  SYNC_ENABLED: Boolean(import.meta.env.VITE_WORKER_URL?.trim()),
+
+  /**
+   * OCR functionality enabled when OCR.space API key is configured
+   * Determines whether OCR tab is available in Smart Scan modal
+   */
+  OCR_ENABLED: Boolean(import.meta.env.VITE_OCR_API_KEY?.trim())
 } as const;
 
 export type FeatureFlags = typeof FEATURES;

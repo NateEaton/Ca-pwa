@@ -28,6 +28,7 @@
   import { OCRService } from '$lib/services/OCRService.ts';
   import { FDC_CONFIG } from '$lib/config/fdc.js';
   import { OCR_CONFIG } from '$lib/config/ocr.js';
+  import { FEATURES } from '$lib/utils/featureFlags';
   import TestDataCollector from './TestDataCollector.svelte';
 
   export let show = false;
@@ -88,7 +89,14 @@
   onMount(() => {
     // Load sticky preferences
     const lastTab = localStorage.getItem('scan-default-tab');
-    if (lastTab) activeTab = lastTab;
+    if (lastTab) {
+      // Only restore OCR tab if OCR is enabled
+      if (lastTab === 'ocr' && !FEATURES.OCR_ENABLED) {
+        activeTab = 'upc';
+      } else {
+        activeTab = lastTab;
+      }
+    }
 
     const lastSource = localStorage.getItem('upc-data-source');
     if (lastSource) selectedSource = lastSource;
@@ -127,6 +135,9 @@
   // Enhanced tab switching
   async function switchTab(tab) {
     if (isLoading) return;
+
+    // Prevent switching to OCR if it's disabled
+    if (tab === 'ocr' && !FEATURES.OCR_ENABLED) return;
 
     const previousTab = activeTab;
     activeTab = tab;
@@ -714,9 +725,11 @@
         <button class="tab-btn" class:active={activeTab === 'upc'} on:click={() => switchTab('upc')} disabled={isLoading}>
           <span class="material-icons">qr_code_scanner</span> Barcode
         </button>
-        <button class="tab-btn" class:active={activeTab === 'ocr'} on:click={() => switchTab('ocr')} disabled={isLoading}>
-          <span class="material-icons">camera_alt</span> Nutrition Label
-        </button>
+        {#if FEATURES.OCR_ENABLED}
+          <button class="tab-btn" class:active={activeTab === 'ocr'} on:click={() => switchTab('ocr')} disabled={isLoading}>
+            <span class="material-icons">camera_alt</span> Nutrition Label
+          </button>
+        {/if}
       </div>
 
       <div class="modal-body">
@@ -847,7 +860,7 @@
               <button class="retry-btn" on:click={() => activateCameraForMode(activeTab)} disabled={isLoading}>Try Again</button>
             </div>
           {/if}
-        {:else if activeTab === 'ocr'}
+        {:else if activeTab === 'ocr' && FEATURES.OCR_ENABLED}
           <!-- OCR Scanning UI - Uses shared camera section -->
           <div class="camera-section ocr-mode">
             {#if imagePreview}
