@@ -23,6 +23,7 @@ import { DEFAULT_FOOD_DATABASE, getPrimaryMeasure } from '$lib/data/foodDatabase
 import { SyncService } from '$lib/services/SyncService';
 import { SyncTrigger } from '$lib/utils/syncTrigger';
 import { getBuildInfo } from '$lib/utils/buildInfo';
+import { getMonthKey } from '$lib/types/sync';
 
 /**
  * Main service class for managing calcium tracking data including foods, settings, and IndexedDB operations.
@@ -477,7 +478,10 @@ export class CalciumService {
 
     await this.applySortToFoods();
     await this.saveDailyFoods();
-    SyncTrigger.triggerDataSync();
+
+    // Trigger smart sync for journal entry change
+    const currentDate = get(calciumState).currentDate;
+    SyncTrigger.triggerDataSync('journal', currentDate);
   }
 
   /**
@@ -500,7 +504,10 @@ export class CalciumService {
     }));
 
     await this.saveDailyFoods();
-    SyncTrigger.triggerDataSync();
+
+    // Trigger smart sync for journal entry change
+    const currentDate = get(calciumState).currentDate;
+    SyncTrigger.triggerDataSync('journal', currentDate);
   }
 
   /**
@@ -527,7 +534,10 @@ export class CalciumService {
 
     await this.applySortToFoods();
     await this.saveDailyFoods();
-    SyncTrigger.triggerDataSync();
+
+    // Trigger smart sync for journal entry change
+    const currentDate = get(calciumState).currentDate;
+    SyncTrigger.triggerDataSync('journal', currentDate);
   }
 
   /**
@@ -567,7 +577,9 @@ export class CalciumService {
     }));
 
     await this.saveSettings();
-    SyncTrigger.triggerDataSync();
+
+    // Trigger smart sync for persistent data change (settings)
+    SyncTrigger.triggerDataSync('persistent');
   }
 
   /**
@@ -582,11 +594,13 @@ export class CalciumService {
     sourceMetadata?: CustomFood['sourceMetadata']
   }): Promise<CustomFood | null> {
     const result = await this.saveCustomFoodToIndexedDB(foodData);
-    SyncTrigger.triggerDataSync();
+
+    // Trigger smart sync for persistent data change (custom food)
+    SyncTrigger.triggerDataSync('persistent');
     return result;
   }
 
-  private async saveCustomFoodToIndexedDB(foodData: any): Promise<CustomFood | null> {
+  async saveCustomFoodToIndexedDB(foodData: any): Promise<CustomFood | null> {
     if (!this.db) return null;
 
     return new Promise((resolve, reject) => {
@@ -676,7 +690,9 @@ export class CalciumService {
           customFoods: state.customFoods.filter(food => food.id !== id)
         }));
         resolve();
-        SyncTrigger.triggerDataSync();
+
+        // Trigger smart sync for persistent data change (delete custom food)
+        SyncTrigger.triggerDataSync('persistent');
       };
 
       request.onerror = () => {
@@ -703,7 +719,7 @@ export class CalciumService {
     calciumState.update(state => ({ ...state, settings }));
   }
 
-  private async saveSettings(): Promise<void> {
+  async saveSettings(): Promise<void> {
     const state = get(calciumState);
 
     localStorage.setItem('calcium_goal', state.settings.dailyGoal.toString());
@@ -719,7 +735,7 @@ export class CalciumService {
     localStorage.setItem('calcium_sort_settings', JSON.stringify(sortSettings));
   }
 
-  private async loadDailyFoods(): Promise<void> {
+  async loadDailyFoods(): Promise<void> {
     const state = get(calciumState);
 
     try {
@@ -742,7 +758,7 @@ export class CalciumService {
     }
   }
 
-  private async loadCustomFoods(): Promise<void> {
+  async loadCustomFoods(): Promise<void> {
     if (!this.db) return;
 
     return new Promise((resolve) => {
@@ -781,16 +797,23 @@ export class CalciumService {
    * @returns Promise resolving to the backup data object
    */
   async generateBackup(): Promise<any> {
+    console.log('[GENERATE BACKUP] Starting backup generation...');
     const state = get(calciumState);
     const syncService = SyncService.getInstance();
     const syncSettings = syncService.getSettings();
 
     const buildInfo = getBuildInfo();
 
+    console.log('[GENERATE BACKUP] Fetching all journal data...');
     const journalEntries = await this.getAllJournalData();
-    const customFoods = await this.getAllCustomFoods();
+    const journalDates = Object.keys(journalEntries).length;
+    console.log('[GENERATE BACKUP] Journal dates:', journalDates);
 
-    return {
+    console.log('[GENERATE BACKUP] Fetching custom foods...');
+    const customFoods = await this.getAllCustomFoods();
+    console.log('[GENERATE BACKUP] Custom foods:', customFoods.length);
+
+    const backup = {
       metadata: {
         version: '2.1.0',
         createdAt: new Date().toISOString(),
@@ -806,43 +829,90 @@ export class CalciumService {
       servingPreferences: Array.from(state.servingPreferences.values()),
       journalEntries
     };
+
+    console.log('[GENERATE BACKUP] ✅ Backup generated:', {
+      journalDates,
+      customFoods: customFoods.length,
+      favorites: backup.favorites.length,
+      hiddenFoods: backup.hiddenFoods.length,
+      servingPreferences: backup.servingPreferences.length,
+      syncGenerationId: backup.metadata.syncGenerationId
+    });
+
+    return backup;
   }
 
   /**
    * Restores all data from a backup, optionally preserving sync settings.
    * @param backupData The backup data to restore
-   * @param options Restore options including whether to preserve sync settings
+   * @param options Restore options including whether to preserve sync settings and regenerate sync ID
    */
-  async restoreFromBackup(backupData: any, options: { preserveSync: boolean } = { preserveSync: false }): Promise<void> {
+  async restoreFromBackup(backupData: any, options: {
+    preserveSync: boolean,
+    regenerateId?: boolean
+  } = { preserveSync: false, regenerateId: true }): Promise<void> {
     try {
+      console.log('[RESTORE] Starting restore from backup. preserveSync:', options.preserveSync, 'regenerateId:', options.regenerateId);
+      console.log('[RESTORE] Backup data summary:', {
+        hasPreferences: !!backupData.preferences,
+        customFoodsCount: backupData.customFoods?.length || 0,
+        favoritesCount: backupData.favorites?.length || 0,
+        journalDates: Object.keys(backupData.journalEntries || {}).length
+      });
+
       const syncService = SyncService.getInstance();
 
       if (options.preserveSync) {
+        console.log('[RESTORE] Clearing application data (preserving sync)...');
         await this.clearApplicationData();
-        await syncService.regenerateSyncId();
+
+        // Only regenerate sync ID if explicitly requested
+        // Default is true for backward compatibility, but pullFromCloud will pass false
+        if (options.regenerateId !== false) {
+          console.log('[RESTORE] Regenerating sync ID...');
+          await syncService.regenerateSyncId();
+        } else {
+          console.log('[RESTORE] Keeping existing sync generation ID (cloud pull mode)');
+        }
       } else {
+        console.log('[RESTORE] Clearing ALL data (including sync)...');
         await this.clearAllData();
       }
-      
+
+      console.log('[RESTORE] Waiting 300ms for IndexedDB operations to complete...');
       // Allow more time for IndexedDB operations to complete
       await new Promise(resolve => setTimeout(resolve, 300));
 
+      console.log('[RESTORE] Reinitializing custom food ID counter...');
       // Reinitialize the custom food ID counter after clearing data
       this.nextCustomFoodId = -1;
       await this.initializeCustomFoodIdCounter();
 
       // Verify database connection is still valid
+      console.log('[RESTORE] Verifying database connection...');
       if (!this.db || this.db.readyState !== 'done' || !this.db.objectStoreNames.contains('customFoods')) {
-        console.warn('Database connection unstable during restore, reinitializing...');
+        console.warn('[RESTORE] ⚠️ Database connection unstable, reinitializing...');
         await this.initializeIndexedDB();
         await this.initializeCustomFoodIdCounter();
+        console.log('[RESTORE] Database reinitialized successfully');
+      } else {
+        console.log('[RESTORE] Database connection is stable');
       }
 
       if (backupData.preferences) {
-        calciumState.update(state => ({ ...state, settings: backupData.preferences }));
+        console.log('[RESTORE] Restoring preferences...');
+        // Merge preferences instead of replacing to prevent data loss if backup is incomplete
+        calciumState.update(state => ({
+          ...state,
+          settings: { ...state.settings, ...backupData.preferences }
+        }));
         await this.saveSettings();
+        console.log('[RESTORE] Preferences restored (merged)');
       }
+
       if (backupData.customFoods && Array.isArray(backupData.customFoods)) {
+        console.log('[RESTORE] Restoring', backupData.customFoods.length, 'custom foods...');
+        let restoredCount = 0;
         for (const customFood of backupData.customFoods) {
           try {
             if (customFood.id < 0) {
@@ -858,31 +928,53 @@ export class CalciumService {
               await this.saveCustomFoodToIndexedDB(newCustomFood);
               this.nextCustomFoodId--;
             }
+            restoredCount++;
           } catch (error) {
-            console.error('Error restoring custom food:', customFood.name, error);
+            console.error('[RESTORE] ❌ Error restoring custom food:', customFood.name, error);
             // Continue with other custom foods even if one fails
           }
         }
+        console.log('[RESTORE] Custom foods restored:', restoredCount, '/', backupData.customFoods.length);
       }
+
       if (backupData.favorites && Array.isArray(backupData.favorites)) {
+        console.log('[RESTORE] Restoring', backupData.favorites.length, 'favorites...');
         await this.restoreFavorites(backupData.favorites);
+        console.log('[RESTORE] Favorites restored');
       }
+
       if (backupData.hiddenFoods && Array.isArray(backupData.hiddenFoods)) {
+        console.log('[RESTORE] Restoring', backupData.hiddenFoods.length, 'hidden foods...');
         await this.restoreHiddenFoods(backupData.hiddenFoods);
+        console.log('[RESTORE] Hidden foods restored');
       }
+
       if (backupData.servingPreferences && Array.isArray(backupData.servingPreferences)) {
+        console.log('[RESTORE] Restoring', backupData.servingPreferences.length, 'serving preferences...');
         await this.restoreServingPreferences(backupData.servingPreferences);
+        console.log('[RESTORE] Serving preferences restored');
       }
+
       if (backupData.journalEntries) {
+        const journalDates = Object.keys(backupData.journalEntries);
+        console.log('[RESTORE] Restoring journal entries for', journalDates.length, 'dates...');
+        let restoredDates = 0;
         for (const [dateString, foods] of Object.entries(backupData.journalEntries)) {
           if (Array.isArray(foods)) {
             await this.saveFoodsForDate(dateString, foods as FoodEntry[]);
+            restoredDates++;
+            if (restoredDates % 10 === 0) {
+              console.log('[RESTORE] Progress:', restoredDates, '/', journalDates.length, 'dates restored');
+            }
           }
         }
+        console.log('[RESTORE] Journal entries restored for all', restoredDates, 'dates');
       }
-      
+
+      console.log('[RESTORE] Waiting 200ms before reloading data...');
       await new Promise(resolve => setTimeout(resolve, 200));
 
+      console.log('[RESTORE] Reloading all data into state...');
       await this.loadSettings();
       await this.loadCustomFoods();
       await this.loadFavorites();
@@ -890,9 +982,10 @@ export class CalciumService {
       await this.loadServingPreferences();
       await this.loadDailyFoods();
       await this.applySortToFoods();
+      console.log('[RESTORE] ✅ Restore completed successfully');
 
     } catch (error) {
-      console.error('Error restoring backup:', error);
+      console.error('[RESTORE] ❌ FATAL ERROR during restore:', error);
       throw error;
     }
   }
@@ -914,23 +1007,36 @@ private async clearAllData(): Promise<void> {
    * Clears all application data from IndexedDB while preserving sync settings.
    */
   async clearApplicationData(): Promise<void> {
+    console.log('[CLEAR DATA] Starting to clear all application data from IndexedDB');
     if (!this.db) {
-      console.warn('Database connection not available for clearing IndexedDB data');
+      console.warn('[CLEAR DATA] ⚠️ Database connection not available for clearing IndexedDB data');
       return;
     }
+
     const storesToClear = ['journalEntries', 'customFoods', 'favorites', 'hiddenFoods', 'servingPreferences'];
+    console.log('[CLEAR DATA] Clearing', storesToClear.length, 'stores:', storesToClear);
+
     for (const storeName of storesToClear) {
       try {
+        console.log('[CLEAR DATA] Clearing store:', storeName);
         await new Promise<void>((resolve, reject) => {
           const transaction = this.db!.transaction([storeName], 'readwrite');
           const request = transaction.objectStore(storeName).clear();
-          request.onsuccess = () => resolve();
-          request.onerror = () => reject(request.error);
+          request.onsuccess = () => {
+            console.log('[CLEAR DATA] ✅ Cleared store:', storeName);
+            resolve();
+          };
+          request.onerror = () => {
+            console.error('[CLEAR DATA] ❌ Error clearing store:', storeName, request.error);
+            reject(request.error);
+          };
         });
       } catch (error) {
-        console.error(`Error clearing IndexedDB store ${storeName}:`, error);
+        console.error(`[CLEAR DATA] ❌ Error clearing IndexedDB store ${storeName}:`, error);
       }
     }
+
+    console.log('[CLEAR DATA] ✅ All IndexedDB stores cleared successfully');
   }
 
   private async getAllCustomFoods(): Promise<CustomFood[]> {
@@ -986,7 +1092,9 @@ private async clearAllData(): Promise<void> {
           return { ...state, servingPreferences: newPreferences };
         });
         resolve();
-        SyncTrigger.triggerDataSync();
+
+        // Trigger smart sync for persistent data change (serving preference)
+        SyncTrigger.triggerDataSync('persistent');
       };
 
       request.onerror = () => {
@@ -1025,7 +1133,9 @@ private async clearAllData(): Promise<void> {
           return { ...state, servingPreferences: newPreferences };
         });
         resolve();
-        SyncTrigger.triggerDataSync();
+
+        // Trigger smart sync for persistent data change (delete serving preference)
+        SyncTrigger.triggerDataSync('persistent');
       };
 
       request.onerror = () => {
@@ -1086,6 +1196,28 @@ private async clearAllData(): Promise<void> {
     }
 
     return journalData;
+  }
+
+  /**
+   * Gets all journal data partitioned by month keys.
+   * This is a helper method for SyncService to split data efficiently into monthly documents.
+   * @returns Promise resolving to a Map of month keys to journal entries for that month
+   */
+  async getJournalDataByMonth(): Promise<Map<string, Record<string, FoodEntry[]>>> {
+    const allJournalData = await this.getAllJournalData();
+    const byMonth = new Map<string, Record<string, FoodEntry[]>>();
+
+    for (const [dateString, entries] of Object.entries(allJournalData)) {
+      const monthKey = getMonthKey(dateString); // "2024-11"
+
+      if (!byMonth.has(monthKey)) {
+        byMonth.set(monthKey, {});
+      }
+
+      byMonth.get(monthKey)![dateString] = entries;
+    }
+
+    return byMonth;
   }
 
   /**
@@ -1263,7 +1395,9 @@ private async clearAllData(): Promise<void> {
           favorites.delete(foodId);
           calciumState.update(state => ({ ...state, favorites }));
           resolve();
-          SyncTrigger.triggerDataSync();
+
+          // Trigger smart sync for persistent data change (remove favorite)
+          SyncTrigger.triggerDataSync('persistent');
         };
 
         request.onerror = () => {
@@ -1283,7 +1417,9 @@ private async clearAllData(): Promise<void> {
           favorites.add(foodId);
           calciumState.update(state => ({ ...state, favorites }));
           resolve();
-          SyncTrigger.triggerDataSync();
+
+          // Trigger smart sync for persistent data change (add favorite)
+          SyncTrigger.triggerDataSync('persistent');
         };
 
         request.onerror = () => {
@@ -1371,6 +1507,9 @@ private async clearAllData(): Promise<void> {
           hiddenFoods.delete(foodId);
           calciumState.update(state => ({ ...state, hiddenFoods }));
           resolve();
+
+          // Trigger smart sync for persistent data change (unhide food)
+          SyncTrigger.triggerDataSync('persistent');
         };
 
         request.onerror = () => {
@@ -1390,6 +1529,9 @@ private async clearAllData(): Promise<void> {
           hiddenFoods.add(foodId);
           calciumState.update(state => ({ ...state, hiddenFoods }));
           resolve();
+
+          // Trigger smart sync for persistent data change (hide food)
+          SyncTrigger.triggerDataSync('persistent');
         };
 
         request.onerror = () => {
@@ -1467,7 +1609,7 @@ private async clearAllData(): Promise<void> {
     });
   }
 
-  private async restoreFavorites(favoritesArray: (number | string)[]): Promise<void> {
+  async restoreFavorites(favoritesArray: (number | string)[]): Promise<void> {
     if (!this.db) return;
 
     return new Promise((resolve, reject) => {
@@ -1523,7 +1665,7 @@ private async clearAllData(): Promise<void> {
     });
   }
 
-  private async restoreHiddenFoods(hiddenFoodsArray: (number | string)[]): Promise<void> {
+  async restoreHiddenFoods(hiddenFoodsArray: (number | string)[]): Promise<void> {
     if (!this.db) return;
     
     return new Promise((resolve, reject) => {
@@ -1579,7 +1721,7 @@ private async clearAllData(): Promise<void> {
     });
   }
 
-  private async restoreServingPreferences(preferencesArray: UserServingPreference[]): Promise<void> {
+  async restoreServingPreferences(preferencesArray: UserServingPreference[]): Promise<void> {
     if (!this.db) return;
 
     return new Promise((resolve, reject) => {

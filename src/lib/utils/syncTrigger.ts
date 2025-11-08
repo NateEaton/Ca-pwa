@@ -19,11 +19,17 @@
 import { SyncService } from '$lib/services/SyncService';
 import { syncState } from '$lib/stores/sync';
 import { get } from 'svelte/store';
+import { getMonthKey } from '$lib/types/sync';
 
 /**
  * Utility class for triggering automatic sync operations when data changes.
  * Implements debouncing to prevent excessive sync operations and reduce
  * server load while ensuring data consistency across devices.
+ *
+ * Smart sync routing:
+ * - 'journal' changes: sync only the affected month document
+ * - 'persistent' changes: sync only metadata + persistent document
+ * - 'all' changes: full bidirectional sync
  */
 export class SyncTrigger {
   private static debounceTimer: number | null = null;
@@ -31,12 +37,13 @@ export class SyncTrigger {
 
   /**
    * Trigger a debounced sync operation after data changes.
-   * If called multiple times within the debounce delay, only the last call
-   * will result in an actual sync operation.
-   * 
+   * Smart routing based on change type for optimal performance.
+   *
+   * @param changeType - Type of change: 'journal', 'persistent', or 'all'
+   * @param dateString - Date string for journal changes (YYYY-MM-DD format)
    * @returns {void}
    */
-  static triggerDataSync(): void {
+  static triggerDataSync(changeType: 'journal' | 'persistent' | 'all' = 'all', dateString?: string): void {
     // Clear existing timer
     if (this.debounceTimer) {
       clearTimeout(this.debounceTimer);
@@ -50,10 +57,28 @@ export class SyncTrigger {
           // Sync is not enabled, no need to sync or log anything
           return;
         }
-        
+
         const syncService = SyncService.getInstance();
-        // Use the robust pull-then-push method for all triggered syncs
-        await syncService.performBidirectionalSync();
+
+        // Smart routing based on change type
+        if (changeType === 'all') {
+          // Full sync
+          console.log('[SYNC TRIGGER] Full bidirectional sync triggered');
+          await syncService.performBidirectionalSync();
+        } else if (changeType === 'persistent') {
+          // Only sync persistent data (settings, custom foods, favorites)
+          console.log('[SYNC TRIGGER] Persistent data sync triggered');
+          await syncService.syncPersistentData();
+        } else if (changeType === 'journal' && dateString) {
+          // Only sync affected month
+          const monthKey = getMonthKey(dateString);
+          console.log('[SYNC TRIGGER] Month sync triggered for', monthKey);
+          await syncService.syncMonth(monthKey);
+        } else {
+          // Fallback to full sync if parameters are invalid
+          console.warn('[SYNC TRIGGER] Invalid parameters, falling back to full sync');
+          await syncService.performBidirectionalSync();
+        }
       } catch (error) {
         console.warn('Automatic data change sync failed:', error);
       }
