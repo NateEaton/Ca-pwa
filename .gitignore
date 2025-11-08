@@ -102,3 +102,4 @@ ocr/*
 !ocr/tsconfig.json
 
 calcium-dev.eatonfamily.net.conf
+calcium-tracker-backup-*.json
