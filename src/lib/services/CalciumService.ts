@@ -1069,15 +1069,17 @@ private async clearAllData(): Promise<void> {
    * @param foodId The ID of the food
    * @param quantity The preferred quantity
    * @param unit The preferred unit
+   * @param measureIndex Optional: index of preferred measure for multi-measure foods
    */
-  async saveServingPreference(foodId: number, quantity: number, unit: string): Promise<void> {
+  async saveServingPreference(foodId: number, quantity: number, unit: string, measureIndex?: number): Promise<void> {
     if (!this.db) return;
 
     const preference: UserServingPreference = {
       foodId,
       preferredQuantity: quantity,
       preferredUnit: unit,
-      lastUsed: new Date().toISOString()
+      lastUsed: new Date().toISOString(),
+      ...(measureIndex !== undefined && { preferredMeasureIndex: measureIndex })
     };
 
     return new Promise((resolve, reject) => {

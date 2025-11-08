@@ -319,6 +319,18 @@
         servingUnit = savedPreference.preferredUnit;
         usingPreference = true;
 
+        // Apply preferred measure index if available and valid
+        if (savedPreference.preferredMeasureIndex != null &&
+            availableMeasures.length > 1 &&
+            savedPreference.preferredMeasureIndex < availableMeasures.length) {
+          selectedMeasureIndex = savedPreference.preferredMeasureIndex;
+
+          // Manually apply the measure WITHOUT overwriting saved servingQuantity/servingUnit
+          const selectedMeasure = availableMeasures[selectedMeasureIndex];
+          calcium = selectedMeasure.calcium.toString();
+          parsedFoodMeasure = unitConverter.parseUSDAMeasure(selectedMeasure.measure);
+        }
+
         // Recalculate calcium for preferred serving
         updateCalcium();
       }
@@ -585,28 +597,37 @@
           !currentFoodData.isCustom &&
           currentFoodData.id
         ) {
-          const defaultQuantity = parsedFoodMeasure
-            ? parsedFoodMeasure.originalQuantity
+          // Get defaults from the FIRST (index 0) measure for comparison
+          const firstMeasure = availableMeasures.length > 0 ? availableMeasures[0] : null;
+          const firstMeasureParsed = firstMeasure
+            ? unitConverter.parseUSDAMeasure(firstMeasure.measure)
+            : null;
+
+          const defaultQuantity = firstMeasureParsed
+            ? firstMeasureParsed.originalQuantity
             : 1;
-          const defaultUnit = parsedFoodMeasure
-            ? parsedFoodMeasure.detectedUnit
+          const defaultUnit = firstMeasureParsed
+            ? (firstMeasureParsed.cleanedUnit || firstMeasureParsed.detectedUnit)
             : "serving";
+          const defaultMeasureIndex = 0;
+
+          const quantityChanged = servingQuantity !== defaultQuantity;
+          const unitChanged = servingUnit !== defaultUnit;
+          const measureIndexChanged = availableMeasures.length > 1 && selectedMeasureIndex !== defaultMeasureIndex;
 
           if (
             hasResetToOriginal ||
-            (servingQuantity === defaultQuantity && servingUnit === defaultUnit)
+            (!quantityChanged && !unitChanged && !measureIndexChanged)
           ) {
             // User reset to original or values match default - delete any existing preference
             await calciumService.deleteServingPreference(currentFoodData.id);
-          } else if (
-            servingQuantity !== defaultQuantity ||
-            servingUnit !== defaultUnit
-          ) {
-            // Save preference if user changed the serving size/unit
+          } else if (quantityChanged || unitChanged || measureIndexChanged) {
+            // Save preference if user changed quantity, unit, OR measure selection
             await calciumService.saveServingPreference(
               currentFoodData.id,
               servingQuantity,
-              servingUnit
+              servingUnit,
+              selectedMeasureIndex  // Include measure index for multi-measure foods
             );
           }
         }

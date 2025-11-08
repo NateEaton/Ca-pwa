@@ -123,4 +123,5 @@ export interface UserServingPreference {
   preferredQuantity: number;
   preferredUnit: string;
   lastUsed: string;
+  preferredMeasureIndex?: number; // Optional: index of preferred measure for multi-measure foods
 }
