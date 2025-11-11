@@ -31,6 +31,15 @@
       Tracking Your Daily Calcium
     </summary>
     <div class="section-content">
+      <h4>Date Navigation & Goal</h4>
+      <p>
+        Use the <span class="material-icons inline-icon">chevron_left</span> and
+        <span class="material-icons inline-icon">chevron_right</span>
+        arrows on the summary card to move between days. You can also
+        <strong>swipe left or right</strong> on the summary card to quickly change
+        the date. The card displays your daily total and progress toward your daily goal.
+      </p>
+
       <h4>Adding & Editing Foods</h4>
       <p>
         Tap the large <strong>+</strong> button on the main screen to open the "Add
@@ -49,11 +58,49 @@
           and calcium values.
         </li>
         <li>
+          <strong>Smart Scan Dialog:</strong> Tap the 
+           <span class="material-icons inline-icon">photo_camera</span> icon to add food 
+           using your device's camera. 
+           <ul>
+              <li>
+                <strong>Scan a Barcode:</strong> The app defaults to the Barcode tab which opens 
+                actively scanning for 
+                a product's UPC/EAN barcode. Choose between USDA or OpenFoodFacts databases
+                for lookup. Use the flashlight icon to enable your camera flash in low light,
+                or tap the keyboard icon to manually enter a barcode number.
+              </li>
+              {#if FEATURES.OCR_ENABLED}
+                <li>
+                  <strong>Scan a Nutrition Label:</strong> Switch to the 
+                  Nutrition Label tab to capture calcium content directly from food packaging. 
+                  This feature uses optical character recognition to read the nutrition facts panel. Use the 
+                  flashlight icon for better visibility in low light, and ensure the entire nutrition 
+                  label is visible and in focus within the camera frame.
+                </li>
+              {/if}
+            <ul>
+        </li>
+        <li>
           <strong>Edit or Delete:</strong> To change an entry, simply tap it on the
           main screen to open the edit dialog. You can update its details or tap
           the trash icon to delete it.
         </li>
       </ul>
+
+      <h4>Sorting Entries</h4>
+      <p>
+        On the main tracking screen, use the sort buttons to organize your daily entries by time added, 
+        food name, or calcium content.
+      </p>
+
+      <h4>Food Source Icons</h4>
+      <p>
+        Each entry displays a small icon indicating its source: a pencil 
+        <span class="material-icons inline-icon">edit</span> for manually added foods, 
+        a barcode scanner <span class="material-icons inline-icon">qr_code_scanner</span> 
+        for UPC-scanned items{#if FEATURES.OCR_ENABLED}, or a camera <span class="material-icons inline-icon">photo_camera</span> 
+        for nutrition label scans{/if}. 
+      </p>
 
       <h4>Serving Sizes & Favorites</h4>
       <ul>
@@ -63,8 +110,14 @@
           "Quick conversions" for common units.
         </li>
         <li>
-          <strong>Serving Memory:</strong> The app automatically remembers your preferred
-          serving size for any database food, making future entries faster.
+          <strong>Multiple Serving Options:</strong> Many USDA foods offer multiple 
+          serving options (cups, ounces, pieces, etc.). When available, a dropdown 
+          appears letting you choose your preferred unit. 
+        </li>
+        <li>
+          <strong>Serving Memory:</strong> The app remembers both your preferred serving 
+          size and serving option for each database food, making future entries faster 
+          and more consistent.
         </li>
         <li>
           <strong>Favorites:</strong> Tap the
@@ -73,15 +126,6 @@
           appear higher in search results.
         </li>
       </ul>
-
-      <h4>Date Navigation</h4>
-      <p>
-        Use the <span class="material-icons inline-icon">chevron_left</span> and
-        <span class="material-icons inline-icon">chevron_right</span>
-        arrows on the summary card to move between days. You can also
-        <strong>swipe left or right</strong> on the summary card to quickly change
-        the date.
-      </p>
     </div>
   </details>
 
@@ -97,11 +141,20 @@
         total for that period.
       </p>
       <p>
-        <strong>Database Page:</strong> Browse all foods. Use filters and
-        sorting to explore the data. Here you can also manage your favorites, control
-        which database foods appear in search when journaling and delete custom foods. 
-        Tap the <span class="material-icons inline-icon">info</span> icon in the header
-        for details on the data source.
+        <strong>Database Page:</strong> Browse all foods in the database and your custom foods. 
+        Use the search box to see specific foods. 
+        Use the <strong>filter buttons</strong> to show foods available in Add Food Items dialog,
+        all database foods, or user-entered (custom) foods. 
+        The <strong>sort buttons</strong> lets you organize by name, 
+        calcium content or food type. Use the <strong>calcium filter (Ca)</strong> dropdown to show only foods 
+        within specific calcium values. 
+        When viewing database foods, tap the 
+        <span class="material-icons inline-icon">open_in_new</span> 
+        icon on any food to view detailed information in the food database 
+        documentation page. In the Database view, click the checkbox on a food item to toggle 
+        whether to make it available to search for or not. 
+        The header's <span class="material-icons inline-icon">info</span> 
+        icon provides details about the database source and curation process.
       </p>
       <p>
         <strong>Report Page:</strong> Generate a printable summary of your history
@@ -109,7 +162,7 @@
       </p>
       <p>
         <strong>Settings Page:</strong> Adjust your daily goal, change the app theme,
-        and manage data {#if FEATURES.SYNC_ENABLED}sync and {/if}backups.
+        and manage data {#if FEATURES.SYNC_ENABLED}sync, {/if}exports, and backups.
       </p>
     </div>
   </details>
@@ -128,16 +181,24 @@
           work.
         </p>
 
+        <h4>Sync Status</h4>
+        <p>
+          The colored sync icon in the header shows your current sync status: blue when synced, 
+          animated when syncing, or red if there's an error. Tap the icon to manually trigger 
+          a sync.
+        </p>
+
         <h4>How to Set Up</h4>
         <ol class="steps-list">
           <li>
             On your first device, go to <strong>Settings > Data > Sync</strong> and
             tap "Create New Sync".
           </li>
-          <li>A QR code will be displayed on the screen.</li>
+          <li>A QR code and sharing URL will be displayed on the screen.</li>
           <li>
             On your second device, go to <strong>Settings > Data > Sync</strong>,
-            tap "Join Existing Sync", and scan the QR code from your first device.
+            tap "Join Existing Sync", and either scan the QR code or paste the sharing 
+            URL from your first device.
           </li>
         </ol>
         <p>Your devices are now connected and will sync automatically.</p>
@@ -173,6 +234,29 @@
           will overwrite all current data in the app.
         </li>
       </ul>
+    </div>
+  </details>
+
+  <details class="guide-section">
+    <summary>
+      <span class="material-icons">file_download</span>
+      Exporting Data
+    </summary>
+    <div class="section-content">
+      <h4>What It Is</h4>
+      <p>
+        Export creates a CSV (comma-separated values) file of all your journal entries, 
+        which you can open in spreadsheet applications like Excel or Google Sheets for 
+        analysis or record-keeping.
+      </p>
+
+      <h4>How to Use</h4>
+      <p>
+        In <strong>Settings > Data</strong>, tap <strong>Export to CSV</strong>. 
+        The app will generate a file containing your complete journal history with 
+        dates, food names, calcium amounts, and serving details. Unlike backups, 
+        exports are designed for data analysis and cannot be used to restore your data.
+      </p>
     </div>
   </details>
 </div>
