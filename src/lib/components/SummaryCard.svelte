@@ -20,7 +20,6 @@
   import { createEventDispatcher, onMount, onDestroy } from "svelte";
   import DatePicker from "./DatePicker.svelte";
   import { addDays } from "$lib/utils/dateUtils";
-  import { formatCalcium } from "$lib/data/foodDatabase";
 
   export let currentDate;
   export let dailyTotal;
@@ -120,7 +119,7 @@
   <div class="calcium-summary">
     <div class="summary-numbers">
       <div class="current-section">
-        <div class="current-amount">{formatCalcium(dailyTotal)}</div>
+        <div class="current-amount">{Math.round(dailyTotal)}</div>
         <div class="current-label">Total</div>
       </div>
 

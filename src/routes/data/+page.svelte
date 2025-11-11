@@ -149,7 +149,7 @@
           comparison = a.name.localeCompare(b.name);
           break;
         case "calcium":
-          comparison = a.calcium - b.calcium;
+          comparison = getPrimaryMeasure(a).calcium - getPrimaryMeasure(b).calcium;
           break;
         case "type":
           const aPriority = getTypeSortPriority(a);

@@ -21,6 +21,7 @@
   import { onMount } from "svelte";
   import { FEATURES } from "$lib/utils/featureFlags";
   import BackupModal from "$lib/components/BackupModal.svelte";
+  import ExportModal from "$lib/components/ExportModal.svelte";
   import RestoreModal from "$lib/components/RestoreModal.svelte";
   import SyncSettingsModal from "$lib/components/SyncSettingsModal.svelte";
 
@@ -28,6 +29,7 @@
   let selectedTheme = "auto";
   let isLoading = true;
   let showBackupModal = false;
+  let showExportModal = false;
   let showRestoreModal = false;
   let showSyncModal = false;
 
@@ -105,6 +107,10 @@
 
   function openBackupModal() {
     showBackupModal = true;
+  }
+
+  function openExportModal() {
+    showExportModal = true;
   }
 
   function openRestoreModal() {
@@ -214,12 +220,22 @@
         </div>
         <span class="material-icons nav-chevron">chevron_right</span>
       </button>
+
+      <button class="setting-nav-item" on:click={openExportModal}>
+        <span class="material-icons setting-icon">file_download</span>
+        <div class="setting-info">
+          <span class="setting-title">Export to CSV</span>
+          <span class="setting-subtitle">Download entries as spreadsheet</span>
+        </div>
+        <span class="material-icons nav-chevron">chevron_right</span>
+      </button>
     </div>
   {/if}
 </div>
 
 <!-- Modal Components -->
 <BackupModal bind:show={showBackupModal} />
+<ExportModal bind:show={showExportModal} />
 <RestoreModal bind:show={showRestoreModal} />
 {#if FEATURES.SYNC_ENABLED}
   <SyncSettingsModal bind:show={showSyncModal} />

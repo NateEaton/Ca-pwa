@@ -19,18 +19,18 @@
 <script>
   import { calciumState, calciumService } from "$lib/stores/calcium";
 
-  /** Whether the backup modal is visible */
+  /** Whether the export modal is visible */
   export let show = false;
 
   let isGenerating = false;
-  let backupStats = "";
+  let exportStats = "";
 
   function handleClose() {
     show = false;
   }
 
   function handleBackdropClick(event) {
-    // Prevent accidental closing during backup generation
+    // Prevent accidental closing during export generation
     if (isGenerating) return;
 
     // Only close if clicking the backdrop itself, not child elements
@@ -40,49 +40,39 @@
   }
 
   function handleKeydown(event) {
-    // Prevent closing during backup generation
+    // Prevent closing during export generation
     if (event.key === "Escape" && !isGenerating) {
       handleClose();
     }
   }
 
-  // Generate backup stats when modal opens
+  // Generate export stats when modal opens
   $: if (show && !isGenerating) {
-    generateBackupStats();
+    generateExportStats();
   }
 
-  async function generateBackupStats() {
+  async function generateExportStats() {
     try {
       if (!calciumService) {
-        backupStats = "Service not initialized yet";
+        exportStats = "Service not initialized yet";
         return;
       }
-      const backupData = await calciumService.generateBackup();
-      const stats = calculateStats(backupData);
-      backupStats = stats;
+      const journalData = await calciumService.getAllJournalData();
+      const stats = calculateStats(journalData);
+      exportStats = stats;
     } catch (error) {
-      console.error("Error generating backup stats:", error);
-      backupStats = "Error loading backup statistics";
+      console.error("Error generating export stats:", error);
+      exportStats = "Error loading export statistics";
     }
   }
 
-  function calculateStats(backupData) {
-    const dates = Object.keys(backupData.journalEntries);
+  function calculateStats(journalData) {
+    const dates = Object.keys(journalData);
     const totalDays = dates.length;
-    const totalFoodEntries = Object.values(backupData.journalEntries).reduce(
+    const totalFoodEntries = Object.values(journalData).reduce(
       (sum, dayFoods) => sum + dayFoods.length,
       0
     );
-    const customFoodsCount = backupData.customFoods.length;
-    const favoritesCount = backupData.favorites
-      ? backupData.favorites.length
-      : 0;
-    const servingPreferencesCount = backupData.servingPreferences
-      ? backupData.servingPreferences.length
-      : 0;
-    const hiddenFoodsCount = backupData.hiddenFoods
-      ? backupData.hiddenFoods.length
-      : 0;
 
     let dateRange = "No journal entries";
     if (dates.length > 0) {
@@ -94,15 +84,58 @@
     }
 
     return `
-• ${totalDays} journal days with ${totalFoodEntries} food entries<br>
-• ${customFoodsCount} custom food definitions<br>
-• ${favoritesCount} favorite foods<br>
-• ${servingPreferencesCount} serving preferences<br>
-• ${hiddenFoodsCount} hidden foods<br>
-• Date range: ${dateRange}`;
+• ${totalFoodEntries} total entries across ${totalDays} days<br>
+• Date range: ${dateRange}<br>
+• Format: CSV (Comma-Separated Values)`;
   }
 
-  async function handleBackupDownload() {
+  /**
+   * Escape a value for CSV format
+   * @param {any} value - The value to escape
+   * @returns {string} The escaped value
+   */
+  function escapeCSV(value) {
+    if (value === null || value === undefined) return "";
+    const stringValue = String(value);
+    // If value contains comma, quote, or newline, wrap in quotes and escape internal quotes
+    if (
+      stringValue.includes(",") ||
+      stringValue.includes('"') ||
+      stringValue.includes("\n")
+    ) {
+      return `"${stringValue.replace(/"/g, '""')}"`;
+    }
+    return stringValue;
+  }
+
+  /**
+   * Generate CSV content from journal data
+   * @param {Record<string, Array>} journalData - The journal data to convert
+   * @returns {string} The CSV content
+   */
+  function generateCSV(journalData) {
+    // CSV header
+    const rows = ["date,name,calcium,servingQuantity,servingUnit,timestamp"];
+
+    // Convert each entry to CSV row
+    for (const [date, entries] of Object.entries(journalData)) {
+      for (const entry of entries) {
+        const row = [
+          escapeCSV(date),
+          escapeCSV(entry.name),
+          escapeCSV(entry.calcium),
+          escapeCSV(entry.servingQuantity),
+          escapeCSV(entry.servingUnit),
+          escapeCSV(entry.timestamp),
+        ].join(",");
+        rows.push(row);
+      }
+    }
+
+    return rows.join("\n");
+  }
+
+  async function handleExportDownload() {
     if (isGenerating) return;
 
     isGenerating = true;
@@ -110,7 +143,10 @@
       if (!calciumService) {
         throw new Error("CalciumService not initialized");
       }
-      const backupData = await calciumService.generateBackup();
+      const journalData = await calciumService.getAllJournalData();
+
+      // Generate CSV content
+      const csvContent = generateCSV(journalData);
 
       // Create filename with current date (local timezone)
       const now = new Date();
@@ -118,11 +154,11 @@
       const month = String(now.getMonth() + 1).padStart(2, "0");
       const day = String(now.getDate()).padStart(2, "0");
       const dateStr = `${year}-${month}-${day}`;
-      const filename = `calcium-tracker-backup-${dateStr}.json`;
+      const filename = `calcium-tracker-export-${dateStr}.csv`;
 
       // Create and download file
-      const blob = new Blob([JSON.stringify(backupData, null, 2)], {
-        type: "application/json",
+      const blob = new Blob([csvContent], {
+        type: "text/csv;charset=utf-8;",
       });
 
       const url = URL.createObjectURL(blob);
@@ -136,7 +172,7 @@
 
       handleClose();
     } catch (error) {
-      console.error("Error creating backup:", error);
+      console.error("Error creating export:", error);
       // Could add toast notification here
     } finally {
       isGenerating = false;
@@ -149,7 +185,7 @@
     <div
       class="modal-container full-screen"
       role="dialog"
-      aria-labelledby="backup-title"
+      aria-labelledby="export-title"
       aria-modal="true"
     >
       <!-- Modal Header -->
@@ -157,52 +193,52 @@
         <button
           class="back-btn"
           on:click={handleClose}
-          aria-label="Close backup dialog"
+          aria-label="Close export dialog"
         >
           <span class="material-icons">arrow_back</span>
         </button>
-        <h2 id="backup-title" class="modal-title">Backup</h2>
+        <h2 id="export-title" class="modal-title">Export to CSV</h2>
         <div class="header-spacer"></div>
       </div>
 
       <!-- Modal Content -->
       <div class="modal-content">
-        <div class="backup-content">
-          <!-- Backup Info Section -->
-          <div class="backup-info">
+        <div class="export-content">
+          <!-- Export Info Section -->
+          <div class="export-info">
             <div class="info-icon">
-              <span class="material-icons">backup</span>
+              <span class="material-icons">file_download</span>
             </div>
             <div class="info-text">
-              <h3>Download Your Data</h3>
+              <h3>Export Journal Entries</h3>
               <p>
-                Creates a backup file with all journal entries, custom foods,
-                and preferences.
+                Download all journal entries as a CSV file for use in
+                spreadsheet applications or data analysis tools.
               </p>
             </div>
           </div>
 
           <!-- Current Data Summary -->
           <div class="data-summary">
-            <h4>What Will Be Backed Up:</h4>
-            <div class="backup-stats">
-              {@html backupStats}
+            <h4>What Will Be Exported:</h4>
+            <div class="export-stats">
+              {@html exportStats}
             </div>
           </div>
 
           <!-- Action Button -->
-          <div class="backup-actions">
+          <div class="export-actions">
             <button
-              class="backup-btn primary"
-              on:click={handleBackupDownload}
+              class="export-btn primary"
+              on:click={handleExportDownload}
               disabled={isGenerating}
             >
               {#if isGenerating}
                 <span class="material-icons spinning">sync</span>
-                Creating Backup...
+                Creating Export...
               {:else}
                 <span class="material-icons">download</span>
-                Download Backup
+                Download CSV
               {/if}
             </button>
           </div>
@@ -290,14 +326,14 @@
     overflow-y: auto;
   }
 
-  .backup-content {
+  .export-content {
     display: flex;
     flex-direction: column;
     gap: var(--spacing-2xl);
     color: var(--text-primary);
   }
 
-  .backup-info {
+  .export-info {
     display: flex;
     gap: var(--spacing-lg);
     padding: var(--spacing-lg);
@@ -339,16 +375,16 @@
     margin: 0 0 var(--spacing-md) 0;
   }
 
-  .backup-stats {
+  .export-stats {
     color: var(--text-secondary);
     line-height: 1.6;
   }
 
-  .backup-actions {
+  .export-actions {
     text-align: center;
   }
 
-  .backup-btn.primary {
+  .export-btn.primary {
     background-color: var(--primary-color);
     color: white;
     border: none;
@@ -364,16 +400,16 @@
     min-height: var(--touch-target-min);
   }
 
-  .backup-btn.primary:hover:not(:disabled) {
+  .export-btn.primary:hover:not(:disabled) {
     background-color: var(--primary-color-dark);
   }
 
-  .backup-btn.primary:disabled {
+  .export-btn.primary:disabled {
     opacity: 0.6;
     cursor: not-allowed;
   }
 
-  .backup-btn .material-icons {
+  .export-btn .material-icons {
     font-size: 20px;
   }
 
@@ -405,7 +441,7 @@
       touch-action: auto;
     }
 
-    .backup-info {
+    .export-info {
       padding: var(--spacing-md);
       gap: var(--spacing-md);
     }
@@ -414,7 +450,7 @@
       padding: var(--spacing-md);
     }
 
-    .backup-btn.primary {
+    .export-btn.primary {
       padding: var(--spacing-sm) var(--spacing-lg);
       font-size: var(--font-size-sm);
     }
