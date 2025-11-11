@@ -558,6 +558,45 @@ export class UnitConverter {
       return quantity.toFixed(3).replace(/\.?0+$/, "");
     }
   }
+
+  /**
+   * Calculate calcium for converted units.
+   * When a user changes serving size with unit conversion (e.g., oz to g),
+   * this ensures calcium is calculated correctly by converting the new quantity
+   * back to the original unit system before calculating the ratio.
+   *
+   * @param originalCalcium - The base calcium amount in the original serving
+   * @param originalQuantity - The original serving quantity
+   * @param originalUnit - The original unit (e.g., "oz")
+   * @param newQuantity - The new serving quantity
+   * @param newUnit - The new unit (e.g., "g")
+   * @returns The correctly calculated calcium amount
+   */
+  calculateCalciumForConvertedUnits(
+    originalCalcium: number,
+    originalQuantity: number,
+    originalUnit: string,
+    newQuantity: number,
+    newUnit: string
+  ): number {
+    try {
+      // Convert the new quantity back to the original unit system
+      const equivalentOriginalQuantity = this.convertUnits(
+        newQuantity,
+        newUnit,
+        originalUnit
+      );
+
+      // Calculate the ratio and apply it to calcium
+      const ratio = equivalentOriginalQuantity / originalQuantity;
+
+      return parseFloat((originalCalcium * ratio).toFixed(2));
+    } catch (error) {
+      console.error('Calcium calculation error:', error);
+      // Fallback: return original calcium unchanged
+      return originalCalcium;
+    }
+  }
 }
 
 // Export as default for backward compatibility
