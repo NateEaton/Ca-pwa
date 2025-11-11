@@ -25,7 +25,7 @@
 </svelte:head>
 
 <div class="guide-container">
-  <details class="guide-section" open>
+  <details class="guide-section">
     <summary>
       <span class="material-icons">track_changes</span>
       Tracking Your Daily Calcium
