@@ -83,14 +83,14 @@
         <li>
           <strong>Edit or Delete:</strong> To change an entry, simply tap it on the
           main screen to open the edit dialog. You can update its details or tap
-          the trash icon to delete it.
+          the <span class="material-icons inline-icon">delete</span> trash icon to delete it.
         </li>
       </ul>
 
       <h4>Sorting Entries</h4>
       <p>
-        On the main tracking screen, use the sort buttons to organize your daily entries by time added, 
-        food name, or calcium content.
+        On the main tracking screen, use the <span class="material-icons inline-icon">sort</span> sort buttons
+        to organize your daily entries by time added, food name, or calcium content.
       </p>
 
       <h4>Food Source Icons</h4>
@@ -118,6 +118,9 @@
           <strong>Serving Memory:</strong> The app remembers both your preferred serving 
           size and serving option for each database food, making future entries faster 
           and more consistent.
+          When adding a food with a remembered serving size/selection, if you want to clear
+          what was saved click the <span class="material-icons inline-icon">refresh</span> 
+          refresh icon to the right of Serving Size.
         </li>
         <li>
           <strong>Favorites:</strong> Tap the
@@ -136,32 +139,53 @@
     </summary>
     <div class="section-content">
       <p>
-        <strong>Statistics Page:</strong> Visualize your intake. Switch between daily,
-        weekly, monthly, and yearly views. Tap a bar in the chart to see the specific
-        total for that period.
+        <strong>Statistics Page:</strong> Visualize your intake. Switch between
+        <span class="material-icons inline-icon">date_range</span> daily,
+        weekly, monthly, and yearly views. Tap a <span class="material-icons inline-icon">bar_chart</span> bar
+        in the chart to see the specific total for that period.
       </p>
       <p>
-        <strong>Database Page:</strong> Browse all foods in the database and your custom foods. 
-        Use the search box to see specific foods. 
-        Use the <strong>filter buttons</strong> to show foods available in Add Food Items dialog,
-        all database foods, or user-entered (custom) foods. 
-        The <strong>sort buttons</strong> lets you organize by name, 
-        calcium content or food type. Use the <strong>calcium filter (Ca)</strong> dropdown to show only foods 
-        within specific calcium values. 
-        When viewing database foods, tap the 
-        <span class="material-icons inline-icon">open_in_new</span> 
-        icon on any food to view detailed information in the food database 
-        documentation page. In the Database view, click the checkbox on a food item to toggle 
-        whether to make it available to search for or not. 
-        The header's <span class="material-icons inline-icon">info</span> 
-        icon provides details about the database source and curation process.
+        <strong>Database Page:</strong> Browse all foods in the database and your custom foods.
       </p>
+      <ul>
+        <li>
+          <strong>Search:</strong> Use the <span class="material-icons inline-icon">search</span>
+          search box to find specific foods by name.
+        </li>
+        <li>
+          <strong>Filter Foods:</strong> Use the <span class="material-icons inline-icon">filter_list</span>
+          filter buttons to show foods available in Add Food dialog, all database foods, or your
+          custom (user-entered) foods.
+        </li>
+        <li>
+          <strong>Sort Results:</strong> Use the <span class="material-icons inline-icon">sort</span>
+          sort buttons to organize by food name, calcium content, or food type.
+        </li>
+        <li>
+          <strong>Calcium Filter:</strong> Use the 
+          calcium (Ca) dropdown to show only foods within specific calcium ranges.
+        </li>
+        <li>
+          <strong>Toggle Visibility:</strong> Click the <span class="material-icons inline-icon">check_box_outline_blank</span>
+          checkbox on any food item to control whether it appears in search results. Foods with a red X will 
+          are not available when adding a food item.
+        </li>
+        <li>
+          <strong>View Details:</strong> Tap the <span class="material-icons inline-icon">open_in_new</span>
+          icon on database foods to view detailed information in the food database documentation page.
+        </li>
+        <li>
+          <strong>Database Info:</strong> The header's <span class="material-icons inline-icon">info</span>
+          icon provides details about the database source and curation process.
+        </li>
+      </ul>
       <p>
         <strong>Report Page:</strong> Generate a printable summary of your history
         to share with a healthcare provider.
       </p>
       <p>
-        <strong>Settings Page:</strong> Adjust your daily goal, change the app theme,
+        <strong>Settings Page:</strong> Adjust your <span class="material-icons inline-icon">flag</span> daily goal,
+        change the <span class="material-icons inline-icon">palette</span> app theme,
         and manage data {#if FEATURES.SYNC_ENABLED}sync, {/if}exports, and backups.
       </p>
     </div>
@@ -183,7 +207,8 @@
 
         <h4>Sync Status</h4>
         <p>
-          The colored sync icon in the header shows your current sync status: blue when synced, 
+          The <span class="material-icons">cloud</span> cloud icon in the header shows your 
+          current sync status: a cross through it when sync not enabled, checked when synced, 
           animated when syncing, or red if there's an error. Tap the icon to manually trigger 
           a sync.
         </p>
