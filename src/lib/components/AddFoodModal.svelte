@@ -57,6 +57,7 @@
 
   // Current selected food data for unit conversion
   let currentFoodData = null;
+  let selectedCustomFood = null; // Track selected custom food from search for serving preferences
   let isSelectedFromSearch = false;
   let usingPreference = false;
   let hasResetToOriginal = false;
@@ -197,6 +198,7 @@
       // Add mode - reset everything
       isCustomMode = false;
       currentFoodData = null;
+      selectedCustomFood = null;
       isSelectedFromSearch = false;
       foodName = "";
       calcium = "";
@@ -228,6 +230,7 @@
 
     // Clear fields when switching modes but don't call full resetForm
     currentFoodData = null;
+    selectedCustomFood = null;
     isSelectedFromSearch = false;
     parsedFoodMeasure = null;
     unitSuggestions = [];
@@ -520,6 +523,34 @@
     updateCalcium();
   }
 
+  /**
+   * Check if a UPC-scanned custom food already exists with matching data.
+   * Returns the existing custom food if found, null otherwise.
+   */
+  function findMatchingUPCFood(scanContext, calcium, measure) {
+    // Only check for UPC scans (not OCR or manual entries)
+    if (!scanContext || (scanContext.method !== 'UPC' && scanContext.method !== 'Manual UPC')) {
+      return null;
+    }
+
+    const scannedUPC = scanContext.upcCode;
+    const scannedSource = scanContext.source === 'USDA FDC' ? 'usda_fdc' : 'openfoodfacts';
+
+    return $calciumState.customFoods.find(food => {
+      const metadata = food.sourceMetadata;
+      if (!metadata || metadata.sourceType !== 'upc_scan') {
+        return false;
+      }
+
+      return (
+        metadata.upc === scannedUPC &&
+        metadata.upcSource === scannedSource &&
+        food.calcium === calcium &&
+        food.measure === measure
+      );
+    });
+  }
+
   async function handleSubmit() {
     if (isSubmitting) return;
 
@@ -567,7 +598,32 @@
       } else {
         // Only save as custom food definition if it's truly new (not selected from search)
         if (isCustomMode && !isSelectedFromSearch) {
-          // Create appropriate source metadata based on scan context
+          // Check for duplicate UPC scan before creating new custom food
+          const existingFood = findMatchingUPCFood(
+            scanContext,
+            calciumValue,
+            `${servingQuantity} ${servingUnit.trim()}`
+          );
+
+          if (existingFood) {
+            // Duplicate UPC scan detected - reuse existing custom food
+            console.log('AddFoodModal: Duplicate UPC scan detected, reusing existing custom food:', existingFood.id);
+
+            await calciumService.addFood({
+              name: existingFood.name,
+              calcium: calciumValue,
+              servingQuantity: servingQuantity,
+              servingUnit: servingUnit.trim(),
+              isCustom: true,
+              customFoodId: existingFood.id
+            });
+
+            dispatch('foodAdded');
+            closeModal();
+            return;
+          }
+
+          // No duplicate found - create new custom food
           console.log('AddFoodModal: Creating sourceMetadata, scanContext:', scanContext);
           let sourceMetadata;
           if (scanContext?.method === 'UPC' || scanContext?.method === 'Manual UPC') {
