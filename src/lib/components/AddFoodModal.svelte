@@ -309,10 +309,10 @@
     // Parse food measure using UnitConverter for better parsing
     parsedFoodMeasure = unitConverter.parseUSDAMeasure(selectedMeasure.measure);
 
-    // Check for saved serving preferences for database foods
+    // Check for saved serving preferences
     usingPreference = false;
 
-    if (!food.isCustom && food.id && calciumService) {
+    if (food.id && calciumService) {
       const savedPreference = calciumService.getServingPreference(food.id);
       if (savedPreference) {
         servingQuantity = savedPreference.preferredQuantity;
@@ -590,13 +590,10 @@
           });
         }
 
-        // Handle serving preference for database foods
-        if (
-          !isCustomMode &&
-          currentFoodData &&
-          !currentFoodData.isCustom &&
-          currentFoodData.id
-        ) {
+        // Handle serving preference for all foods (database and existing custom foods)
+        const foodToSave = currentFoodData || selectedCustomFood;
+
+        if (foodToSave && foodToSave.id) {
           // Get defaults from the FIRST (index 0) measure for comparison
           const firstMeasure = availableMeasures.length > 0 ? availableMeasures[0] : null;
           const firstMeasureParsed = firstMeasure
@@ -620,11 +617,11 @@
             (!quantityChanged && !unitChanged && !measureIndexChanged)
           ) {
             // User reset to original or values match default - delete any existing preference
-            await calciumService.deleteServingPreference(currentFoodData.id);
+            await calciumService.deleteServingPreference(foodToSave.id);
           } else if (quantityChanged || unitChanged || measureIndexChanged) {
             // Save preference if user changed quantity, unit, OR measure selection
             await calciumService.saveServingPreference(
-              currentFoodData.id,
+              foodToSave.id,
               servingQuantity,
               servingUnit,
               selectedMeasureIndex  // Include measure index for multi-measure foods
@@ -940,11 +937,11 @@
         <div class="form-group">
           <div class="form-label-row">
             <label class="form-label" for="servingQuantity">Serving Size</label>
-            {#if usingPreference && !isCustomMode && !editingFood}
+            {#if usingPreference && !editingFood}
               <button
                 class="reset-serving-btn"
                 on:click={resetToOriginalServing}
-                title="Reset to original database serving size"
+                title="Reset to original serving size"
                 type="button"
               >
                 <span class="material-icons">refresh</span>
