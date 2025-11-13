@@ -484,7 +484,7 @@
                 <tr>
                   <td>{day.date}</td>
                   <td>{day.dayName}</td>
-                  <td>{day.totalCalcium}mg</td>
+                  <td>{day.totalCalcium.toFixed(2)}mg</td>
                   <td class={day.goalMet ? "goal-met" : "goal-not-met"}>
                     {day.goalMet ? "✓ Goal Met" : "✗ Below Goal"}
                   </td>

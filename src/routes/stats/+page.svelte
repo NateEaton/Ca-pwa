@@ -1066,11 +1066,11 @@
         <div class="stats-main-value">
           <span class="stats-value">
             {#if isDetailMode && selectedBarIndex >= 0}
-              {currentData.data[selectedBarIndex].value}
+              {currentData.data[selectedBarIndex].value.toFixed(2)}
             {:else if currentView === "daily"}
-              {currentData.totalValue || 0}
+              {(currentData.totalValue || 0).toFixed(2)}
             {:else}
-              {currentData.averageValue}
+              {currentData.averageValue.toFixed(2)}
             {/if}
           </span>
           <span class="stats-unit">mg</span>
