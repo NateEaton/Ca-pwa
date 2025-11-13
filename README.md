@@ -6,7 +6,7 @@
 
 A Progressive Web App (PWA) designed to be a simple, privacy-focused tool for tracking daily calcium intake. Search a comprehensive food database, add custom foods, and monitor your progress towards your nutritional goals. All data is stored locally on your device and can be seamlessly synchronized across multiple devices using a secure, lightweight cloud backend.
 
-[**Live Demo**](https://ca-pwa-git-main-nate-eatons-projects.vercel.app/)
+[**Live Demo**](https://ca-pwa.vercel.app/)
 
 ### ⚠️ Note on Sync Functionality
 
@@ -19,7 +19,7 @@ This application is designed with a "local-first" approach but uses a cloud back
 ## Core Features
 
 ### Tracking & Data Entry
--   **Curated Food Database**: Log entries from a comprehensive database of 3,876+ USDA-sourced foods, intelligently curated for relevance and usability. [Browse the public database documentation](https://calcium-dev.eatonfamily.net/Ca-pwa-dev/database-docs.html) to explore available foods.
+-   **Curated Food Database**: Log entries from a comprehensive database of 3,876+ USDA-sourced foods, intelligently curated for relevance and usability. [Browse the public database documentation](https://ca-pwa.vercel.app/database-docs.html) to explore available foods.
 -   **Smart Scan**: Add foods quickly using your device's camera to scan UPC/EAN barcodes. Supports both USDA FoodData Central and OpenFoodFacts databases, with manual barcode entry option for quick lookup.
 -   **Nutrition Label OCR** *(Optional)*: Capture calcium content directly from food packaging using optical character recognition. Requires API key configuration.
 -   **Custom Foods**: Add and manage your own food items with specific calcium values. Custom foods support the same features as database foods, including serving memory and favorites.
@@ -121,7 +121,7 @@ The data processing pipeline implements several intelligent transformations:
 
 ### Browse the Database
 
-The complete curated database is publicly available at [https://calcium-dev.eatonfamily.net/Ca-pwa-dev/database-docs.html](https://calcium-dev.eatonfamily.net/Ca-pwa-dev/database-docs.html), allowing users to explore available foods before using the app. Each food entry includes its calcium content, serving sizes, food group classification, and USDA FDC ID for reference.
+The complete curated database is publicly available at [https://ca-pwa.vercel.app/database-docs.html](https://ca-pwa.vercel.app/database-docs.html), allowing users to explore available foods before using the app. Each food entry includes its calcium content, serving sizes, food group classification, and USDA FDC ID for reference.
 
 This comprehensive curation process ensures the in-app database is both extensive and practical for everyday calcium tracking.
 
