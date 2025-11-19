@@ -459,6 +459,38 @@
     showUnitSuggestions = false;
   }
 
+  /**
+   * Get the display text for a food in search results.
+   * Shows the saved serving preference if it exists, otherwise shows the primary measure.
+   */
+  function getSearchResultDisplay(food) {
+    // Check for saved serving preference
+    if (food.id && calciumService) {
+      const savedPreference = calciumService.getServingPreference(food.id);
+      if (savedPreference) {
+        const measures = getAllMeasures(food);
+        const measureIndex = savedPreference.preferredMeasureIndex ?? 0;
+
+        if (measures.length > 0 && measureIndex < measures.length) {
+          const measure = measures[measureIndex];
+          const parsedMeasure = unitConverter.parseUSDAMeasure(measure.measure);
+
+          // Calculate calcium for the preferred serving
+          const calciumPerBaseUnit = measure.calcium / parsedMeasure.originalQuantity;
+          const preferredCalcium = calciumPerBaseUnit * savedPreference.preferredQuantity;
+
+          return {
+            calcium: preferredCalcium,
+            measure: `${savedPreference.preferredQuantity} ${savedPreference.preferredUnit}`
+          };
+        }
+      }
+    }
+
+    // No preference found - return primary measure
+    return getPrimaryMeasure(food);
+  }
+
   function closeModal() {
     if (!isSubmitting) {
       show = false;
@@ -936,7 +968,7 @@
                       {/if}
                     </div>
                     <div class="search-item-details">
-                      {formatCalcium(getPrimaryMeasure(food).calcium)}mg per {getPrimaryMeasure(food).measure}
+                      {formatCalcium(getSearchResultDisplay(food).calcium)}mg per {getSearchResultDisplay(food).measure}
                       {#if hasMultipleMeasures(food)}
                         <span class="measure-count">({getAllMeasures(food).length} servings)</span>
                       {/if}
@@ -954,7 +986,7 @@
         </div>
 
         <!-- Multi-measure selection dropdown -->
-        {#if !isCustomMode && isSelectedFromSearch && availableMeasures.length > 1}
+        {#if !isCustomMode && isSelectedFromSearch && availableMeasures.length > 1 && !usingPreference}
           <div class="form-group">
             <label class="form-label" for="measureSelect">Available Serving Sizes</label>
             <select 
@@ -1038,7 +1070,7 @@
             </div>
           </div>
 
-          {#if showUnitSuggestions && unitSuggestions.length > 0}
+          {#if showUnitSuggestions && unitSuggestions.length > 0 && !usingPreference}
             <div class="unit-suggestions">
               <div class="unit-suggestions-label">
                 <span class="material-icons">swap_horiz</span>
