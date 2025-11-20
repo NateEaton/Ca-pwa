@@ -20,7 +20,8 @@
   import { onMount } from "svelte";
   import { logBuildInfo } from "$lib/utils/buildInfo";
   import { page } from "$app/stores";
-  import { calciumState, calciumService } from "$lib/stores/calcium";
+  import { calciumState, calciumService, showToast } from "$lib/stores/calcium";
+  import { pwaUpdateAvailable, pwaUpdateFunction, pwaOfflineReady } from "$lib/stores/pwa";
   import Header from "$lib/components/Header.svelte";
   import Toast from "$lib/components/Toast.svelte";
   import DatabaseInfoDialog from "$lib/components/DatabaseInfoDialog.svelte";
@@ -32,6 +33,8 @@
   import { SyncService } from "$lib/services/SyncService";
   import { NetworkStatusService } from "$lib/services/NetworkStatusService";
 
+  let syncService = null;
+
   onMount(async () => {
     await calciumService.initialize();
 
@@ -40,7 +43,7 @@
 
     // Conditionally initialize sync services
     if (FEATURES.SYNC_ENABLED) {
-      const syncService = SyncService.getInstance();
+      syncService = SyncService.getInstance();
       await syncService.initialize();
       await SyncUrlHandler.checkForSyncUrl();
     }
@@ -49,10 +52,39 @@
     initializeEnvironment();
 
     if (typeof window !== "undefined") {
-      const { registerSW } = await import("virtual:pwa-register");
-      registerSW({
-        onNeedRefresh() {},
-        onOfflineReady() {},
+      const { useRegisterSW } = await import("virtual:pwa-register/svelte");
+
+      const {
+        needRefresh,
+        offlineReady,
+        updateServiceWorker
+      } = useRegisterSW({
+        onNeedRefresh() {
+          console.log('New version available');
+        },
+        onOfflineReady() {
+          console.log('App is ready to work offline');
+        }
+      });
+
+      // Subscribe to needRefresh and show notification
+      // For Calcium Tracker, we can defer update notification if sync is active
+      needRefresh.subscribe(value => {
+        pwaUpdateAvailable.set(value);
+        if (value) {
+          showToast('Update available! Go to Settings to update.', 'info');
+        }
+      });
+
+      // Store update function for use in Settings
+      pwaUpdateFunction.set(updateServiceWorker);
+
+      // Subscribe to offlineReady
+      offlineReady.subscribe(value => {
+        pwaOfflineReady.set(value);
+        if (value) {
+          showToast('App is ready to work offline!', 'success');
+        }
       });
     }
     logBuildInfo();

@@ -18,6 +18,7 @@
 
 <script>
   import { calciumState, showToast, calciumService } from "$lib/stores/calcium";
+  import { pwaUpdateAvailable, pwaUpdateFunction } from "$lib/stores/pwa";
   import { onMount } from "svelte";
   import { FEATURES } from "$lib/utils/featureFlags";
   import BackupModal from "$lib/components/BackupModal.svelte";
@@ -119,6 +120,40 @@
 
   function openSyncModal() {
     showSyncModal = true;
+  }
+
+  // PWA Update handling
+  async function checkForUpdate() {
+    try {
+      if ('serviceWorker' in navigator) {
+        showToast('Checking for updates...', 'info');
+        const registration = await navigator.serviceWorker.getRegistration();
+        await registration?.update();
+
+        // If no update is found after a short delay, notify user
+        setTimeout(() => {
+          if (!$pwaUpdateAvailable) {
+            showToast('You\'re running the latest version', 'success');
+          }
+        }, 2000);
+      }
+    } catch (error) {
+      console.error('Update check failed:', error);
+      showToast('Failed to check for updates', 'error');
+    }
+  }
+
+  async function installUpdate() {
+    const updateFn = $pwaUpdateFunction;
+    if (updateFn) {
+      try {
+        await updateFn();
+        // Page will reload automatically after update
+      } catch (error) {
+        console.error('Update installation failed:', error);
+        showToast('Failed to install update', 'error');
+      }
+    }
   }
 </script>
 
@@ -228,6 +263,29 @@
           <span class="setting-subtitle">Download entries as spreadsheet</span>
         </div>
         <span class="material-icons nav-chevron">chevron_right</span>
+      </button>
+    </div>
+
+    <!-- App Section -->
+    <div class="settings-section">
+      <h3 class="section-title">App</h3>
+
+      <button
+        class="setting-nav-item {$pwaUpdateAvailable ? 'update-available' : ''}"
+        on:click={$pwaUpdateAvailable ? installUpdate : checkForUpdate}
+      >
+        <span class="material-icons setting-icon">{$pwaUpdateAvailable ? 'system_update' : 'refresh'}</span>
+        <div class="setting-info">
+          <span class="setting-title">{$pwaUpdateAvailable ? 'Install Update' : 'Check for Updates'}</span>
+          <span class="setting-subtitle">
+            {#if $pwaUpdateAvailable}
+              New version available - tap to install
+            {:else}
+              Manually check for app updates
+            {/if}
+          </span>
+        </div>
+        <span class="material-icons nav-chevron">{$pwaUpdateAvailable ? 'download' : 'chevron_right'}</span>
       </button>
     </div>
   {/if}
@@ -358,6 +416,19 @@
 
   .setting-nav-item:hover {
     background: var(--hover-overlay);
+  }
+
+  .setting-nav-item.update-available {
+    background: var(--primary-alpha-10);
+    border: 1px solid var(--primary-color);
+  }
+
+  .setting-nav-item.update-available:hover {
+    background: var(--primary-alpha-20);
+  }
+
+  .setting-nav-item.update-available .setting-icon {
+    color: var(--primary-color);
   }
 
   .setting-icon {

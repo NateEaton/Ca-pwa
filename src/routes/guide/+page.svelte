@@ -270,17 +270,47 @@
     <div class="section-content">
       <h4>What It Is</h4>
       <p>
-        Export creates a CSV (comma-separated values) file of all your journal entries, 
-        which you can open in spreadsheet applications like Excel or Google Sheets for 
+        Export creates a CSV (comma-separated values) file of all your journal entries,
+        which you can open in spreadsheet applications like Excel or Google Sheets for
         analysis or record-keeping.
       </p>
 
       <h4>How to Use</h4>
       <p>
-        In <strong>Settings > Data</strong>, tap <strong>Export to CSV</strong>. 
-        The app will generate a file containing your complete journal history with 
-        dates, food names, calcium amounts, and serving details. Unlike backups, 
+        In <strong>Settings > Data</strong>, tap <strong>Export to CSV</strong>.
+        The app will generate a file containing your complete journal history with
+        dates, food names, calcium amounts, and serving details. Unlike backups,
         exports are designed for data analysis and cannot be used to restore your data.
+      </p>
+    </div>
+  </details>
+
+  <details class="guide-section">
+    <summary>
+      <span class="material-icons">system_update</span>
+      App Updates
+    </summary>
+    <div class="section-content">
+      <h4>How Updates Work</h4>
+      <p>
+        The app updates safely without interrupting your food tracking. When a new
+        version is available, you'll see a notification letting you know. Updates are
+        under your control - they won't install while you're adding food entries or
+        making changes to your data.
+      </p>
+
+      <h4>Checking for Updates</h4>
+      <p>
+        Go to <strong>Settings > App > Check for Updates</strong> to manually check
+        for new versions. If an update is available, the button will change to
+        "Install Update" and be highlighted.
+      </p>
+
+      <h4>Installing Updates</h4>
+      <p>
+        When you're ready to update, tap <strong>Install Update</strong>. The app
+        will reload with the new version. All your journal entries, custom foods,
+        favorites, and settings are safely preserved during the update process.
       </p>
     </div>
   </details>

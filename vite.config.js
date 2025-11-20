@@ -57,7 +57,7 @@ export default defineConfig(({ mode }) => {
       sveltekit(),
       // REMOVED wasm() and topLevelAwait() plugins
       VitePWA({
-        registerType: "autoUpdate",
+        registerType: "prompt",
         workbox: {
           maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5MB (increased from default 2MB)
           // REMOVED wasm from globPatterns
@@ -65,8 +65,6 @@ export default defineConfig(({ mode }) => {
           additionalManifestEntries: [{ url: "index.html", revision: null }],
           // Enable navigation fallback for offline SPA routing
           navigateFallback: (base_path === "/" ? "" : base_path) + "index.html",
-          skipWaiting: true,
-          clientsClaim: true,
           // Use build ID for cache versioning
           cacheId: `calcium-cache-${createBuildId()}`,
         },
