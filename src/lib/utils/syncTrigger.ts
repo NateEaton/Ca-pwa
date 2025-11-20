@@ -101,15 +101,12 @@ export class SyncTrigger {
       // Smart routing based on change type
       if (changeType === 'all') {
         // Full sync
-        console.log('[SYNC TRIGGER] Full bidirectional sync triggered');
         await syncService.performBidirectionalSync();
       } else if (changeType === 'persistent') {
         // Only sync persistent data (settings, custom foods, favorites)
-        console.log('[SYNC TRIGGER] Persistent data sync triggered');
         await syncService.syncPersistentData();
       } else if (changeType === 'journal' && monthKey) {
         // Only sync affected month
-        console.log('[SYNC TRIGGER] Month sync triggered for', monthKey);
         await syncService.syncMonth(monthKey);
       }
     } catch (error) {

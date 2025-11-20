@@ -23,6 +23,7 @@
 
 interface Env {
   SYNC_KV: KVNamespace;
+  ALLOWED_ORIGINS?: string; // Comma-separated list of allowed CORS origins
 }
 
 interface SyncRequest {
@@ -40,13 +41,17 @@ interface SyncResponse {
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
-    const allowedOrigins = [
-      'https://calcium.eatonfamily.net',
-      'http://localhost:5173',
-      'https://calcium-dev.eatonfamily.net', 
-      'http://eatonmediasvr.local:8080',
-      'http://eatonmediasvr.local'
-    ];
+    // Parse CORS origins from environment variable or use fallback defaults
+    const allowedOrigins = env.ALLOWED_ORIGINS
+      ? env.ALLOWED_ORIGINS.split(',').map(origin => origin.trim())
+      : [
+          'https://calcium.eatonfamily.net',
+          'http://localhost:5173',
+          'https://calcium-dev.eatonfamily.net',
+          'http://eatonmediasvr.local:8080',
+          'http://eatonmediasvr.local'
+        ];
+
     const origin = request.headers.get('Origin');
     const allowedOrigin = allowedOrigins.includes(origin) ? origin : allowedOrigins[0];
 

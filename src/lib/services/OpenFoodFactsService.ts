@@ -91,7 +91,6 @@ export class OpenFoodFactsService {
    * @returns Product data or null if not found
    */
   async searchByUPC(upcCode: string): Promise<ParsedProduct | null> {
-    console.log('OFF: Starting UPC lookup for:', upcCode);
 
     try {
       // Validate UPC code
@@ -105,11 +104,9 @@ export class OpenFoodFactsService {
 
       // Clean UPC code
       const cleanedUPC = this.cleanUPCCode(upcCode);
-      console.log('OFF: UPC format - original:', upcCode, '→ cleaned:', cleanedUPC);
 
       // Make API request
       const apiUrl = `${this.baseUrl}${OPENFOODFACTS_CONFIG.PRODUCT_ENDPOINT}/${cleanedUPC}.json`;
-      console.log('OFF: Making API request to:', apiUrl);
 
       const response = await fetch(apiUrl, {
         method: 'GET',
@@ -119,26 +116,21 @@ export class OpenFoodFactsService {
         }
       });
 
-      console.log('OFF: API response status:', response.status);
 
       if (!response.ok) {
         if (response.status === 404) {
-          console.log('OFF: Product not found in OpenFoodFacts database');
           return null;
         }
         throw new Error(`OpenFoodFacts API request failed: ${response.status} ${response.statusText}`);
       }
 
       const data: OpenFoodFactsResponse = await response.json();
-      console.log('OFF: API response data:', data);
 
       // Check if product was found
       if (data.status !== 1 || !data.product) {
-        console.log('OFF: No product found for UPC:', cleanedUPC);
         return null;
       }
 
-      console.log('OFF: Product found, parsing data...');
       return this.parseProductData(data.product, cleanedUPC);
 
     } catch (error) {
@@ -154,7 +146,6 @@ export class OpenFoodFactsService {
    * @returns Parsed product data
    */
   parseProductData(product: OpenFoodFactsProduct, upcCode: string): ParsedProduct {
-    console.log('OFF: Parsing product data...');
 
     try {
       // Extract basic product info using config constants
@@ -194,8 +185,6 @@ export class OpenFoodFactsService {
           }
         }
 
-        console.log('OFF: Smart serving size result:', smartServingResult);
-        console.log(`OFF: Unit standardization: "${product.serving_quantity_unit}" → "${servingUnit}"`);
 
       } else if (product.serving_size) {
         servingSize = product.serving_size;
@@ -207,14 +196,12 @@ export class OpenFoodFactsService {
         }
       }
 
-      console.log('OFF: Serving info - count:', servingCount, 'unit:', servingUnit, 'full:', servingSize);
 
       // Extract calcium from nutriments
       let calcium = '';
       let calciumValue = null;
       let calciumPerServing = null;
 
-      console.log('OFF: Raw product data for calcium analysis:', {
         nutriments: product.nutriments,
         serving_quantity: product.serving_quantity,
         serving_quantity_unit: product.serving_quantity_unit
@@ -228,7 +215,6 @@ export class OpenFoodFactsService {
         const calciumUnit = product.nutriments[OPENFOODFACTS_CONFIG.NUTRITION_FIELDS.CALCIUM_UNIT] || 'unknown';
         const conversionFactor = OPENFOODFACTS_CONFIG.UNIT_CONVERSION.GRAMS_TO_MG; // Always 1000x
 
-        console.log('OFF: Calcium unit detected:', calciumUnit, 'using hardcoded conversion factor:', conversionFactor);
 
         // Try calcium_100g first (per 100g value)
         if (product.nutriments[OPENFOODFACTS_CONFIG.NUTRITION_FIELDS.CALCIUM_100G]) {
@@ -236,7 +222,6 @@ export class OpenFoodFactsService {
           if (rawCalciumValue !== null) {
             calciumValue = rawCalciumValue * conversionFactor; // Always convert g→mg
             calcium = `${calciumValue} mg`;
-            console.log(`OFF: Found calcium_100g: ${rawCalciumValue} (stated: ${calciumUnit}) → ${calcium} (hardcoded conversion)`);
           }
         }
 
@@ -245,7 +230,6 @@ export class OpenFoodFactsService {
           const rawCalciumServing = parseFloat(product.nutriments[OPENFOODFACTS_CONFIG.NUTRITION_FIELDS.CALCIUM_SERVING].toString()) || null;
           if (rawCalciumServing !== null) {
             calciumPerServing = rawCalciumServing * conversionFactor; // Always convert g→mg
-            console.log(`OFF: Found calcium_serving: ${rawCalciumServing} (stated: ${calciumUnit}) → ${calciumPerServing}mg (hardcoded conversion)`);
           }
         }
       }
@@ -254,12 +238,6 @@ export class OpenFoodFactsService {
       if (!calciumPerServing && calciumValue && servingCount && this.householdMeasureService.isVolumeOrMassUnit(servingUnit)) {
         // OpenFoodFacts calcium is per 100g, calculate for actual serving size
         calciumPerServing = Math.round((calciumValue * servingCount) / 100);
-        console.log(`OFF: ✅ Calculated per-serving calcium: ${calciumValue}mg/100g × ${servingCount}${servingUnit} / 100 = ${calciumPerServing}mg`);
-      } else if (!calciumPerServing) {
-        console.log('OFF: ❌ Cannot calculate per-serving calcium - missing required data');
-        if (!calciumValue) console.log('    Missing calciumValue');
-        if (!servingCount) console.log('    Missing servingCount');
-        if (!this.householdMeasureService.isVolumeOrMassUnit(servingUnit)) console.log(`    Invalid servingUnit: "${servingUnit}"`);
       }
 
       // ============================================================================
@@ -271,9 +249,6 @@ export class OpenFoodFactsService {
       let servingDisplayText: string;
       let servingSource: 'enhanced' | 'standard';
 
-      console.log('OFF: Making centralized serving decision...');
-      console.log(`  - smartServingResult.isEnhanced: ${smartServingResult?.isEnhanced}`);
-      console.log(`  - smartServingResult.householdAmount: ${smartServingResult?.householdAmount}`);
 
       if (smartServingResult && smartServingResult.isEnhanced) {
         // ENHANCED: Use household measure format
@@ -287,7 +262,6 @@ export class OpenFoodFactsService {
         servingDisplayText = smartServingResult.text;
         servingSource = 'enhanced';
 
-        console.log(`OFF: ✅ Enhanced serving - quantity: ${finalServingQuantity}, unit: "${finalServingUnit}"`);
       } else {
         // STANDARD: Use raw API serving format
         finalServingQuantity = servingCount;
@@ -295,14 +269,8 @@ export class OpenFoodFactsService {
         servingDisplayText = servingSize;
         servingSource = 'standard';
 
-        console.log(`OFF: ⚡ Standard serving - quantity: ${finalServingQuantity}, unit: "${finalServingUnit}"`);
       }
 
-      console.log('OFF: Final serving decision:');
-      console.log(`  - finalServingQuantity: ${finalServingQuantity}`);
-      console.log(`  - finalServingUnit: "${finalServingUnit}"`);
-      console.log(`  - servingDisplayText: "${servingDisplayText}"`);
-      console.log(`  - servingSource: "${servingSource}"`);
 
       // Determine confidence based on data completeness
       const completeness = product[OPENFOODFACTS_CONFIG.PRODUCT_FIELDS.COMPLETENESS] || 0;
@@ -346,7 +314,6 @@ export class OpenFoodFactsService {
         rawData: product
       };
 
-      console.log('OFF: Parse result:', result);
       return result;
 
     } catch (error) {

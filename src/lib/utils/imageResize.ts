@@ -37,11 +37,9 @@ export class ImageResizer {
   static async resizeForOCR(file: File, maxSizeBytes: number = 1024 * 1024): Promise<File> {
     // If file is already under limit, return as-is
     if (file.size <= maxSizeBytes) {
-      console.log('Image already under size limit:', file.size, 'bytes');
       return file;
     }
 
-    console.log('Resizing image from', file.size, 'bytes to under', maxSizeBytes, 'bytes');
 
     return new Promise<File>((resolve, reject) => {
       const img = new Image();
@@ -73,7 +71,6 @@ export class ImageResizer {
         canvas.toBlob(
           (blob) => {
             if (blob) {
-              console.log('Resized image to', blob.size, 'bytes');
 
               // Create new File object with same name and type
               const resizedFile = new File(
@@ -136,7 +133,6 @@ export class ImageResizer {
       quality = 0.7; // Heavy compression
     }
 
-    console.log('Resize calculation:', {
       original: { width: originalWidth, height: originalHeight, size: originalSize },
       target: { width, height, quality, targetSize }
     });
@@ -154,7 +150,6 @@ export class ImageResizer {
 
     while (currentFile.size > maxSizeBytes && attempt < maxAttempts) {
       attempt++;
-      console.log(`Compression attempt ${attempt}/${maxAttempts}`);
 
       // Reduce target size for each attempt
       const targetSize = maxSizeBytes * (0.8 ** attempt);
@@ -240,11 +235,9 @@ export class ImageResizer {
 
   static async enhanceContrastIfNeeded(file: File, analysis: ImageAnalysis): Promise<File> {
     if (!analysis.hasLowContrast) {
-      console.log('Image has good contrast, skipping enhancement');
       return file;
     }
 
-    console.log('Applying contrast enhancement...');
 
     return new Promise((resolve, reject) => {
       const img = new Image();
@@ -267,7 +260,6 @@ export class ImageResizer {
               type: file.type,
               lastModified: Date.now()
             });
-            console.log('Contrast enhancement complete');
             resolve(enhancedFile);
           } else {
             reject(new Error('Failed to enhance contrast'));
@@ -286,7 +278,6 @@ export class ImageResizer {
       return file;
     }
 
-    console.log('Applying binarization for text clarity...');
 
     return new Promise((resolve, reject) => {
       const img = new Image();
@@ -380,7 +371,6 @@ export class ImageResizer {
       return file;
     }
 
-    console.log('Applying deskew correction...');
 
     return new Promise((resolve, reject) => {
       const img = new Image();
@@ -423,7 +413,6 @@ export class ImageResizer {
       return file;
     }
 
-    console.log('Applying noise reduction...');
 
     return new Promise((resolve, reject) => {
       const img = new Image();
@@ -459,12 +448,10 @@ export class ImageResizer {
   }
 
   static async preprocessForOCR(file: File): Promise<File> {
-    console.log('Starting intelligent image preprocessing...');
 
     // Step 1: Analyze image quality (fast)
     const analysis = await this.analyzeImageQuality(file);
 
-    console.log('Image analysis results:', {
       needsPreprocessing: analysis.needsPreprocessing,
       estimatedDPI: analysis.estimatedDPI,
       reasons: analysis.reasons
@@ -472,7 +459,6 @@ export class ImageResizer {
 
     // Early bailout for high-quality images
     if (!analysis.needsPreprocessing) {
-      console.log('Image quality is good, skipping preprocessing');
       return file;
     }
 
@@ -492,7 +478,6 @@ export class ImageResizer {
       // Deskew if needed (slower, only for clearly skewed images)
       processedFile = await this.deskewIfNeeded(processedFile, analysis);
 
-      console.log('Preprocessing completed successfully');
       return processedFile;
 
     } catch (error) {

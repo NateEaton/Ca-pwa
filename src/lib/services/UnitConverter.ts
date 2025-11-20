@@ -219,7 +219,6 @@ export class UnitConverter {
       // If the inner measure has a convertible unit, use that instead
       const innerParsed = this.parseSimpleMeasure(innerMeasure);
       if (innerParsed.unitType !== "unknown") {
-        console.log('🔧 UnitConverter.parseUSDAMeasure() - COMPOUND CONVERTIBLE:', {
           input: measureString,
           quantity,
           unitPortion,
@@ -242,7 +241,6 @@ export class UnitConverter {
       }
 
       // If inner measure isn't convertible, fall back to no conversion
-      console.log('🔧 UnitConverter.parseUSDAMeasure() - COMPOUND FALLBACK:', {
         input: measureString,
         quantity,
         unitPortion,
@@ -264,7 +262,6 @@ export class UnitConverter {
 
     // Check if this is a non-convertible measure 
     if (this.isNonConvertible(cleaned)) {
-      console.log('🔧 UnitConverter.parseUSDAMeasure() - NON-CONVERTIBLE:', {
         input: measureString,
         note: 'Descriptive measure, no parsing needed'
       });
@@ -280,7 +277,6 @@ export class UnitConverter {
 
     // Handle simple measurements
     const simpleParsed = this.parseSimpleMeasure(unitPortion);
-    console.log('🔧 UnitConverter.parseUSDAMeasure() - SIMPLE:', {
       input: measureString,
       quantity,
       unitPortion,

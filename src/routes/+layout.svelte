@@ -60,10 +60,8 @@
         updateServiceWorker
       } = useRegisterSW({
         onNeedRefresh() {
-          console.log('New version available');
         },
         onOfflineReady() {
-          console.log('App is ready to work offline');
         }
       });
 

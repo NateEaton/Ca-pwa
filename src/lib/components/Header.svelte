@@ -104,7 +104,6 @@
       await syncService.performBidirectionalSync();
       // Success toast is removed for a silent experience
     } catch (error) {
-      console.log("A manual sync operation failed.");
       // Error toast is handled by the service
     }
   }

@@ -195,12 +195,6 @@
       focusSupported = capabilities.focusMode && capabilities.focusMode.length > 0;
       currentFocusMode = settings.focusMode || 'unknown';
 
-      console.log('Camera capabilities:', {
-        focusModes: capabilities.focusMode,
-        currentFocusMode: currentFocusMode,
-        focusDistance: capabilities.focusDistance
-      });
-
       assignStreamToVideo();
       cameraInitialized = true;
       cameraDeviceId = track.getSettings().deviceId;
@@ -296,7 +290,6 @@
       await startBarcodeScanning();
     } else if (mode === 'ocr') {
       // OCR mode just shows camera preview, no auto-scanning
-      console.log('Camera ready for OCR capture');
     }
   }
 
@@ -384,10 +377,8 @@
           });
 
           // In test mode, don't close the modal - let user continue to OCR scan
-          console.log('SmartScanModal: Test mode - keeping modal open for OCR scan');
         } else {
           // Normal mode - dispatch and close
-          console.log('SmartScanModal: Dispatching scanComplete event with data:', { ...productResult, method: 'UPC' });
           dispatch('scanComplete', { ...productResult, method: 'UPC' });
           // Add small delay to ensure event is processed before modal closes
           setTimeout(() => closeModal(true), 100);
@@ -423,7 +414,6 @@
       }
 
       if (productResult) {
-        console.log('SmartScanModal: Dispatching scanComplete event (Manual UPC) with data:', { ...productResult, method: 'Manual UPC' });
         dispatch('scanComplete', { ...productResult, method: 'Manual UPC' });
         // Add small delay to ensure event is processed before modal closes
         setTimeout(() => closeModal(true), 100);
@@ -553,7 +543,6 @@
           });
 
           // In test mode, don't close the modal - let user download test data
-          console.log('SmartScanModal: Test mode - keeping modal open for test data download');
         } else if (!debugMode) {
           // Normal mode (not debug, not test) - dispatch and close
           const ocrData = {
@@ -563,7 +552,6 @@
             servingSize: servingSize, // Formatted string for display
             fileName: debugData.fileName || null, // Include file name for metadata
           };
-          console.log('SmartScanModal: Dispatching scanComplete event (OCR) with data:', ocrData);
           dispatch('scanComplete', ocrData);
           // Add small delay to ensure event is processed before modal closes
           setTimeout(() => closeModal(true), 100);
@@ -606,7 +594,6 @@
         if (navigator.vibrate) {
           navigator.vibrate(50);
         }
-        console.log('Debug mode:', debugMode ? 'enabled' : 'disabled');
       }
     }, 1000); // 1 second long press
   }
@@ -657,7 +644,6 @@
         servingSize: servingSize,
         fileName: debugData.fileName || null, // Include file name for metadata
       };
-      console.log('SmartScanModal: Dispatching scanComplete event (Debug OCR) with data:', debugOcrData);
       dispatch('scanComplete', debugOcrData);
       // Add small delay to ensure event is processed before modal closes
       setTimeout(() => closeModal(true), 100);
@@ -687,7 +673,6 @@
       if (navigator.vibrate) {
         navigator.vibrate(50);
       }
-      console.log('Debug data copied to clipboard');
     } catch (err) {
       console.error('Failed to copy to clipboard:', err);
       // Fallback: create temporary textarea

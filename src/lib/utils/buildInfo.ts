@@ -74,13 +74,6 @@ export function logBuildInfo(): void {
   if (import.meta.env.MODE === 'development' || import.meta.env.DEV) {
     const info = getBuildInfo();
     console.group('🔨 Build Information');
-    console.log('Build ID:', info.buildId);
-    console.log('Build Time:', info.buildTime);
-    console.log('Git Branch:', info.gitBranch || 'unknown');
-    console.log('App Version:', info.appVersion);
-    console.log('Build Age:', `${info.buildAge} minutes`);
-    console.log('Environment:', info.environment);
-    console.log('data-env attribute:', document.documentElement.getAttribute('data-env'));
     console.groupEnd();
   }
 }

@@ -77,51 +77,37 @@
 
   // Create a temporary food object for source indicator display
   $: displayFoodForIndicator = (() => {
-    console.log('AddFoodModal: displayFoodForIndicator computing...', {
-      editingFood,
-      currentFoodData,
-      scanContext,
-      customFoodsCount: $calciumState.customFoods.length
-    });
-
     // If editing an existing food from journal, look up the full custom food
     if (editingFood?.isCustom) {
       const lookupId = editingFood.customFoodId || editingFood.id;
-      console.log('AddFoodModal: Looking up custom food by ID:', lookupId);
 
       let customFood = null;
 
       // Try ID lookup first
       if (lookupId) {
         customFood = $calciumState.customFoods.find(f => f.id === lookupId);
-        console.log('AddFoodModal: Found customFood by ID:', customFood);
       }
 
       // If no ID or not found, try matching by name and calcium
       if (!customFood && editingFood.name) {
-        console.log('AddFoodModal: Attempting name+calcium match for:', editingFood.name, editingFood.calcium);
         customFood = $calciumState.customFoods.find(f =>
           f.name === editingFood.name &&
           Math.abs(f.calcium - editingFood.calcium) < 0.01
         );
-        console.log('AddFoodModal: Found customFood by name+calcium:', customFood);
       }
 
       if (customFood?.sourceMetadata) {
-        console.log('AddFoodModal: Returning customFood with sourceMetadata:', customFood.sourceMetadata);
         return customFood;
       }
     }
 
     // If editing an existing food object that already has sourceMetadata
     if (editingFood?.isCustom && editingFood?.sourceMetadata) {
-      console.log('AddFoodModal: Returning editingFood with sourceMetadata');
       return editingFood;
     }
 
     // If we have currentFoodData (selected from search), use that
     if (currentFoodData?.isCustom && currentFoodData?.sourceMetadata) {
-      console.log('AddFoodModal: Returning currentFoodData with sourceMetadata');
       return currentFoodData;
     }
 
@@ -134,14 +120,12 @@
             ? 'ocr_scan'
             : 'manual';
 
-      console.log('AddFoodModal: Returning scan context food with sourceType:', sourceType);
       return {
         isCustom: true,
         sourceMetadata: { sourceType }
       };
     }
 
-    console.log('AddFoodModal: No displayFoodForIndicator found, returning null');
     return null;
   })();
 
@@ -639,8 +623,6 @@
 
           if (existingFood) {
             // Duplicate UPC scan detected - reuse existing custom food
-            console.log('AddFoodModal: Duplicate UPC scan detected, reusing existing custom food:', existingFood.id);
-
             await calciumService.addFood({
               name: existingFood.name,
               calcium: calciumValue,
@@ -656,19 +638,14 @@
           }
 
           // No duplicate found - create new custom food
-          console.log('AddFoodModal: Creating sourceMetadata, scanContext:', scanContext);
           let sourceMetadata;
           if (scanContext?.method === 'UPC' || scanContext?.method === 'Manual UPC') {
-            console.log('AddFoodModal: Creating UPC metadata');
             sourceMetadata = calciumService.createUPCSourceMetadata(scanContext);
           } else if (scanContext?.method === 'OCR') {
-            console.log('AddFoodModal: Creating OCR metadata');
             sourceMetadata = calciumService.createOCRSourceMetadata(scanContext);
           } else {
-            console.log('AddFoodModal: Creating manual metadata (no scan context)');
             sourceMetadata = calciumService.createManualSourceMetadata();
           }
-          console.log('AddFoodModal: Final sourceMetadata:', sourceMetadata);
 
           await calciumService.saveCustomFood({
             name: foodName.trim(),
@@ -752,20 +729,17 @@
 
   function handleScanComplete(event) {
     const scanData = event.detail;
-    console.log('AddFoodModal: handleScanComplete triggered with scanData:', scanData);
     showSmartScanModal = false;
 
     // Store scan context for source metadata
     scanContext = scanData;
-    console.log('AddFoodModal: scanContext stored:', scanContext);
 
     // Give the UI a moment to update before showing toast and focusing
     setTimeout(() => {
-      console.log('AddFoodModal: Starting data population for method:', scanData.method);
       showToast("Scan successful. Please verify the details.", "success");
       // Always switch to custom mode for verification and editing
       isCustomMode = true;
-      
+
       if (scanData.method === 'UPC' || scanData.method === 'Manual UPC') {
         // UPC scan provides a full product name
         const brand = scanData.brandName || scanData.brandOwner || '';
@@ -777,26 +751,18 @@
           foodName = product;
         }
 
-        console.log('AddFoodModal: UPC product name set to:', foodName);
-        
         // Use the centrally-decided serving info
         servingQuantity = scanData.finalServingQuantity || 1;
         servingUnit = scanData.finalServingUnit || 'serving';
-        
+
         // Use the final calculated per-serving calcium with fallbacks
-        console.log('AddFoodModal: UPC scan data received:', scanData);
         calcium = '';
         if (scanData.calciumPerServing) {
           calcium = scanData.calciumPerServing.toString();
-          console.log('AddFoodModal: Using calciumPerServing:', calcium);
         } else if (scanData.calciumValue) {
           calcium = scanData.calciumValue.toString();
-          console.log('AddFoodModal: Fallback to calciumValue:', calcium);
         } else if (scanData.calciumFromPercentDV) {
           calcium = scanData.calciumFromPercentDV.toString();
-          console.log('AddFoodModal: Fallback to calciumFromPercentDV:', calcium);
-        } else {
-          console.log('AddFoodModal: No calcium data found in scan result');
         }
         
       } else if (scanData.method === 'OCR') {

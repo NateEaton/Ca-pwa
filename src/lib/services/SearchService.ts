@@ -200,9 +200,12 @@ export class SearchService {
 
   private static isPartialWordMatch(searchText: string, keyword: string): boolean {
     if (!searchText.includes(keyword)) return false;
-    
+
+    // Escape regex special characters to prevent ReDoS attacks
+    const escapedKeyword = keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
     // Create word boundary regex to check if keyword appears as complete word
-    const wordBoundaryRegex = new RegExp(`\\b${keyword}\\b`, 'i');
+    const wordBoundaryRegex = new RegExp(`\\b${escapedKeyword}\\b`, 'i');
     return !wordBoundaryRegex.test(searchText);
   }
 

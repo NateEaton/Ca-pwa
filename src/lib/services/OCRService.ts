@@ -88,8 +88,6 @@ export class OCRService {
   }
 
   async processImage(file: File, captureImage: boolean = false, timeoutMs?: number): Promise<NutritionParseResult> {
-    console.log('OCR: Starting enhanced multi-strategy processing...');
-
     try {
       if (!file || !file.type.startsWith('image/')) {
         throw new Error('Please select a valid image file');
@@ -123,8 +121,6 @@ export class OCRService {
       formData.append('isTable', 'true');
       formData.append('isOverlayRequired', 'true');
       formData.append('iscreatesearchablepdf', 'false');
-
-      console.log('OCR: Making API request...');
 
       // Create fetch promise with optional timeout
       const fetchPromise = fetch(this.apiEndpoint, {
@@ -161,9 +157,6 @@ export class OCRService {
       const rawText = parsedResult.ParsedText;
       const overlay = parsedResult.TextOverlay;
 
-      console.log('OCR: Raw text length:', rawText.length);
-      console.log('OCR: Has overlay data:', overlay?.HasOverlay);
-
       // Use enhanced parsing with multiple strategies
       if (overlay?.HasOverlay && overlay.Lines) {
         const parseResult = this.parseWithMultipleStrategies(rawText, overlay.Lines, result);
@@ -173,7 +166,6 @@ export class OCRService {
         }
         return parseResult;
       } else {
-        console.log('OCR: No overlay data, using fallback parsing');
         const parseResult = this.parseNutritionDataFallback(rawText, result);
         // Add captured image blob to result if available
         if (captureImage && imageBlob) {
@@ -201,8 +193,6 @@ export class OCRService {
     rawText: string;
     words: Array<{t: string; x: number; y: number; w: number; h: number}>;
   }): NutritionParseResult {
-    console.log('OCR: Parsing from cached OCR data...');
-    console.log('OCR: Word count:', cachedData.words.length);
 
     // Reconstruct Lines structure from cached words
     const lines = this.reconstructLinesFromWords(cachedData.words);
@@ -238,12 +228,10 @@ export class OCRService {
    * @returns Parsed nutrition result using same logic as live OCR
    */
   public parseFromFullAPIResponse(apiResponse: OCRResponse): NutritionParseResult {
-    console.log('OCR: Parsing from full API response...');
 
     const rawText = apiResponse.ParsedResults[0].ParsedText;
     const lines = apiResponse.ParsedResults[0].TextOverlay?.Lines || [];
 
-    console.log('OCR: Using', lines.length, 'pre-grouped lines from API');
 
     // Use existing parsing logic with full API structure
     return this.parseWithMultipleStrategies(rawText, lines, apiResponse);
@@ -309,7 +297,6 @@ export class OCRService {
     // Sort lines top to bottom
     lines.sort((a, b) => a.MinTop - b.MinTop);
     
-    console.log('OCR: Reconstructed', lines.length, 'lines from', words.length, 'words');
     return lines;
   }  
 
@@ -318,8 +305,6 @@ export class OCRService {
    * Replaces the old strategy-based approach with clear sequential execution
    */
   private parseWithMultipleStrategies(rawText: string, lines: any[], apiResponse: OCRResponse): NutritionParseResult {
-    console.log('=== Starting 3-Layer Waterfall Parse ===');
-    console.log('OCR: Raw text length:', rawText.length);
 
     // Normalize OCR text to fix common mistakes BEFORE any parsing
     const normalizedText = this.normalizeOCRText(rawText);
@@ -332,7 +317,6 @@ export class OCRService {
     });
 
     const preprocessedText = this.preprocessText(normalizedText);
-    console.log('OCR: Preprocessed', textElements.length, 'spatial elements');
 
     // Initialize result
     const result: NutritionParseResult = {
@@ -348,56 +332,27 @@ export class OCRService {
     };
 
     // LAYER 1: Spatial Structure Parsing
-    console.log('\n--- LAYER 1: Spatial Structure ---');
     const spatialResult = this.spatialParse(textElements, preprocessedText);
     Object.assign(result, spatialResult);
 
     const afterLayer1 = this.isComplete(result);
-    console.log('After Layer 1:', {
-      servingQuantity: result.servingQuantity,
-      servingMeasure: result.servingMeasure,
-      calcium: result.calcium,
-      complete: afterLayer1
-    });
 
     // LAYER 2: Text Pattern Matching (fill gaps)
     if (!afterLayer1) {
-      console.log('\n--- LAYER 2: Text Patterns ---');
       this.regexParse(preprocessedText, result);
 
       const afterLayer2 = this.isComplete(result);
-      console.log('After Layer 2:', {
-        servingQuantity: result.servingQuantity,
-        servingMeasure: result.servingMeasure,
-        calcium: result.calcium,
-        complete: afterLayer2
-      });
     }
 
     // LAYER 3: Fuzzy Recovery (last resort)
     if (!this.isComplete(result)) {
-      console.log('\n--- LAYER 3: Fuzzy Recovery ---');
       this.fuzzyParse(textElements, preprocessedText, result);
-
-      console.log('After Layer 3:', {
-        servingQuantity: result.servingQuantity,
-        servingMeasure: result.servingMeasure,
-        calcium: result.calcium,
-        complete: this.isComplete(result)
-      });
     }
 
     // Calculate confidence and finalize
     result.confidence = this.calculateConfidence(result);
     result.servingSize = this.buildLegacyServingSize(result);
     result.calciumValue = result.calcium;
-
-    console.log('\n=== Parse Complete ===');
-    console.log('Final result:', {
-      servingSize: result.servingSize,
-      calcium: result.calcium,
-      confidence: result.confidence
-    });
 
     return result;
   }
@@ -544,7 +499,6 @@ export class OCRService {
       });
     }
     
-    console.log(`OCR: Detected ${columns.length} columns and ${rows.length} rows`);
     return { columns, rows };
   }
 
@@ -635,13 +589,11 @@ export class OCRService {
    * @returns Calcium value in mg, or null if not found
    */
   private parseCalcium(text: string, elements?: TextElement[]): number | null {
-    console.log('parseCalcium: Starting with text:', text.substring(0, 100));
 
     // Priority 1: Direct mg values from spatial elements (if available)
     if (elements && elements.length > 0) {
       const mgValue = this.parseCalciumFromSpatialElements(elements);
       if (mgValue !== null) {
-        console.log('parseCalcium: Found via spatial elements:', mgValue);
         return mgValue;
       }
     }
@@ -649,11 +601,9 @@ export class OCRService {
     // Priority 2: Pattern matching on text
     const textValue = this.parseCalciumFromText(text);
     if (textValue !== null) {
-      console.log('parseCalcium: Found via text patterns:', textValue);
       return textValue;
     }
 
-    console.log('parseCalcium: No calcium value found');
     return null;
   }
 
@@ -702,10 +652,8 @@ export class OCRService {
         let mgValue: number;
         if (/^Omg$/i.test(elementText)) {
           mgValue = 0;
-          console.log(`  Spatial calcium: Found "Omg" (OCR error for 0mg) at X=${nearbyMgElements[0].x}`);
         } else {
           mgValue = parseInt(elementText.replace(/[^\d]/g, ''));
-          console.log(`  Spatial calcium: Found ${mgValue}mg at X=${nearbyMgElements[0].x} (closest to label at X=${calciumLabel.x})`);
         }
 
         if (this.isValidCalciumValue(mgValue)) {
@@ -887,13 +835,11 @@ export class OCRService {
    * @returns ServingInfo object or null if not found
    */
   private parseServingSize(text: string, elements?: TextElement[]): ServingInfo | null {
-    console.log('parseServingSize: Starting with text:', text.substring(0, 100));
 
     // Priority 1: Spatial parsing (if elements available)
     if (elements && elements.length > 0) {
       const spatialResult = this.parseServingSizeFromSpatialElements(elements);
       if (spatialResult) {
-        console.log('parseServingSize: Found via spatial elements:', spatialResult);
         return spatialResult;
       }
     }
@@ -901,11 +847,9 @@ export class OCRService {
     // Priority 2: Text pattern matching
     const textResult = this.parseServingSizeFromText(text);
     if (textResult) {
-      console.log('parseServingSize: Found via text patterns:', textResult);
       return textResult;
     }
 
-    console.log('parseServingSize: No serving size found');
     return null;
   }
 
@@ -1189,7 +1133,6 @@ export class OCRService {
    * @returns Partial result with fields found via spatial analysis
    */
   private spatialParse(elements: TextElement[], preprocessedText: string): Partial<NutritionParseResult> {
-    console.log('Layer 1: Starting spatial parse with', elements.length, 'elements');
 
     const result: Partial<NutritionParseResult> = {
       servingQuantity: null,
@@ -1202,12 +1145,10 @@ export class OCRService {
     // Strategy 1: Try table structure detection
     const tableResult = this.parseViaTableStructure(elements);
     if (tableResult.servingQuantity !== null || tableResult.calcium !== null) {
-      console.log('Layer 1: Table structure found data');
       Object.assign(result, tableResult);
 
       // If we found everything, return early
       if (this.isComplete(result)) {
-        console.log('Layer 1: Complete via table structure');
         return result;
       }
     }
@@ -1215,7 +1156,6 @@ export class OCRService {
     // Strategy 2: Line-based grouping (for non-table layouts)
     if (!this.isComplete(result)) {
       const lineResult = this.parseViaLineGrouping(elements);
-      console.log('Layer 1: Line-based grouping results:', lineResult);
 
       // Merge line results (don't overwrite existing values)
       if (result.servingQuantity === null && lineResult.servingQuantity !== null) {
@@ -1233,7 +1173,6 @@ export class OCRService {
       }
     }
 
-    console.log('Layer 1: Spatial parse complete:', result);
     return result;
   }
 
@@ -1253,18 +1192,15 @@ export class OCRService {
     const { columns, rows } = this.detectTableStructure(elements);
 
     if (columns.length < 2 || rows.length < 3) {
-      console.log('Layer 1: Insufficient table structure');
       return result;
     }
 
-    console.log(`Layer 1: Detected ${columns.length} columns, ${rows.length} rows`);
 
     // Identify the primary value column (first non-label column)
     // Column 0 is typically labels, Column 1 is the primary values
     const primaryValueColumn = columns.length >= 2 ? columns[1] : null;
 
     if (primaryValueColumn) {
-      console.log(`Layer 1: Using primary value column at X=${primaryValueColumn.x.toFixed(0)}`);
     }
 
     // Find serving size row
@@ -1286,7 +1222,6 @@ export class OCRService {
         result.servingMeasure = servingInfo.measure;
         result.standardMeasureValue = servingInfo.standardValue;
         result.standardMeasureUnit = servingInfo.standardUnit;
-        console.log('Layer 1: Found serving via table (column-aware):', servingInfo);
       }
     }
 
@@ -1306,7 +1241,6 @@ export class OCRService {
 
       if (calciumValue !== null) {
         result.calcium = calciumValue;
-        console.log('Layer 1: Found calcium via table (column-aware):', calciumValue);
       }
     }
 
@@ -1328,7 +1262,6 @@ export class OCRService {
       return elementCenter >= columnStart && elementCenter <= columnEnd;
     });
 
-    console.log(`  Filtered ${elements.length} elements to ${filtered.length} in column at X=${column.x.toFixed(0)}`);
 
     return filtered;
   }
@@ -1346,7 +1279,6 @@ export class OCRService {
     };
 
     const lines = this.groupElementsIntoLines(elements);
-    console.log(`Layer 1: Grouped into ${lines.length} lines`);
 
     for (const line of lines) {
       const lineText = line.elements.map(e => e.text).join(' ');
@@ -1360,7 +1292,6 @@ export class OCRService {
           result.servingMeasure = servingInfo.measure;
           result.standardMeasureValue = servingInfo.standardValue;
           result.standardMeasureUnit = servingInfo.standardUnit;
-          console.log('Layer 1: Found serving via line:', servingInfo);
         }
       }
 
@@ -1370,7 +1301,6 @@ export class OCRService {
 
         if (calciumValue !== null) {
           result.calcium = calciumValue;
-          console.log('Layer 1: Found calcium via line:', calciumValue);
         }
       }
 
@@ -1460,7 +1390,6 @@ export class OCRService {
    * @param result - Partial result to fill gaps in
    */
   private regexParse(text: string, result: Partial<NutritionParseResult>): void {
-    console.log('Layer 2: Starting regex parse on text');
 
     // Parse serving size if not found
     if (!result.servingQuantity || !result.servingMeasure) {
@@ -1469,16 +1398,13 @@ export class OCRService {
       if (servingInfo) {
         if (!result.servingQuantity) {
           result.servingQuantity = servingInfo.quantity;
-          console.log('Layer 2: Found serving quantity:', servingInfo.quantity);
         }
         if (!result.servingMeasure) {
           result.servingMeasure = servingInfo.measure;
-          console.log('Layer 2: Found serving measure:', servingInfo.measure);
         }
         if (!result.standardMeasureValue && servingInfo.standardValue) {
           result.standardMeasureValue = servingInfo.standardValue;
           result.standardMeasureUnit = servingInfo.standardUnit;
-          console.log('Layer 2: Found standard measure:', servingInfo.standardValue + servingInfo.standardUnit);
         }
       }
     }
@@ -1489,11 +1415,9 @@ export class OCRService {
 
       if (calciumValue !== null) {
         result.calcium = calciumValue;
-        console.log('Layer 2: Found calcium:', calciumValue);
       }
     }
 
-    console.log('Layer 2: Regex parse complete');
   }
 
   // ============================================================================
@@ -1510,7 +1434,6 @@ export class OCRService {
    * @param result - Partial result to fill remaining gaps
    */
   private fuzzyParse(elements: TextElement[], text: string, result: Partial<NutritionParseResult>): void {
-    console.log('Layer 3: Starting fuzzy recovery');
 
     // OCR error corrections for common misreads
     const correctedText = this.applyOCRCorrections(text);
@@ -1522,11 +1445,9 @@ export class OCRService {
       if (servingInfo) {
         if (!result.servingQuantity) {
           result.servingQuantity = servingInfo.quantity;
-          console.log('Layer 3: Found serving quantity via OCR correction:', servingInfo.quantity);
         }
         if (!result.servingMeasure) {
           result.servingMeasure = servingInfo.measure;
-          console.log('Layer 3: Found serving measure via OCR correction:', servingInfo.measure);
         }
       }
     }
@@ -1536,7 +1457,6 @@ export class OCRService {
 
       if (calciumValue !== null) {
         result.calcium = calciumValue;
-        console.log('Layer 3: Found calcium via OCR correction:', calciumValue);
       }
     }
 
@@ -1546,7 +1466,6 @@ export class OCRService {
         const fuzzyCalcium = this.fuzzyMatchCalcium(elements, correctedText);
         if (fuzzyCalcium !== null) {
           result.calcium = fuzzyCalcium;
-          console.log('Layer 3: Found calcium via fuzzy matching:', fuzzyCalcium);
         }
       }
 
@@ -1559,12 +1478,10 @@ export class OCRService {
           if (!result.servingMeasure) {
             result.servingMeasure = fuzzyServing.measure;
           }
-          console.log('Layer 3: Found serving via fuzzy matching:', fuzzyServing);
         }
       }
     }
 
-    console.log('Layer 3: Fuzzy recovery complete');
   }
 
   /**
@@ -1734,7 +1651,6 @@ export class OCRService {
   private validateServingQuantity(quantity: number, rawText: string): boolean {
     // Handle very large misreads (like "112" for "1/2")
     if (quantity > 50 && /^\d{2,3}$/.test(rawText)) {
-      console.log('OCR: Potential large misread detected:', rawText, '=', quantity);
       return false;
     }
     
@@ -1743,12 +1659,10 @@ export class OCRService {
       return true;
     }
     
-    console.log('OCR: Serving quantity outside valid range:', quantity);
     return false;
   }
 
   private parseNutritionDataFallback(text: string, apiResponse: OCRResponse): NutritionParseResult {
-    console.log('OCR: Using fallback parsing without spatial data');
     
     const result: NutritionParseResult = {
       rawText: text,
