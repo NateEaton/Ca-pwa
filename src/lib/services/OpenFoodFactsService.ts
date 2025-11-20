@@ -202,11 +202,6 @@ export class OpenFoodFactsService {
       let calciumValue = null;
       let calciumPerServing = null;
 
-        nutriments: product.nutriments,
-        serving_quantity: product.serving_quantity,
-        serving_quantity_unit: product.serving_quantity_unit
-      });
-
       if (product.nutriments) {
         // IMPORTANT: OpenFoodFacts calcium units are inconsistent!
         // calcium_unit may say "mg" but values are often fractional grams (e.g., 0.158)

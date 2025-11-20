@@ -219,15 +219,6 @@ export class UnitConverter {
       // If the inner measure has a convertible unit, use that instead
       const innerParsed = this.parseSimpleMeasure(innerMeasure);
       if (innerParsed.unitType !== "unknown") {
-          input: measureString,
-          quantity,
-          unitPortion,
-          containerType,
-          innerMeasure,
-          innerParsed,
-          cleanedUnit: innerParsed.detectedUnit
-        });
-
         return {
           originalQuantity: quantity,
           originalUnit: unitPortion,
@@ -241,15 +232,6 @@ export class UnitConverter {
       }
 
       // If inner measure isn't convertible, fall back to no conversion
-        input: measureString,
-        quantity,
-        unitPortion,
-        containerType,
-        innerMeasure,
-        cleanedUnit: unitPortion,  // Show what we're setting
-        note: 'Inner measure not convertible, using full unitPortion'
-      });
-
       return {
         originalQuantity: quantity,
         originalUnit: unitPortion,
@@ -260,12 +242,8 @@ export class UnitConverter {
       };
     }
 
-    // Check if this is a non-convertible measure 
+    // Check if this is a non-convertible measure
     if (this.isNonConvertible(cleaned)) {
-        input: measureString,
-        note: 'Descriptive measure, no parsing needed'
-      });
-      
       return {
         originalQuantity: 1,
         originalUnit: measureString,
@@ -277,12 +255,6 @@ export class UnitConverter {
 
     // Handle simple measurements
     const simpleParsed = this.parseSimpleMeasure(unitPortion);
-      input: measureString,
-      quantity,
-      unitPortion,
-      simpleParsed,
-      cleanedUnit: simpleParsed.detectedUnit
-    });
 
     return {
       originalQuantity: quantity,

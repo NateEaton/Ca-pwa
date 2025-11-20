@@ -133,10 +133,6 @@ export class ImageResizer {
       quality = 0.7; // Heavy compression
     }
 
-      original: { width: originalWidth, height: originalHeight, size: originalSize },
-      target: { width, height, quality, targetSize }
-    });
-
     return { width, height, quality };
   }
 
@@ -451,11 +447,6 @@ export class ImageResizer {
 
     // Step 1: Analyze image quality (fast)
     const analysis = await this.analyzeImageQuality(file);
-
-      needsPreprocessing: analysis.needsPreprocessing,
-      estimatedDPI: analysis.estimatedDPI,
-      reasons: analysis.reasons
-    });
 
     // Early bailout for high-quality images
     if (!analysis.needsPreprocessing) {
