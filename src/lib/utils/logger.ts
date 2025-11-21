@@ -19,9 +19,8 @@
 /**
  * Development-only logging utility
  *
- * Provides conditional logging that is automatically removed from production builds
- * via dead code elimination. This allows comprehensive debug logging during
- * development without impacting production bundle size or performance.
+ * Provides conditional logging based on build mode. Debug logs are included in
+ * development mode builds and excluded from production builds.
  *
  * Usage:
  *   import { logger } from '$lib/utils/logger';
@@ -32,11 +31,15 @@
  *   logger.error('Critical error', error); // Always logs, even in production
  *
  * Build behavior:
- *   - Development builds (npm run dev): All logs visible
- *   - Production builds (npm run build): Debug/log/warn removed, only errors remain
+ *   - Development mode (npm run dev, npm run build:dev): All logs visible
+ *   - Production mode (npm run build): Debug/log/warn excluded, only errors remain
+ *
+ * The logger checks import.meta.env.MODE to determine the environment:
+ *   - MODE === 'development' → logs enabled
+ *   - MODE === 'production' → logs disabled (except errors)
  */
 
-const isDev = import.meta.env.DEV;
+const isDev = import.meta.env.MODE === 'development';
 
 export const logger = {
   /**
