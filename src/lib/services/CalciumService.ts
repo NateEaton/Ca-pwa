@@ -24,6 +24,7 @@ import { SyncService } from '$lib/services/SyncService';
 import { SyncTrigger } from '$lib/utils/syncTrigger';
 import { getBuildInfo } from '$lib/utils/buildInfo';
 import { getMonthKey } from '$lib/types/sync';
+import { logger } from '$lib/utils/logger';
 
 /**
  * Main service class for managing calcium tracking data including foods, settings, and IndexedDB operations.
@@ -797,21 +798,21 @@ export class CalciumService {
    * @returns Promise resolving to the backup data object
    */
   async generateBackup(): Promise<any> {
-    console.log('[GENERATE BACKUP] Starting backup generation...');
+    logger.debug('GENERATE BACKUP', 'Starting backup generation...');
     const state = get(calciumState);
     const syncService = SyncService.getInstance();
     const syncSettings = syncService.getSettings();
 
     const buildInfo = getBuildInfo();
 
-    console.log('[GENERATE BACKUP] Fetching all journal data...');
+    logger.debug('GENERATE BACKUP', 'Fetching all journal data...');
     const journalEntries = await this.getAllJournalData();
     const journalDates = Object.keys(journalEntries).length;
-    console.log('[GENERATE BACKUP] Journal dates:', journalDates);
+    logger.debug('GENERATE BACKUP', 'Journal dates:', journalDates);
 
-    console.log('[GENERATE BACKUP] Fetching custom foods...');
+    logger.debug('GENERATE BACKUP', 'Fetching custom foods...');
     const customFoods = await this.getAllCustomFoods();
-    console.log('[GENERATE BACKUP] Custom foods:', customFoods.length);
+    logger.debug('GENERATE BACKUP', 'Custom foods:', customFoods.length);
 
     const backup = {
       metadata: {
@@ -830,7 +831,7 @@ export class CalciumService {
       journalEntries
     };
 
-    console.log('[GENERATE BACKUP] ✅ Backup generated:', {
+    logger.debug('GENERATE BACKUP', '✅ Backup generated:', {
       journalDates,
       customFoods: customFoods.length,
       favorites: backup.favorites.length,
@@ -852,8 +853,8 @@ export class CalciumService {
     regenerateId?: boolean
   } = { preserveSync: false, regenerateId: true }): Promise<void> {
     try {
-      console.log('[RESTORE] Starting restore from backup. preserveSync:', options.preserveSync, 'regenerateId:', options.regenerateId);
-      console.log('[RESTORE] Backup data summary:', {
+      logger.debug('RESTORE', 'Starting restore from backup. preserveSync:', options.preserveSync, 'regenerateId:', options.regenerateId);
+      logger.debug('RESTORE', 'Backup data summary:', {
         hasPreferences: !!backupData.preferences,
         customFoodsCount: backupData.customFoods?.length || 0,
         favoritesCount: backupData.favorites?.length || 0,
@@ -863,55 +864,55 @@ export class CalciumService {
       const syncService = SyncService.getInstance();
 
       if (options.preserveSync) {
-        console.log('[RESTORE] Clearing application data (preserving sync)...');
+        logger.debug('RESTORE', 'Clearing application data (preserving sync)...');
         await this.clearApplicationData();
 
         // Only regenerate sync ID if explicitly requested
         // Default is true for backward compatibility, but pullFromCloud will pass false
         if (options.regenerateId !== false) {
-          console.log('[RESTORE] Regenerating sync ID...');
+          logger.debug('RESTORE', 'Regenerating sync ID...');
           await syncService.regenerateSyncId();
         } else {
-          console.log('[RESTORE] Keeping existing sync generation ID (cloud pull mode)');
+          logger.debug('RESTORE', 'Keeping existing sync generation ID (cloud pull mode)');
         }
       } else {
-        console.log('[RESTORE] Clearing ALL data (including sync)...');
+        logger.debug('RESTORE', 'Clearing ALL data (including sync)...');
         await this.clearAllData();
       }
 
-      console.log('[RESTORE] Waiting 300ms for IndexedDB operations to complete...');
+      logger.debug('RESTORE', 'Waiting 300ms for IndexedDB operations to complete...');
       // Allow more time for IndexedDB operations to complete
       await new Promise(resolve => setTimeout(resolve, 300));
 
-      console.log('[RESTORE] Reinitializing custom food ID counter...');
+      logger.debug('RESTORE', 'Reinitializing custom food ID counter...');
       // Reinitialize the custom food ID counter after clearing data
       this.nextCustomFoodId = -1;
       await this.initializeCustomFoodIdCounter();
 
       // Verify database connection is still valid
-      console.log('[RESTORE] Verifying database connection...');
+      logger.debug('RESTORE', 'Verifying database connection...');
       if (!this.db || this.db.readyState !== 'done' || !this.db.objectStoreNames.contains('customFoods')) {
         console.warn('[RESTORE] ⚠️ Database connection unstable, reinitializing...');
         await this.initializeIndexedDB();
         await this.initializeCustomFoodIdCounter();
-        console.log('[RESTORE] Database reinitialized successfully');
+        logger.debug('RESTORE', 'Database reinitialized successfully');
       } else {
-        console.log('[RESTORE] Database connection is stable');
+        logger.debug('RESTORE', 'Database connection is stable');
       }
 
       if (backupData.preferences) {
-        console.log('[RESTORE] Restoring preferences...');
+        logger.debug('RESTORE', 'Restoring preferences...');
         // Merge preferences instead of replacing to prevent data loss if backup is incomplete
         calciumState.update(state => ({
           ...state,
           settings: { ...state.settings, ...backupData.preferences }
         }));
         await this.saveSettings();
-        console.log('[RESTORE] Preferences restored (merged)');
+        logger.debug('RESTORE', 'Preferences restored (merged)');
       }
 
       if (backupData.customFoods && Array.isArray(backupData.customFoods)) {
-        console.log('[RESTORE] Restoring', backupData.customFoods.length, 'custom foods...');
+        logger.debug('RESTORE', 'Restoring', backupData.customFoods.length, 'custom foods...');
         let restoredCount = 0;
         for (const customFood of backupData.customFoods) {
           try {
@@ -934,47 +935,47 @@ export class CalciumService {
             // Continue with other custom foods even if one fails
           }
         }
-        console.log('[RESTORE] Custom foods restored:', restoredCount, '/', backupData.customFoods.length);
+        logger.debug('RESTORE', 'Custom foods restored:', restoredCount, '/', backupData.customFoods.length);
       }
 
       if (backupData.favorites && Array.isArray(backupData.favorites)) {
-        console.log('[RESTORE] Restoring', backupData.favorites.length, 'favorites...');
+        logger.debug('RESTORE', 'Restoring', backupData.favorites.length, 'favorites...');
         await this.restoreFavorites(backupData.favorites);
-        console.log('[RESTORE] Favorites restored');
+        logger.debug('RESTORE', 'Favorites restored');
       }
 
       if (backupData.hiddenFoods && Array.isArray(backupData.hiddenFoods)) {
-        console.log('[RESTORE] Restoring', backupData.hiddenFoods.length, 'hidden foods...');
+        logger.debug('RESTORE', 'Restoring', backupData.hiddenFoods.length, 'hidden foods...');
         await this.restoreHiddenFoods(backupData.hiddenFoods);
-        console.log('[RESTORE] Hidden foods restored');
+        logger.debug('RESTORE', 'Hidden foods restored');
       }
 
       if (backupData.servingPreferences && Array.isArray(backupData.servingPreferences)) {
-        console.log('[RESTORE] Restoring', backupData.servingPreferences.length, 'serving preferences...');
+        logger.debug('RESTORE', 'Restoring', backupData.servingPreferences.length, 'serving preferences...');
         await this.restoreServingPreferences(backupData.servingPreferences);
-        console.log('[RESTORE] Serving preferences restored');
+        logger.debug('RESTORE', 'Serving preferences restored');
       }
 
       if (backupData.journalEntries) {
         const journalDates = Object.keys(backupData.journalEntries);
-        console.log('[RESTORE] Restoring journal entries for', journalDates.length, 'dates...');
+        logger.debug('RESTORE', 'Restoring journal entries for', journalDates.length, 'dates...');
         let restoredDates = 0;
         for (const [dateString, foods] of Object.entries(backupData.journalEntries)) {
           if (Array.isArray(foods)) {
             await this.saveFoodsForDate(dateString, foods as FoodEntry[]);
             restoredDates++;
             if (restoredDates % 10 === 0) {
-              console.log('[RESTORE] Progress:', restoredDates, '/', journalDates.length, 'dates restored');
+              logger.debug('RESTORE', 'Progress:', restoredDates, '/', journalDates.length, 'dates restored');
             }
           }
         }
-        console.log('[RESTORE] Journal entries restored for all', restoredDates, 'dates');
+        logger.debug('RESTORE', 'Journal entries restored for all', restoredDates, 'dates');
       }
 
-      console.log('[RESTORE] Waiting 200ms before reloading data...');
+      logger.debug('RESTORE', 'Waiting 200ms before reloading data...');
       await new Promise(resolve => setTimeout(resolve, 200));
 
-      console.log('[RESTORE] Reloading all data into state...');
+      logger.debug('RESTORE', 'Reloading all data into state...');
       await this.loadSettings();
       await this.loadCustomFoods();
       await this.loadFavorites();
@@ -982,7 +983,7 @@ export class CalciumService {
       await this.loadServingPreferences();
       await this.loadDailyFoods();
       await this.applySortToFoods();
-      console.log('[RESTORE] ✅ Restore completed successfully');
+      logger.debug('RESTORE', '✅ Restore completed successfully');
 
     } catch (error) {
       console.error('[RESTORE] ❌ FATAL ERROR during restore:', error);
@@ -1007,23 +1008,23 @@ private async clearAllData(): Promise<void> {
    * Clears all application data from IndexedDB while preserving sync settings.
    */
   async clearApplicationData(): Promise<void> {
-    console.log('[CLEAR DATA] Starting to clear all application data from IndexedDB');
+    logger.debug('CLEAR DATA', 'Starting to clear all application data from IndexedDB');
     if (!this.db) {
       console.warn('[CLEAR DATA] ⚠️ Database connection not available for clearing IndexedDB data');
       return;
     }
 
     const storesToClear = ['journalEntries', 'customFoods', 'favorites', 'hiddenFoods', 'servingPreferences'];
-    console.log('[CLEAR DATA] Clearing', storesToClear.length, 'stores:', storesToClear);
+    logger.debug('CLEAR DATA', 'Clearing', storesToClear.length, 'stores:', storesToClear);
 
     for (const storeName of storesToClear) {
       try {
-        console.log('[CLEAR DATA] Clearing store:', storeName);
+        logger.debug('CLEAR DATA', 'Clearing store:', storeName);
         await new Promise<void>((resolve, reject) => {
           const transaction = this.db!.transaction([storeName], 'readwrite');
           const request = transaction.objectStore(storeName).clear();
           request.onsuccess = () => {
-            console.log('[CLEAR DATA] ✅ Cleared store:', storeName);
+            logger.debug('CLEAR DATA', '✅ Cleared store:', storeName);
             resolve();
           };
           request.onerror = () => {
@@ -1036,7 +1037,7 @@ private async clearAllData(): Promise<void> {
       }
     }
 
-    console.log('[CLEAR DATA] ✅ All IndexedDB stores cleared successfully');
+    logger.debug('CLEAR DATA', '✅ All IndexedDB stores cleared successfully');
   }
 
   private async getAllCustomFoods(): Promise<CustomFood[]> {

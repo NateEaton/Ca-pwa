@@ -20,6 +20,7 @@
   import { createEventDispatcher } from "svelte";
   import { calciumService } from "$lib/stores/calcium";
   import SourceIndicator from "./SourceIndicator.svelte";
+  import { logger } from '$lib/utils/logger';
 
   /** Whether the popup is visible */
   export let show = false;
@@ -66,7 +67,7 @@
   $: processingNotes = metadata?.processingNotes;
 
   $: {
-    console.log('MetadataPopup: Data update', {
+    logger.debug('METADATA', 'MetadataPopup: Data update', {
       food,
       metadata,
       scanData,
