@@ -20,6 +20,7 @@
 // Provides same interface as FDCService for seamless source switching
 import { HouseholdMeasureService } from './HouseholdMeasureService';
 import { OPENFOODFACTS_CONFIG } from '$lib/config/openfoodfacts.js';
+import { logger } from '$lib/utils/logger';
 
 interface OpenFoodFactsProduct {
   product_name?: string;
@@ -91,22 +92,27 @@ export class OpenFoodFactsService {
    * @returns Product data or null if not found
    */
   async searchByUPC(upcCode: string): Promise<ParsedProduct | null> {
+    logger.debug('OFF', 'Starting UPC lookup for:', upcCode);
 
     try {
       // Validate UPC code
       if (!upcCode || typeof upcCode !== 'string') {
+        logger.debug('OFF', 'Invalid UPC code provided (not a string)');
         throw new Error('Invalid UPC code provided');
       }
 
       if (!OpenFoodFactsService.isValidUPCFormat(upcCode)) {
+        logger.debug('OFF', 'UPC code format is invalid:', upcCode);
         throw new Error('UPC code format is invalid');
       }
 
       // Clean UPC code
       const cleanedUPC = this.cleanUPCCode(upcCode);
+      logger.debug('OFF', 'Cleaned UPC code:', cleanedUPC);
 
       // Make API request
       const apiUrl = `${this.baseUrl}${OPENFOODFACTS_CONFIG.PRODUCT_ENDPOINT}/${cleanedUPC}.json`;
+      logger.debug('OFF', 'Making API request to:', apiUrl);
 
       const response = await fetch(apiUrl, {
         method: 'GET',
@@ -116,21 +122,26 @@ export class OpenFoodFactsService {
         }
       });
 
+      logger.debug('OFF', 'API response status:', response.status, response.statusText);
 
       if (!response.ok) {
         if (response.status === 404) {
+          logger.debug('OFF', 'Product not found (404) for UPC:', cleanedUPC);
           return null;
         }
         throw new Error(`OpenFoodFacts API request failed: ${response.status} ${response.statusText}`);
       }
 
       const data: OpenFoodFactsResponse = await response.json();
+      logger.debug('OFF', 'API response data status:', data.status, 'verbose:', data.status_verbose);
 
       // Check if product was found
       if (data.status !== 1 || !data.product) {
+        logger.debug('OFF', 'Product not found in response data for UPC:', cleanedUPC);
         return null;
       }
 
+      logger.debug('OFF', 'Product found, parsing data...');
       return this.parseProductData(data.product, cleanedUPC);
 
     } catch (error) {
@@ -146,6 +157,7 @@ export class OpenFoodFactsService {
    * @returns Parsed product data
    */
   parseProductData(product: OpenFoodFactsProduct, upcCode: string): ParsedProduct {
+    logger.debug('OFF', 'Starting product data parsing for UPC:', upcCode);
 
     try {
       // Extract basic product info using config constants
@@ -154,16 +166,25 @@ export class OpenFoodFactsService {
       const brandName = product[OPENFOODFACTS_CONFIG.PRODUCT_FIELDS.BRANDS] || '';
       const ingredients = product[OPENFOODFACTS_CONFIG.PRODUCT_FIELDS.INGREDIENTS] || '';
 
+      logger.debug('OFF', 'Product name:', productName);
+      logger.debug('OFF', 'Brand:', brandName);
+
       // Extract serving size information
       let servingSize = '';
       let servingCount = 1;
       let servingUnit = '';
       let smartServingResult = null;
 
+      logger.debug('OFF', 'Extracting serving size information...');
+
       if (product[OPENFOODFACTS_CONFIG.SERVING_FIELDS.QUANTITY] && product[OPENFOODFACTS_CONFIG.SERVING_FIELDS.UNIT]) {
+        logger.debug('OFF', 'Found serving_quantity and serving_quantity_unit in product data');
         servingCount = parseFloat(product[OPENFOODFACTS_CONFIG.SERVING_FIELDS.QUANTITY]) || 1;
         // Standardize the unit from OpenFoodFacts API
         servingUnit = this.householdMeasureService.standardizeUnit(product[OPENFOODFACTS_CONFIG.SERVING_FIELDS.UNIT]);
+
+        logger.debug('OFF', 'Parsed serving - count:', servingCount, 'unit:', servingUnit);
+        logger.debug('OFF', 'Generating smart serving size with serving_size text:', product[OPENFOODFACTS_CONFIG.SERVING_FIELDS.SIZE_TEXT]);
 
         // Generate smart serving size using household measure if available
         smartServingResult = this.householdMeasureService.generateSmartServingSize(
@@ -173,9 +194,12 @@ export class OpenFoodFactsService {
           productName
         );
 
+        logger.debug('OFF', 'Smart serving result - isEnhanced:', smartServingResult.isEnhanced, 'text:', smartServingResult.text);
+
         // Set servingSize based on whether smart serving was enhanced or not
         if (smartServingResult.isEnhanced) {
           servingSize = smartServingResult.text; // e.g., "2 tbsp (11g)"
+          logger.debug('OFF', 'Using enhanced serving size:', servingSize);
         } else {
           // Use standardized format for fallback, omit count if it's 1
           if (servingCount === 1) {
@@ -183,17 +207,24 @@ export class OpenFoodFactsService {
           } else {
             servingSize = `${servingCount} ${servingUnit}`; // e.g., "240 ml"
           }
+          logger.debug('OFF', 'Using standard serving size:', servingSize);
         }
 
 
       } else if (product.serving_size) {
+        logger.debug('OFF', 'No quantity/unit fields, using serving_size text:', product.serving_size);
         servingSize = product.serving_size;
         // Try to parse count and unit from text like "11 g" or "1 cup"
         const match = servingSize.match(/^(\d+(?:\.\d+)?)\s*(.+)$/);
         if (match) {
           servingCount = parseFloat(match[1]);
           servingUnit = this.householdMeasureService.standardizeUnit(match[2].trim());
+          logger.debug('OFF', 'Parsed from serving_size text - count:', servingCount, 'unit:', servingUnit);
+        } else {
+          logger.debug('OFF', 'Could not parse serving_size text into count and unit');
         }
+      } else {
+        logger.debug('OFF', 'No serving size information available in product data');
       }
 
 
@@ -201,6 +232,8 @@ export class OpenFoodFactsService {
       let calcium = '';
       let calciumValue = null;
       let calciumPerServing = null;
+
+      logger.debug('OFF', 'Extracting calcium from nutriments...');
 
       if (product.nutriments) {
         // IMPORTANT: OpenFoodFacts calcium units are inconsistent!
@@ -210,29 +243,42 @@ export class OpenFoodFactsService {
         const calciumUnit = product.nutriments[OPENFOODFACTS_CONFIG.NUTRITION_FIELDS.CALCIUM_UNIT] || 'unknown';
         const conversionFactor = OPENFOODFACTS_CONFIG.UNIT_CONVERSION.GRAMS_TO_MG; // Always 1000x
 
+        logger.debug('OFF', 'Calcium unit detected:', calciumUnit, 'using conversion factor:', conversionFactor);
 
         // Try calcium_100g first (per 100g value)
         if (product.nutriments[OPENFOODFACTS_CONFIG.NUTRITION_FIELDS.CALCIUM_100G]) {
           const rawCalciumValue = parseFloat(product.nutriments[OPENFOODFACTS_CONFIG.NUTRITION_FIELDS.CALCIUM_100G].toString()) || null;
+          logger.debug('OFF', 'Raw calcium_100g value:', rawCalciumValue);
           if (rawCalciumValue !== null) {
             calciumValue = rawCalciumValue * conversionFactor; // Always convert g→mg
             calcium = `${calciumValue} mg`;
+            logger.debug('OFF', 'Converted calcium value:', calciumValue, 'mg (per 100g)');
           }
+        } else {
+          logger.debug('OFF', 'No calcium_100g value found in nutriments');
         }
 
         // Try calcium_serving if available
         if (product.nutriments[OPENFOODFACTS_CONFIG.NUTRITION_FIELDS.CALCIUM_SERVING]) {
           const rawCalciumServing = parseFloat(product.nutriments[OPENFOODFACTS_CONFIG.NUTRITION_FIELDS.CALCIUM_SERVING].toString()) || null;
+          logger.debug('OFF', 'Raw calcium_serving value:', rawCalciumServing);
           if (rawCalciumServing !== null) {
             calciumPerServing = rawCalciumServing * conversionFactor; // Always convert g→mg
+            logger.debug('OFF', 'Converted calcium per serving:', calciumPerServing, 'mg');
           }
+        } else {
+          logger.debug('OFF', 'No calcium_serving value found in nutriments');
         }
+      } else {
+        logger.debug('OFF', 'No nutriments data available in product');
       }
 
       // Calculate per-serving calcium if we have the data
       if (!calciumPerServing && calciumValue && servingCount && this.householdMeasureService.isVolumeOrMassUnit(servingUnit)) {
+        logger.debug('OFF', 'Calculating calcium per serving from 100g value...');
         // OpenFoodFacts calcium is per 100g, calculate for actual serving size
         calciumPerServing = Math.round((calciumValue * servingCount) / 100);
+        logger.debug('OFF', 'Calculated calcium per serving:', calciumPerServing, 'mg', '(from', calciumValue, 'mg per 100g * serving of', servingCount, servingUnit, ')');
       }
 
       // ============================================================================
@@ -244,6 +290,7 @@ export class OpenFoodFactsService {
       let servingDisplayText: string;
       let servingSource: 'enhanced' | 'standard';
 
+      logger.debug('OFF', 'Making final serving decision...');
 
       if (smartServingResult && smartServingResult.isEnhanced) {
         // ENHANCED: Use household measure format
@@ -257,6 +304,10 @@ export class OpenFoodFactsService {
         servingDisplayText = smartServingResult.text;
         servingSource = 'enhanced';
 
+        logger.debug('OFF', 'Final serving decision - ENHANCED mode');
+        logger.debug('OFF', 'Final serving - quantity:', finalServingQuantity, 'unit:', finalServingUnit);
+        logger.debug('OFF', 'Display text:', servingDisplayText);
+
       } else {
         // STANDARD: Use raw API serving format
         finalServingQuantity = servingCount;
@@ -264,6 +315,9 @@ export class OpenFoodFactsService {
         servingDisplayText = servingSize;
         servingSource = 'standard';
 
+        logger.debug('OFF', 'Final serving decision - STANDARD mode');
+        logger.debug('OFF', 'Final serving - quantity:', finalServingQuantity, 'unit:', finalServingUnit);
+        logger.debug('OFF', 'Display text:', servingDisplayText);
       }
 
 
@@ -277,6 +331,8 @@ export class OpenFoodFactsService {
       } else {
         confidence = 'low';
       }
+
+      logger.debug('OFF', 'Product completeness:', completeness, 'confidence:', confidence);
 
       const result = {
         source: 'OpenFoodFacts',
@@ -308,6 +364,9 @@ export class OpenFoodFactsService {
         confidence: confidence,
         rawData: product
       };
+
+      logger.debug('OFF', 'Successfully parsed product data');
+      logger.debug('OFF', 'Final result - calcium:', calcium, 'per serving:', calciumPerServing, 'mg');
 
       return result;
 

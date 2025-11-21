@@ -16,6 +16,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
+import { logger } from '$lib/utils/logger';
+
 /**
  * Build information interface for type safety
  */
@@ -74,6 +76,13 @@ export function logBuildInfo(): void {
   if (import.meta.env.MODE === 'development' || import.meta.env.DEV) {
     const info = getBuildInfo();
     console.group('🔨 Build Information');
+    logger.debug('BUILD INFO', `Build ID: ${info.buildId}`);
+    logger.debug('BUILD INFO', `Build Time: ${info.buildTime}`);
+    logger.debug('BUILD INFO', `Build Age: ${info.buildAge} minutes`);
+    logger.debug('BUILD INFO', `Git Branch: ${info.gitBranch || 'unknown'}`);
+    logger.debug('BUILD INFO', `App Version: ${info.appVersion}`);
+    logger.debug('BUILD INFO', `Environment: ${info.environment}`);
+    logger.debug('BUILD INFO', `Platform: ${info.buildPlatform}`);
     console.groupEnd();
   }
 }

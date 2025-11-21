@@ -26,6 +26,7 @@
   import ConfirmDialog from "./ConfirmDialog.svelte";
   import SmartScanModal from './SmartScanModal.svelte';
   import SourceIndicator from "./SourceIndicator.svelte";
+  import { logger } from '$lib/utils/logger';
 
   /** Whether the modal is visible */
   export let show = false;
@@ -80,39 +81,47 @@
     // If editing an existing food from journal, look up the full custom food
     if (editingFood?.isCustom) {
       const lookupId = editingFood.customFoodId || editingFood.id;
+      logger.debug('ADD FOOD', 'Looking up custom food by ID:', lookupId);
 
       let customFood = null;
 
       // Try ID lookup first
       if (lookupId) {
         customFood = $calciumState.customFoods.find(f => f.id === lookupId);
+        logger.debug('ADD FOOD', 'Found customFood by ID:', customFood);
       }
 
       // If no ID or not found, try matching by name and calcium
       if (!customFood && editingFood.name) {
+        logger.debug('ADD FOOD', 'No ID match, trying name+calcium lookup for:', editingFood.name);
         customFood = $calciumState.customFoods.find(f =>
           f.name === editingFood.name &&
           Math.abs(f.calcium - editingFood.calcium) < 0.01
         );
+        logger.debug('ADD FOOD', 'Found customFood by name+calcium:', customFood);
       }
 
       if (customFood?.sourceMetadata) {
+        logger.debug('ADD FOOD', 'Returning customFood with sourceMetadata:', customFood.sourceMetadata);
         return customFood;
       }
     }
 
     // If editing an existing food object that already has sourceMetadata
     if (editingFood?.isCustom && editingFood?.sourceMetadata) {
+      logger.debug('ADD FOOD', 'Returning editingFood with sourceMetadata:', editingFood.sourceMetadata);
       return editingFood;
     }
 
     // If we have currentFoodData (selected from search), use that
     if (currentFoodData?.isCustom && currentFoodData?.sourceMetadata) {
+      logger.debug('ADD FOOD', 'Returning currentFoodData with sourceMetadata:', currentFoodData.sourceMetadata);
       return currentFoodData;
     }
 
     // If we have a scan context (new scan), create temporary food object for display
     if (scanContext?.method) {
+      logger.debug('ADD FOOD', 'Creating display food from scanContext:', scanContext);
       const sourceType =
         (scanContext.method === 'UPC' || scanContext.method === 'Manual UPC')
           ? 'upc_scan'
@@ -551,6 +560,7 @@
 
     const scannedUPC = scanContext.upcCode;
     const scannedSource = scanContext.source === 'USDA FDC' ? 'usda_fdc' : 'openfoodfacts';
+    logger.debug('ADD FOOD', 'Searching for existing UPC food:', { scannedUPC, scannedSource, calcium, measure });
 
     return $calciumState.customFoods.find(food => {
       const metadata = food.sourceMetadata;
@@ -615,6 +625,7 @@
         // Only save as custom food definition if it's truly new (not selected from search)
         if (isCustomMode && !isSelectedFromSearch) {
           // Check for duplicate UPC scan before creating new custom food
+          logger.debug('ADD FOOD', 'Checking for duplicate UPC scan, scanContext:', scanContext);
           const existingFood = findMatchingUPCFood(
             scanContext,
             calciumValue,
@@ -623,6 +634,7 @@
 
           if (existingFood) {
             // Duplicate UPC scan detected - reuse existing custom food
+            logger.debug('ADD FOOD', 'Duplicate UPC scan detected, reusing existing custom food:', existingFood.id);
             await calciumService.addFood({
               name: existingFood.name,
               calcium: calciumValue,
@@ -638,13 +650,18 @@
           }
 
           // No duplicate found - create new custom food
+          logger.debug('ADD FOOD', 'No duplicate found, creating new custom food');
+          logger.debug('ADD FOOD', 'Creating sourceMetadata, scanContext:', scanContext);
           let sourceMetadata;
           if (scanContext?.method === 'UPC' || scanContext?.method === 'Manual UPC') {
             sourceMetadata = calciumService.createUPCSourceMetadata(scanContext);
+            logger.debug('ADD FOOD', 'Created UPC sourceMetadata:', sourceMetadata);
           } else if (scanContext?.method === 'OCR') {
             sourceMetadata = calciumService.createOCRSourceMetadata(scanContext);
+            logger.debug('ADD FOOD', 'Created OCR sourceMetadata:', sourceMetadata);
           } else {
             sourceMetadata = calciumService.createManualSourceMetadata();
+            logger.debug('ADD FOOD', 'Created manual sourceMetadata:', sourceMetadata);
           }
 
           await calciumService.saveCustomFood({
@@ -732,6 +749,7 @@
     showSmartScanModal = false;
 
     // Store scan context for source metadata
+    logger.debug('ADD FOOD', 'Scan complete, storing scanContext:', scanData);
     scanContext = scanData;
 
     // Give the UI a moment to update before showing toast and focusing
@@ -741,6 +759,7 @@
       isCustomMode = true;
 
       if (scanData.method === 'UPC' || scanData.method === 'Manual UPC') {
+        logger.debug('ADD FOOD', 'Processing UPC scan data:', scanData);
         // UPC scan provides a full product name
         const brand = scanData.brandName || scanData.brandOwner || '';
         const product = scanData.productName || 'Scanned Product';
@@ -750,10 +769,12 @@
         } else {
           foodName = product;
         }
+        logger.debug('ADD FOOD', 'Set food name from UPC:', foodName);
 
         // Use the centrally-decided serving info
         servingQuantity = scanData.finalServingQuantity || 1;
         servingUnit = scanData.finalServingUnit || 'serving';
+        logger.debug('ADD FOOD', 'Set serving info from UPC:', { servingQuantity, servingUnit });
 
         // Use the final calculated per-serving calcium with fallbacks
         calcium = '';
@@ -764,28 +785,33 @@
         } else if (scanData.calciumFromPercentDV) {
           calcium = scanData.calciumFromPercentDV.toString();
         }
-        
+        logger.debug('ADD FOOD', 'Set calcium from UPC:', calcium);
+
       } else if (scanData.method === 'OCR') {
+        logger.debug('ADD FOOD', 'Processing OCR scan data:', scanData);
         // OCR provides serving size and calcium, but no name
         foodName = ''; // Clear the name to prompt user entry
-        
+
         // Use structured serving data if available
         if (scanData.servingQuantity && scanData.servingMeasure) {
           servingQuantity = scanData.servingQuantity;
-          
+
           // Build complete serving unit with standard measure if available
           servingUnit = scanData.servingMeasure;
           if (scanData.standardMeasureValue && scanData.standardMeasureUnit) {
             servingUnit += ` (${scanData.standardMeasureValue}${scanData.standardMeasureUnit})`;
           }
+          logger.debug('ADD FOOD', 'Using structured serving data:', { servingQuantity, servingUnit });
         } else {
           // Fallback to legacy format
           servingQuantity = 1;
           servingUnit = scanData.servingSize || 'serving';
+          logger.debug('ADD FOOD', 'Using legacy serving format:', { servingQuantity, servingUnit });
         }
-        
+
         // Use direct calcium value (already in mg)
         calcium = scanData.calciumValue ? scanData.calciumValue.toString() : '';
+        logger.debug('ADD FOOD', 'Set calcium from OCR:', calcium);
         
         // Auto-focus the food name input for the user
         const nameInput = document.querySelector('#foodName');

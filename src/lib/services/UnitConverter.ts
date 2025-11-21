@@ -21,6 +21,8 @@
  * Handles volume, weight, and count-based measurements with USDA measure parsing.
  */
 
+import { logger } from '$lib/utils/logger';
+
 export type UnitType = 'volume' | 'weight' | 'count' | 'unknown';
 
 export interface ParsedMeasure {
@@ -216,9 +218,12 @@ export class UnitConverter {
       const containerType = compoundMatch[1]; // "package"
       const innerMeasure = compoundMatch[2]; // "10 oz"
 
+      logger.debug('UNIT CONVERTER', `Detected compound measure: ${containerType} (${innerMeasure})`);
+
       // If the inner measure has a convertible unit, use that instead
       const innerParsed = this.parseSimpleMeasure(innerMeasure);
       if (innerParsed.unitType !== "unknown") {
+        logger.debug('UNIT CONVERTER', `Parsed compound measure to: ${innerParsed.detectedUnit} (${innerParsed.unitType})`);
         return {
           originalQuantity: quantity,
           originalUnit: unitPortion,
@@ -231,6 +236,7 @@ export class UnitConverter {
         };
       }
 
+      logger.debug('UNIT CONVERTER', `Inner measure not convertible, using original: ${unitPortion}`);
       // If inner measure isn't convertible, fall back to no conversion
       return {
         originalQuantity: quantity,

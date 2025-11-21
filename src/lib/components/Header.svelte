@@ -24,6 +24,7 @@
   import { FEATURES } from "$lib/utils/featureFlags";
   import { syncIcon, syncState, setSyncStatus } from "$lib/stores/sync";
   import { SyncService } from "$lib/services/SyncService";
+  import { logger } from "$lib/utils/logger";
 
   export let pageTitle = "Tracking";
   export let showInfoIcon = false;
@@ -105,6 +106,7 @@
       // Success toast is removed for a silent experience
     } catch (error) {
       // Error toast is handled by the service
+      logger.debug('HEADER', 'Manual sync operation failed', error);
     }
   }
 </script>

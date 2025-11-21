@@ -2,6 +2,7 @@
 // Merges proven features from pre-batch test version
 
 import { ImageResizer } from '$lib/utils/imageResize.ts';
+import { logger } from '$lib/utils/logger';
 
 interface TextElement {
   text: string;
@@ -89,6 +90,8 @@ export class OCRService {
 
   async processImage(file: File, captureImage: boolean = false, timeoutMs?: number): Promise<NutritionParseResult> {
     try {
+      logger.debug('OCR', 'Starting OCR processing for file:', file.name, 'size:', file.size);
+
       if (!file || !file.type.startsWith('image/')) {
         throw new Error('Please select a valid image file');
       }
@@ -100,7 +103,9 @@ export class OCRService {
       // Compress if needed
       let processedFile: File = file;
       if (file.size > 1024 * 1024) {
+        logger.debug('OCR', 'Image size exceeds 1MB, compressing...', 'original:', file.size);
         processedFile = await ImageResizer.compressWithFallback(file, 1024 * 1024, 3);
+        logger.debug('OCR', 'Compressed size:', processedFile.size);
       }
 
       // Capture image blob when requested (for test data collection)
@@ -122,6 +127,8 @@ export class OCRService {
       formData.append('isOverlayRequired', 'true');
       formData.append('iscreatesearchablepdf', 'false');
 
+      logger.debug('OCR API', 'Sending request to OCR.space API...');
+
       // Create fetch promise with optional timeout
       const fetchPromise = fetch(this.apiEndpoint, {
         method: 'POST',
@@ -130,6 +137,7 @@ export class OCRService {
 
       let response: Response;
       if (timeoutMs) {
+        logger.debug('OCR API', 'Using timeout:', timeoutMs, 'ms');
         // Race fetch against timeout
         const timeoutPromise = new Promise<never>((_, reject) => {
           setTimeout(() => reject(new Error('OCR_TIMEOUT')), timeoutMs);
@@ -143,6 +151,7 @@ export class OCRService {
         throw new Error(`OCR API error: ${response.status}`);
       }
 
+      logger.debug('OCR API', 'API response received, status:', response.status);
       const result: OCRResponse = await response.json();
       
       if (!result || result.IsErroredOnProcessing) {
@@ -157,8 +166,12 @@ export class OCRService {
       const rawText = parsedResult.ParsedText;
       const overlay = parsedResult.TextOverlay;
 
+      logger.debug('OCR', 'Raw text length:', rawText.length);
+      logger.debug('OCR', 'Has overlay data:', overlay?.HasOverlay ? 'yes' : 'no');
+
       // Use enhanced parsing with multiple strategies
       if (overlay?.HasOverlay && overlay.Lines) {
+        logger.debug('OCR', 'Using enhanced multi-strategy parsing with', overlay.Lines.length, 'lines');
         const parseResult = this.parseWithMultipleStrategies(rawText, overlay.Lines, result);
         // Add captured image blob to result if available
         if (captureImage && imageBlob) {
@@ -166,6 +179,7 @@ export class OCRService {
         }
         return parseResult;
       } else {
+        logger.debug('OCR', 'Using fallback text-only parsing');
         const parseResult = this.parseNutritionDataFallback(rawText, result);
         // Add captured image blob to result if available
         if (captureImage && imageBlob) {
@@ -228,10 +242,12 @@ export class OCRService {
    * @returns Parsed nutrition result using same logic as live OCR
    */
   public parseFromFullAPIResponse(apiResponse: OCRResponse): NutritionParseResult {
+    logger.debug('OCR PARSE', 'Parsing from full API response');
 
     const rawText = apiResponse.ParsedResults[0].ParsedText;
     const lines = apiResponse.ParsedResults[0].TextOverlay?.Lines || [];
 
+    logger.debug('OCR PARSE', 'Using', lines.length, 'pre-grouped lines from API');
 
     // Use existing parsing logic with full API structure
     return this.parseWithMultipleStrategies(rawText, lines, apiResponse);
@@ -305,12 +321,15 @@ export class OCRService {
    * Replaces the old strategy-based approach with clear sequential execution
    */
   private parseWithMultipleStrategies(rawText: string, lines: any[], apiResponse: OCRResponse): NutritionParseResult {
+    logger.debug('OCR PARSE', 'Starting enhanced multi-strategy processing...');
 
     // Normalize OCR text to fix common mistakes BEFORE any parsing
     const normalizedText = this.normalizeOCRText(rawText);
 
     // Extract and preprocess spatial elements
     const textElements: TextElement[] = this.extractTextElements(lines);
+    logger.debug('OCR PARSE', 'Extracted', textElements.length, 'text elements from lines');
+
     textElements.forEach(el => {
       el.text = this.preprocessSpatialText(el);
       el.text = this.normalizeOCRText(el.text); // Also normalize spatial text
@@ -332,27 +351,37 @@ export class OCRService {
     };
 
     // LAYER 1: Spatial Structure Parsing
+    logger.debug('OCR PARSE', '=== LAYER 1: Spatial Structure Parsing ===');
     const spatialResult = this.spatialParse(textElements, preprocessedText);
     Object.assign(result, spatialResult);
+    logger.debug('OCR PARSE', 'Layer 1 results - serving:', result.servingQuantity, result.servingMeasure, 'calcium:', result.calcium);
 
     const afterLayer1 = this.isComplete(result);
+    logger.debug('OCR PARSE', 'Layer 1 complete?', afterLayer1);
 
     // LAYER 2: Text Pattern Matching (fill gaps)
     if (!afterLayer1) {
+      logger.debug('OCR PARSE', '=== LAYER 2: Text Pattern Matching ===');
       this.regexParse(preprocessedText, result);
+      logger.debug('OCR PARSE', 'Layer 2 results - serving:', result.servingQuantity, result.servingMeasure, 'calcium:', result.calcium);
 
       const afterLayer2 = this.isComplete(result);
+      logger.debug('OCR PARSE', 'Layer 2 complete?', afterLayer2);
     }
 
     // LAYER 3: Fuzzy Recovery (last resort)
     if (!this.isComplete(result)) {
+      logger.debug('OCR PARSE', '=== LAYER 3: Fuzzy Recovery ===');
       this.fuzzyParse(textElements, preprocessedText, result);
+      logger.debug('OCR PARSE', 'Layer 3 results - serving:', result.servingQuantity, result.servingMeasure, 'calcium:', result.calcium);
     }
 
     // Calculate confidence and finalize
     result.confidence = this.calculateConfidence(result);
     result.servingSize = this.buildLegacyServingSize(result);
     result.calciumValue = result.calcium;
+
+    logger.debug('OCR PARSE', 'Final result - confidence:', result.confidence, 'serving:', result.servingSize, 'calcium:', result.calcium);
 
     return result;
   }
@@ -589,11 +618,13 @@ export class OCRService {
    * @returns Calcium value in mg, or null if not found
    */
   private parseCalcium(text: string, elements?: TextElement[]): number | null {
+    logger.debug('OCR PARSE', 'Parsing calcium from text and elements...');
 
     // Priority 1: Direct mg values from spatial elements (if available)
     if (elements && elements.length > 0) {
       const mgValue = this.parseCalciumFromSpatialElements(elements);
       if (mgValue !== null) {
+        logger.debug('OCR PARSE', 'Found calcium from spatial elements:', mgValue, 'mg');
         return mgValue;
       }
     }
@@ -601,9 +632,11 @@ export class OCRService {
     // Priority 2: Pattern matching on text
     const textValue = this.parseCalciumFromText(text);
     if (textValue !== null) {
+      logger.debug('OCR PARSE', 'Found calcium from text patterns:', textValue, 'mg');
       return textValue;
     }
 
+    logger.debug('OCR PARSE', 'No calcium value found');
     return null;
   }
 
@@ -611,10 +644,13 @@ export class OCRService {
    * Parse calcium from spatial elements using coordinate-based logic
    */
   private parseCalciumFromSpatialElements(elements: TextElement[]): number | null {
+    logger.debug('OCR PARSE', 'Parsing calcium from spatial elements, count:', elements.length);
+
     // Format 1: Direct mg value (highest confidence)
     // Example: "390mg", "320mg", "60mg", "21 mg" (with optional space), "Omg" (OCR error for 0mg)
     // Also match unit typos: "mv", "mq"
     const mgElements = elements.filter(el => /^\d+\s*m[gqv]$|^Omg$/i.test(el.text.trim()));
+    logger.debug('OCR PARSE', 'Found', mgElements.length, 'mg elements');
 
     // Find calcium label for spatial reference (with fuzzy matching)
     // Matches: "calcium", "caloum", "caburn", "calclum", etc.
@@ -625,6 +661,7 @@ export class OCRService {
     );
 
     if (calciumLabel) {
+      logger.debug('OCR PARSE', 'Found calcium label:', calciumLabel.text, 'at position x:', calciumLabel.x, 'y:', calciumLabel.y);
       // Filter mg elements by spatial proximity to calcium label
       const nearbyMgElements = mgElements.filter(mgEl => {
         const yDistance = Math.abs(mgEl.y - calciumLabel.y);
@@ -644,9 +681,12 @@ export class OCRService {
         return distA - distB;
       });
 
+      logger.debug('OCR PARSE', 'Found', nearbyMgElements.length, 'nearby mg elements');
+
       // Use the closest mg value (primary column)
       if (nearbyMgElements.length > 0) {
         const elementText = nearbyMgElements[0].text.trim();
+        logger.debug('OCR PARSE', 'Closest mg element:', elementText);
 
         // Handle "Omg" as OCR error for "0mg"
         let mgValue: number;
@@ -657,6 +697,7 @@ export class OCRService {
         }
 
         if (this.isValidCalciumValue(mgValue)) {
+          logger.debug('OCR PARSE', 'Valid calcium value from spatial (Format 1):', mgValue, 'mg');
           return mgValue;
         }
       }
@@ -668,11 +709,16 @@ export class OCRService {
       /^\d+mg\d+%$/i.test(el.text.trim())
     );
 
+    if (compactElements.length > 0) {
+      logger.debug('OCR PARSE', 'Found', compactElements.length, 'compact inline calcium elements');
+    }
+
     for (const compactEl of compactElements) {
       const match = compactEl.text.match(/^(\d+)mg/i);
       if (match) {
         const mgValue = parseInt(match[1]);
         if (this.isValidCalciumValue(mgValue)) {
+          logger.debug('OCR PARSE', 'Valid calcium value from spatial (Format 2 - compact):', mgValue, 'mg');
           return mgValue;
         }
       }
@@ -713,11 +759,13 @@ export class OCRService {
         const percent = parseInt(nearbyPercent.text.replace(/[^\d]/g, ''));
         const mgValue = Math.round((percent / 100) * 1300); // FDA DV for calcium
         if (this.isValidCalciumValue(mgValue)) {
+          logger.debug('OCR PARSE', 'Valid calcium value from spatial (Format 3 - percentage):', mgValue, 'mg (from', percent, '%)');
           return mgValue;
         }
       }
     }
 
+    logger.debug('OCR PARSE', 'No valid calcium found in spatial elements');
     return null;
   }
 
@@ -725,6 +773,8 @@ export class OCRService {
    * Parse calcium from raw text using comprehensive regex patterns
    */
   private parseCalciumFromText(text: string): number | null {
+    logger.debug('OCR PARSE', 'Parsing calcium from text patterns...');
+
     // Format 1: "Calcium XXXmg" (with various separators)
     // Matches: "Calcium 390mg", "Calcium: 320mg", "Calcium\t180mg", "• Calcium 60mg", "calcium60mg"
     const directMgPatterns = [
@@ -740,6 +790,7 @@ export class OCRService {
       if (match) {
         const mgValue = parseInt(match[1]);
         if (this.isValidCalciumValue(mgValue)) {
+          logger.debug('OCR PARSE', 'Valid calcium from text (Format 1 - direct mg):', mgValue, 'mg');
           return mgValue;
         }
       }
@@ -752,6 +803,7 @@ export class OCRService {
     if (compactMatch) {
       const mgValue = parseInt(compactMatch[1]);
       if (this.isValidCalciumValue(mgValue)) {
+        logger.debug('OCR PARSE', 'Valid calcium from text (Format 2 - compact inline):', mgValue, 'mg');
         return mgValue;
       }
     }
@@ -763,6 +815,7 @@ export class OCRService {
     if (spacedMatch) {
       const mgValue = parseInt(spacedMatch[1]);
       if (this.isValidCalciumValue(mgValue)) {
+        logger.debug('OCR PARSE', 'Valid calcium from text (Format 3 - spaced):', mgValue, 'mg');
         return mgValue;
       }
     }
@@ -777,6 +830,7 @@ export class OCRService {
       // Only use if it's a valid calcium range (not a percentage like "calcium15")
       // Most calcium %DV values are 0-20%, so >20 likely indicates mg value
       if (mgValue > 20 && this.isValidCalciumValue(mgValue)) {
+        logger.debug('OCR PARSE', 'Valid calcium from text (Format 4 - direct number):', mgValue, 'mg');
         return mgValue;
       }
     }
@@ -798,6 +852,7 @@ export class OCRService {
         // Sanity check: DV% should be 0-200 (some fortified foods exceed 100%)
         if (percent >= 0 && percent <= 200) {
           const mgValue = Math.round((percent / 100) * 1300); // FDA DV for calcium
+          logger.debug('OCR PARSE', 'Valid calcium from text (Format 5 - percentage):', mgValue, 'mg (from', percent, '%)');
           return mgValue;
         }
       }
@@ -810,10 +865,12 @@ export class OCRService {
     if (reversedMatch) {
       const mgValue = parseInt(reversedMatch[1]);
       if (this.isValidCalciumValue(mgValue)) {
+        logger.debug('OCR PARSE', 'Valid calcium from text (Format 6 - reversed):', mgValue, 'mg');
         return mgValue;
       }
     }
 
+    logger.debug('OCR PARSE', 'No valid calcium found in text patterns');
     return null;
   }
 
@@ -835,11 +892,13 @@ export class OCRService {
    * @returns ServingInfo object or null if not found
    */
   private parseServingSize(text: string, elements?: TextElement[]): ServingInfo | null {
+    logger.debug('OCR PARSE', 'Parsing serving size from text and elements...');
 
     // Priority 1: Spatial parsing (if elements available)
     if (elements && elements.length > 0) {
       const spatialResult = this.parseServingSizeFromSpatialElements(elements);
       if (spatialResult) {
+        logger.debug('OCR PARSE', 'Found serving size from spatial elements:', spatialResult.quantity, spatialResult.measure);
         return spatialResult;
       }
     }
@@ -847,9 +906,11 @@ export class OCRService {
     // Priority 2: Text pattern matching
     const textResult = this.parseServingSizeFromText(text);
     if (textResult) {
+      logger.debug('OCR PARSE', 'Found serving size from text patterns:', textResult.quantity, textResult.measure);
       return textResult;
     }
 
+    logger.debug('OCR PARSE', 'No serving size found');
     return null;
   }
 
@@ -1133,6 +1194,7 @@ export class OCRService {
    * @returns Partial result with fields found via spatial analysis
    */
   private spatialParse(elements: TextElement[], preprocessedText: string): Partial<NutritionParseResult> {
+    logger.debug('OCR PARSE', 'Starting spatial structure parsing with', elements.length, 'elements');
 
     const result: Partial<NutritionParseResult> = {
       servingQuantity: null,
@@ -1143,18 +1205,22 @@ export class OCRService {
     };
 
     // Strategy 1: Try table structure detection
+    logger.debug('OCR PARSE', 'Trying table structure detection...');
     const tableResult = this.parseViaTableStructure(elements);
     if (tableResult.servingQuantity !== null || tableResult.calcium !== null) {
+      logger.debug('OCR PARSE', 'Table structure found results:', 'serving:', tableResult.servingQuantity, tableResult.servingMeasure, 'calcium:', tableResult.calcium);
       Object.assign(result, tableResult);
 
       // If we found everything, return early
       if (this.isComplete(result)) {
+        logger.debug('OCR PARSE', 'Table structure parsing complete');
         return result;
       }
     }
 
     // Strategy 2: Line-based grouping (for non-table layouts)
     if (!this.isComplete(result)) {
+      logger.debug('OCR PARSE', 'Trying line-based grouping...');
       const lineResult = this.parseViaLineGrouping(elements);
 
       // Merge line results (don't overwrite existing values)
@@ -1171,6 +1237,8 @@ export class OCRService {
       if (result.calcium === null && lineResult.calcium !== null) {
         result.calcium = lineResult.calcium;
       }
+
+      logger.debug('OCR PARSE', 'Line-based grouping results:', 'serving:', lineResult.servingQuantity, lineResult.servingMeasure, 'calcium:', lineResult.calcium);
     }
 
     return result;
@@ -1190,17 +1258,19 @@ export class OCRService {
 
     // Detect table structure
     const { columns, rows } = this.detectTableStructure(elements);
+    logger.debug('OCR PARSE', 'Detected table structure:', columns.length, 'columns,', rows.length, 'rows');
 
     if (columns.length < 2 || rows.length < 3) {
+      logger.debug('OCR PARSE', 'Table structure insufficient (need 2+ columns, 3+ rows)');
       return result;
     }
-
 
     // Identify the primary value column (first non-label column)
     // Column 0 is typically labels, Column 1 is the primary values
     const primaryValueColumn = columns.length >= 2 ? columns[1] : null;
 
     if (primaryValueColumn) {
+      logger.debug('OCR PARSE', 'Using primary value column at x:', primaryValueColumn.x);
     }
 
     // Find serving size row
@@ -1279,6 +1349,7 @@ export class OCRService {
     };
 
     const lines = this.groupElementsIntoLines(elements);
+    logger.debug('OCR PARSE', 'Grouped elements into', lines.length, 'lines');
 
     for (const line of lines) {
       const lineText = line.elements.map(e => e.text).join(' ');
@@ -1390,12 +1461,15 @@ export class OCRService {
    * @param result - Partial result to fill gaps in
    */
   private regexParse(text: string, result: Partial<NutritionParseResult>): void {
+    logger.debug('OCR PARSE', 'Starting regex pattern matching on text...');
 
     // Parse serving size if not found
     if (!result.servingQuantity || !result.servingMeasure) {
+      logger.debug('OCR PARSE', 'Looking for serving size in text patterns...');
       const servingInfo = this.parseServingSize(text);
 
       if (servingInfo) {
+        logger.debug('OCR PARSE', 'Found serving size via regex:', servingInfo.quantity, servingInfo.measure);
         if (!result.servingQuantity) {
           result.servingQuantity = servingInfo.quantity;
         }
@@ -1411,13 +1485,16 @@ export class OCRService {
 
     // Parse calcium if not found
     if (!result.calcium) {
+      logger.debug('OCR PARSE', 'Looking for calcium in text patterns...');
       const calciumValue = this.parseCalcium(text);
 
       if (calciumValue !== null) {
+        logger.debug('OCR PARSE', 'Found calcium via regex:', calciumValue, 'mg');
         result.calcium = calciumValue;
       }
     }
 
+    logger.debug('OCR PARSE', 'Regex parsing complete');
   }
 
   // ============================================================================
@@ -1434,15 +1511,19 @@ export class OCRService {
    * @param result - Partial result to fill remaining gaps
    */
   private fuzzyParse(elements: TextElement[], text: string, result: Partial<NutritionParseResult>): void {
+    logger.debug('OCR PARSE', 'Starting fuzzy matching and OCR error correction...');
 
     // OCR error corrections for common misreads
     const correctedText = this.applyOCRCorrections(text);
+    logger.debug('OCR PARSE', 'Applied OCR corrections to text');
 
     // Try parsing again with corrected text
     if (!result.servingQuantity || !result.servingMeasure) {
+      logger.debug('OCR PARSE', 'Looking for serving size in corrected text...');
       const servingInfo = this.parseServingSize(correctedText);
 
       if (servingInfo) {
+        logger.debug('OCR PARSE', 'Found serving size via fuzzy matching:', servingInfo.quantity, servingInfo.measure);
         if (!result.servingQuantity) {
           result.servingQuantity = servingInfo.quantity;
         }
@@ -1453,18 +1534,22 @@ export class OCRService {
     }
 
     if (!result.calcium) {
+      logger.debug('OCR PARSE', 'Looking for calcium in corrected text...');
       const calciumValue = this.parseCalcium(correctedText);
 
       if (calciumValue !== null) {
+        logger.debug('OCR PARSE', 'Found calcium via fuzzy matching:', calciumValue, 'mg');
         result.calcium = calciumValue;
       }
     }
 
     // Fuzzy keyword matching (if elements available)
     if (elements && elements.length > 0) {
+      logger.debug('OCR PARSE', 'Trying fuzzy keyword matching on spatial elements...');
       if (!result.calcium) {
         const fuzzyCalcium = this.fuzzyMatchCalcium(elements, correctedText);
         if (fuzzyCalcium !== null) {
+          logger.debug('OCR PARSE', 'Found calcium via fuzzy keyword matching:', fuzzyCalcium, 'mg');
           result.calcium = fuzzyCalcium;
         }
       }
@@ -1472,6 +1557,7 @@ export class OCRService {
       if (!result.servingQuantity || !result.servingMeasure) {
         const fuzzyServing = this.fuzzyMatchServing(elements);
         if (fuzzyServing) {
+          logger.debug('OCR PARSE', 'Found serving via fuzzy keyword matching:', fuzzyServing.quantity, fuzzyServing.measure);
           if (!result.servingQuantity) {
             result.servingQuantity = fuzzyServing.quantity;
           }
@@ -1482,6 +1568,7 @@ export class OCRService {
       }
     }
 
+    logger.debug('OCR PARSE', 'Fuzzy parsing complete');
   }
 
   /**
@@ -1663,7 +1750,8 @@ export class OCRService {
   }
 
   private parseNutritionDataFallback(text: string, apiResponse: OCRResponse): NutritionParseResult {
-    
+    logger.debug('OCR PARSE', 'Using fallback text-only parsing (no spatial data)');
+
     const result: NutritionParseResult = {
       rawText: text,
       servingQuantity: null,
@@ -1675,14 +1763,17 @@ export class OCRService {
       spatialResults: [],
       fullApiResponse: apiResponse
     };
-    
+
     const preprocessedText = this.preprocessText(text);
-    this.parseWithEnhancedRegex(preprocessedText, result);
-    
+    // Use regex parsing since we don't have spatial data
+    this.regexParse(preprocessedText, result);
+
     result.confidence = this.calculateConfidence(result);
     result.servingSize = this.buildLegacyServingSize(result);
     result.calciumValue = result.calcium;
-    
+
+    logger.debug('OCR PARSE', 'Fallback parsing complete - serving:', result.servingSize, 'calcium:', result.calcium);
+
     return result;
   }
 
