@@ -68,7 +68,7 @@
         }
       } catch (error) {
         // Silently handle preload errors to avoid disrupting UX
-        console.debug('Preload failed for:', path, error);
+        logger.debug('PRELOAD', 'Preload failed for:', path, error);
       }
     }, 100); // 100ms delay to avoid excessive preloading
   }

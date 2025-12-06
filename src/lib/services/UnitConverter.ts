@@ -566,7 +566,7 @@ export class UnitConverter {
 
       return parseFloat((originalCalcium * ratio).toFixed(2));
     } catch (error) {
-      console.error('Calcium calculation error:', error);
+      logger.error('Calcium calculation error:', error);
       // Fallback: return original calcium unchanged
       return originalCalcium;
     }

@@ -163,7 +163,7 @@ export class ImageResizer {
     }
 
     if (currentFile.size > maxSizeBytes) {
-      console.warn('Could not compress image below size limit after', maxAttempts, 'attempts');
+      logger.warn('Could not compress image below size limit after', maxAttempts, 'attempts');
       // Return the most compressed version we achieved
     }
 
@@ -496,7 +496,7 @@ export class ImageResizer {
       return processedFile;
 
     } catch (error) {
-      console.warn('Preprocessing failed, using original image:', error);
+      logger.warn('Preprocessing failed, using original image:', error);
       return file; // Fallback to original
     }
   }

@@ -78,7 +78,7 @@ export class SyncTrigger {
       this.journalDebounceTimer = timer;
     } else {
       // Invalid parameters, fallback to full sync
-      console.warn('[SYNC TRIGGER] Invalid parameters, falling back to full sync');
+      logger.warn('[SYNC TRIGGER] Invalid parameters, falling back to full sync');
       if (this.allDebounceTimer) clearTimeout(this.allDebounceTimer);
       timer = window.setTimeout(async () => {
         this.allDebounceTimer = null;
@@ -114,7 +114,7 @@ export class SyncTrigger {
         await syncService.syncMonth(monthKey);
       }
     } catch (error) {
-      console.warn('Automatic data change sync failed:', error);
+      logger.warn('Automatic data change sync failed:', error);
     }
   }
 

@@ -508,7 +508,7 @@
       closeModal();
       dispatch("foodDeleted");
     } catch (error) {
-      console.error("Error deleting food:", error);
+      logger.error("Error deleting food:", error);
     }
   }
 
@@ -521,7 +521,7 @@
 
     // Validate that we have a valid food ID
     if (!currentFoodData.id || typeof currentFoodData.id !== "number") {
-      console.error(
+      logger.error(
         "Cannot toggle favorite - invalid food ID:",
         currentFoodData
       );

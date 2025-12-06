@@ -320,7 +320,7 @@
       });
       torchEnabled = !torchEnabled;
     } catch (error) {
-      console.error('Failed to toggle torch:', error);
+      logger.error('Failed to toggle torch:', error);
     }
   }
 
@@ -354,7 +354,7 @@
       }, 800);
 
     } catch (error) {
-      console.warn('Tap-to-focus failed:', error);
+      logger.warn('Tap-to-focus failed:', error);
       focusIndicatorPosition = null;
     }
   }
@@ -706,7 +706,7 @@
         navigator.vibrate(50);
       }
     } catch (err) {
-      console.error('Failed to copy to clipboard:', err);
+      logger.error('Failed to copy to clipboard:', err);
       // Fallback: create temporary textarea
       const textarea = document.createElement('textarea');
       textarea.value = JSON.stringify(debugJson, null, 2);
