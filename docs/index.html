@@ -1,245 +1,472 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>My Calcium - A Simple Calcium Tracker</title>
-    <style>
-      :root {
-        --primary-color: #3b82f6;
-        --secondary-color: #f3f4f6;
-        --text-primary: #1f2937;
-        --text-secondary: #4b5563;
-        --background-color: #ffffff;
-      }
-      body {
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-          Helvetica, Arial, sans-serif;
-        margin: 0;
-        background-color: var(--background-color);
-        color: var(--text-primary);
-        line-height: 1.6;
-      }
-      .container {
-        max-width: 960px;
-        margin: 0 auto;
-        padding: 20px;
-      }
-      header {
-        text-align: center;
-        padding: 40px 20px;
-      }
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Track your daily calcium intake with this free, privacy-focused web app. No ads, no tracking - just simple daily nutrition tracking with comprehensive food database.">
+  <title>My Calcium - Calcium Tracker</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #fdfdfd;
+      color: #333;
+      margin: 0;
+      padding: 0;
+      line-height: 1.6;
+    }
+    header, section, footer {
+      max-width: 800px;
+      margin: 2rem auto;
+      padding: 0 1rem;
+    }
+    h1, h2 {
+      color: #2a2a2a;
+    }
+    header h1 {
+      font-size: 3em;
+      margin: 0.5em 0 0.2em;
+      text-align: center;
+    }
+    .subtitle {
+      font-size: 1.2rem;
+      color: #555;
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+
+    /* Benefits */
+    .benefits {
+      display: flex;
+      gap: 1rem;
+      margin: 1.5rem 0;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .benefit {
+      flex: 1;
+      min-width: 200px;
+      text-align: center;
+    }
+    .benefit .icon {
+      font-size: 2rem;
+      display: block;
+      margin-bottom: 0.5rem;
+    }
+
+    /* Emphasis Box (for disclaimer and privacy) */
+    .emphasis-box {
+      background: #fef3c7;
+      border-left: 4px solid #f59e0b;
+      padding: 1rem 1.5rem;
+      margin: 2rem 0;
+      border-radius: 4px;
+      color: #333;
+      font-size: 0.95rem;
+    }
+    .emphasis-box h2 {
+      margin-top: 0;
+      text-align: center;
+      color: #333;
+    }
+
+    /* Modal Dialog */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-overlay:target {
+      display: flex;
+    }
+    .modal-content {
+      background: white;
+      padding: 2rem;
+      border-radius: 8px;
+      max-width: 500px;
+      width: 90%;
+      max-height: 80vh;
+      overflow-y: auto;
+      position: relative;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    }
+    .modal-content h3 {
+      margin-top: 0;
+      color: #1e40af;
+      font-size: 1.3rem;
+    }
+    .modal-content p {
+      margin: 0.5rem 0;
+    }
+    .modal-content strong {
+      color: #1e40af;
+    }
+    .modal-content ul {
+      margin: 0.25rem 0 0.75rem 0;
+      padding-left: 1.5rem;
+      line-height: 1.4;
+    }
+    .modal-content li {
+      margin: 0.25rem 0;
+    }
+    .modal-close {
+      position: absolute;
+      top: 0.5rem;
+      right: 0.75rem;
+      font-size: 2rem;
+      color: #666;
+      text-decoration: none;
+      line-height: 1;
+    }
+    .modal-close:hover {
+      color: #333;
+    }
+    .cta-button-secondary {
+      display: inline-block;
+      background: white;
+      color: #3b82f6;
+      border: 2px solid #3b82f6;
+      padding: 0.75rem 1.5rem;
+      margin: 1rem 0.5rem;
+      text-decoration: none;
+      border-radius: 6px;
+      font-weight: bold;
+      transition: all 0.2s ease;
+    }
+    .cta-button-secondary:hover {
+      background: #eff6ff;
+      transform: translateY(-2px);
+    }
+
+    /* CTA Button */
+    .cta-button {
+      display: inline-block;
+      background: #3b82f6;
+      color: white;
+      padding: 0.75rem 1.5rem;
+      margin: 1rem 0.5rem;
+      text-decoration: none;
+      border-radius: 6px;
+      font-weight: bold;
+      transition: all 0.2s ease;
+    }
+    .cta-button:hover {
+      background: #2563eb;
+      transform: translateY(-2px);
+    }
+    .cta-center {
+      text-align: center;
+    }
+
+    /* Screenshot Carousel */
+    .carousel {
+      display: flex;
+      overflow-x: auto;
+      scroll-snap-type: x mandatory;
+      gap: 1rem;
+      padding: 1rem 0 2rem;
+      -webkit-overflow-scrolling: touch;
+    }
+    .carousel > div {
+      flex: 0 0 auto;
+      scroll-snap-align: start;
+      width: 280px;
+    }
+    .carousel img {
+      width: 100%;
+      height: auto;
+      min-height: 500px;
+      object-fit: cover;
+      border: 1px solid #ddd;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+    .caption {
+      text-align: center;
+      font-size: 0.9rem;
+      margin-top: 0.5rem;
+      color: #666;
+    }
+
+    /* Features */
+    section h2 {
+      font-size: 2em;
+      margin-bottom: 1rem;
+      text-align: center;
+    }
+    .features-list {
+      list-style: none;
+      padding: 0;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 0.5rem;
+    }
+    .features-list li {
+      padding: 0.25rem 0;
+    }
+
+    /* How It Works */
+    .steps {
+      display: flex;
+      gap: 1.5rem;
+      margin-top: 1.5rem;
+      flex-wrap: wrap;
+    }
+    .step {
+      flex: 1;
+      min-width: 220px;
+      text-align: center;
+    }
+    .step-number {
+      width: 40px;
+      height: 40px;
+      background: #3b82f6;
+      color: white;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 1rem;
+      font-weight: bold;
+      font-size: 1.2rem;
+    }
+    .step h3 {
+      margin: 0.5rem 0;
+    }
+    .step p {
+      color: #666;
+      font-size: 0.95rem;
+    }
+
+    /* Footer */
+    footer {
+      text-align: center;
+      padding: 2rem 1rem;
+      border-top: 1px solid #ddd;
+      color: #666;
+      font-size: 0.9rem;
+    }
+    footer a {
+      color: #3b82f6;
+      text-decoration: none;
+    }
+    footer a:hover {
+      text-decoration: underline;
+    }
+
+    /* Device Note */
+    .device-note {
+      text-align: center;
+      margin: 1rem 0;
+      color: #666;
+      font-size: 0.95rem;
+    }
+
+    @media (max-width: 600px) {
       header h1 {
-        font-size: 3em;
-        margin: 0;
+        font-size: 2.5em;
       }
-      header p {
-        font-size: 1.2em;
-        color: var(--text-secondary);
-        margin-top: 10px;
+      .benefits {
+        flex-direction: column;
       }
-      .badges {
-        margin-top: 20px;
+      .carousel > div {
+        width: 240px;
       }
-      .badge {
-        display: inline-block;
-        background: #000;
-        color: #fff;
-        padding: 10px 20px;
-        border-radius: 5px;
-        text-decoration: none;
-        margin: 5px;
-        font-weight: bold;
-      }
-      .demo-button {
-        display: inline-block;
-        background-color: var(--primary-color);
-        color: white;
-        padding: 15px 30px;
-        margin-top: 20px;
-        border-radius: 8px;
-        text-decoration: none;
-        font-size: 1.1em;
-        font-weight: 500;
-        transition: background-color 0.3s;
-      }
-      .demo-button:hover {
-        background-color: #2563eb;
-      }
-      .screenshots {
-        text-align: center;
-        padding: 40px 0;
-        background-color: var(--secondary-color);
-      }
-      .screenshots h2 {
-        margin-bottom: 30px;
-        font-size: 2em;
-      }
-      .screenshots-grid {
-        display: flex;
-        justify-content: center;
-        gap: 20px;
-        flex-wrap: wrap;
-      }
-      .screenshots-grid img {
-        max-width: 200px;
-        border-radius: 15px;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-      }
-      section {
-        padding: 40px 20px;
-      }
-      section h2 {
-        text-align: center;
-        font-size: 2em;
-        margin-bottom: 30px;
-      }
-      .features-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-        gap: 30px;
-        margin-top: 20px;
-      }
-      .feature {
-        background: var(--secondary-color);
-        padding: 25px;
-        border-radius: 8px;
-        text-align: center;
-      }
-      .feature h3 {
-        margin-top: 0;
-        color: var(--primary-color);
-      }
-      .privacy-section {
-        background: var(--text-primary);
-        color: #fff;
-      }
-      .privacy-section h2 {
-        color: #fff;
-      }
-      .privacy-section p {
-        max-width: 700px;
-        margin: 0 auto;
-        text-align: center;
-        font-size: 1.1em;
-      }
-      footer {
-        text-align: center;
-        padding: 20px;
-        background: var(--secondary-color);
-        color: var(--text-secondary);
-        font-size: 0.9em;
-      }
-      footer a {
-        color: var(--primary-color);
-        text-decoration: none;
-      }
-    </style>
-  </head>
-  <body>
-    <div class="container">
-      <header>
-        <h1>My Calcium</h1>
-        <p>A simple, private, and effective way to track your daily calcium intake.</p>
-        <div class="badges">
-            <span class="badge">No Ads</span>
-            <span class="badge">No Trackers</span>
-            <span class="badge">100% Free</span>
-        </div>
-        <a href="https://ca-pwa.pages.dev//" class="demo-button">Launch Live Demo</a>
-      </header>
+    }
+  </style>
+</head>
+<body>
+<header>
+  <h1>My Calcium</h1>
+  <p class="subtitle">Track your daily calcium intake with privacy and simplicity</p>
+
+  <div class="benefits">
+    <div class="benefit">
+      <span class="icon">🥛</span>
+      <p>3,876+ curated foods</p>
     </div>
-
-    <div class="screenshots">
-        <div class="container">
-            <h2>Modern. Fast. Intuitive.</h2>
-            <div class="screenshots-grid">
-                <!-- TODO: Replace these placeholders with actual screenshots -->
-                <img src="https://via.placeholder.com/200x400.png/3b82f6/ffffff?text=Main+Screen" alt="Main tracking screen">
-                <img src="https://via.placeholder.com/200x400.png/3b82f6/ffffff?text=Add+Food" alt="Add food search modal">
-                <img src="https://via.placeholder.com/200x400.png/3b82f6/ffffff?text=Stats+Page" alt="Statistics page with charts">
-                <img src="https://via.placeholder.com/200x400.png/3b82f6/ffffff?text=Settings" alt="Settings and Sync page">
-            </div>
-        </div>
+    <div class="benefit">
+      <span class="icon">📱</span>
+      <p>Works online or offline</p>
     </div>
+    <div class="benefit">
+      <span class="icon">🔒</span>
+      <p>100% private - no tracking</p>
+    </div>
+  </div>
 
-    <main class="container">
-      <section class="features">
-        <h2>Everything You Need</h2>
-        <div class="features-grid">
-          <div class="feature">
-            <h3>Comprehensive Database</h3>
-            <p>
-              Quickly search 3,876+ curated foods from the USDA database to log your entries with accurate calcium values.
-            </p>
-          </div>
-          <div class="feature">
-            <h3>Smart Scan</h3>
-            <p>
-              Add foods instantly by scanning UPC barcodes with your device camera. Supports USDA and OpenFoodFacts databases.
-            </p>
-          </div>
-          <div class="feature">
-            <h3>OCR Label Scanning</h3>
-            <p>
-              Extract calcium content directly from nutrition label photos using optical character recognition (optional feature).
-            </p>
-          </div>
-          <div class="feature">
-            <h3>Cross-Device Sync</h3>
-            <p>
-              Use the app on your phone and tablet with seamless, end-to-end encrypted data synchronization.
-            </p>
-          </div>
-          <div class="feature">
-            <h3>Custom Foods & Favorites</h3>
-            <p>
-              Add your own custom foods and mark any item as a favorite. The app remembers your serving preferences for faster tracking.
-            </p>
-          </div>
-          <div class="feature">
-            <h3>Insightful Statistics</h3>
-            <p>
-              Visualize your intake with daily, weekly, monthly, and yearly charts to see your progress at a glance.
-            </p>
-          </div>
-          <div class="feature">
-            <h3>Works Offline</h3>
-            <p>
-              As a full Progressive Web App, My Calcium works perfectly even without an internet connection.
-            </p>
-          </div>
-          <div class="feature">
-            <h3>Data Export & Reports</h3>
-            <p>
-              Generate printable reports to share with a healthcare provider, export to CSV, and create full backups of your data.
-            </p>
-          </div>
-        </div>
-      </section>
+  <div class="cta-center">
+    <a class="cta-button" href="https://ca-pwa.pages.dev/" target="_blank">Try It Now</a>
+    <a class="cta-button-secondary" href="#install-modal">📱 Install to Home Screen</a>
+  </div>
+</header>
 
-      <section class="privacy-section">
-        <h2>Privacy First. Always.</h2>
-        <p>
-            Your health data is yours. My Calcium is a "local-first" app, meaning all data is stored directly on your device. The optional sync feature uses end-to-end encryption, so not even the server can read your data. No analytics, no tracking, no accounts needed.
-        </p>
-      </section>
+<!-- Install Instructions Modal -->
+<div id="install-modal" class="modal-overlay">
+  <div class="modal-content">
+    <a href="#" class="modal-close">&times;</a>
+    <h3>📱 Install to Home Screen</h3>
 
-       <section class="tech-stuff">
-        <h2>Open & Transparent</h2>
-        <p style="text-align: center;">
-          My Calcium is free and open-source software built with modern, privacy-respecting technology. <br>
-          Check out the <a href="https://github.com/NateEaton/Ca-pwa" target="_blank" rel="noopener">source code on GitHub</a>.
-        </p>
-      </section>
-    </main>
+    <p>After clicking <strong>Try It Now</strong> to open the app in browser, take
+    the following steps (depending on your device).</p>
+    <p><strong>Android (Chrome/Edge):</strong></p>
+    <ul>
+      <li>Tap the menu (⋮) → <strong>Add to Home screen</strong> or <strong>Install app</strong></li>
+      <li>Confirm to add the app icon to your home screen</li>
+    </ul>
 
-    <footer>
-      <div class="container">
-        <p>
-          Built by Nathan A. Eaton Jr. &copy; 2025 | Licensed under GPLv3.
-        </p>
-      </div>
-    </footer>
-  </body>
+    <p><strong>iOS (Safari):</strong></p>
+    <ul>
+      <li>Tap the Share button <strong>⎋</strong> (bottom center)</li>
+      <li>Scroll down and tap <strong>Add to Home Screen</strong></li>
+      <li>Tap <strong>Add</strong> to confirm</li>
+    </ul>
+
+    <p style="margin-top: 0.75rem; font-size: 0.9rem; font-style: italic;">
+      Once installed, the app works offline and opens like a native app with no browser UI.
+    </p>
+  </div>
+</div>
+
+<section>
+  <h2>What is My Calcium?</h2>
+  <p>
+    My Calcium is a privacy-focused Progressive Web App for tracking daily calcium intake to support
+    bone health and meet nutritional goals. All data stays on your device—no server, no tracking, no accounts.
+  </p>
+  <p>
+    This app is designed for anyone monitoring calcium intake for health reasons, from those managing
+    osteoporosis to athletes optimizing nutrition. Track your intake with comprehensive food data,
+    barcode scanning, and insightful statistics.
+  </p>
+</section>
+
+<section>
+  <h2>Features</h2>
+  <ul class="features-list">
+    <li>✓ 3,876+ curated USDA foods</li>
+    <li>✓ UPC barcode scanning</li>
+    <li>✓ OCR label scanning</li>
+    <li>✓ Custom foods & favorites</li>
+    <li>✓ Smart serving memory</li>
+    <li>✓ Cross-device sync (encrypted)</li>
+    <li>✓ Daily, weekly, monthly stats</li>
+    <li>✓ Progress visualization</li>
+    <li>✓ Printable reports</li>
+    <li>✓ CSV export & backups</li>
+    <li>✓ Works completely offline</li>
+    <li>✓ Install as mobile app</li>
+  </ul>
+</section>
+
+<section>
+  <h2>How It Works</h2>
+  <div class="steps">
+    <div class="step">
+      <div class="step-number">1</div>
+      <h3>Find Your Foods</h3>
+      <p>Search the database, scan barcodes, or add custom foods with calcium content</p>
+    </div>
+    <div class="step">
+      <div class="step-number">2</div>
+      <h3>Log Your Intake</h3>
+      <p>Add foods throughout the day with automatic serving size memory and favorites</p>
+    </div>
+    <div class="step">
+      <div class="step-number">3</div>
+      <h3>Track Progress</h3>
+      <p>View daily totals, weekly trends, and long-term statistics to meet your goals</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>Screenshots</h2>
+  <div class="carousel">
+    <div>
+      <img src="screenshots/main-screen.png" alt="Main tracking screen" />
+      <div class="caption">Daily Tracker</div>
+    </div>
+    <div>
+      <img src="screenshots/food-search.png" alt="Food database search" />
+      <div class="caption">Food Search</div>
+    </div>
+    <div>
+      <img src="screenshots/barcode-scan.png" alt="Barcode scanner" />
+      <div class="caption">Barcode Scanner</div>
+    </div>
+    <div>
+      <img src="screenshots/add-food.png" alt="Adding food entry" />
+      <div class="caption">Add Food</div>
+    </div>
+    <div>
+      <img src="screenshots/favorites.png" alt="Favorite foods" />
+      <div class="caption">Favorites</div>
+    </div>
+    <div>
+      <img src="screenshots/custom-foods.png" alt="Custom food creation" />
+      <div class="caption">Custom Foods</div>
+    </div>
+    <div>
+      <img src="screenshots/daily-stats.png" alt="Daily statistics" />
+      <div class="caption">Daily Stats</div>
+    </div>
+    <div>
+      <img src="screenshots/weekly-chart.png" alt="Weekly progress chart" />
+      <div class="caption">Weekly Progress</div>
+    </div>
+    <div>
+      <img src="screenshots/monthly-view.png" alt="Monthly overview" />
+      <div class="caption">Monthly View</div>
+    </div>
+    <div>
+      <img src="screenshots/reports.png" alt="Printable reports" />
+      <div class="caption">Reports</div>
+    </div>
+    <div>
+      <img src="screenshots/settings.png" alt="Settings and sync" />
+      <div class="caption">Settings</div>
+    </div>
+    <div>
+      <img src="screenshots/export.png" alt="Data export options" />
+      <div class="caption">Export Data</div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="emphasis-box">
+    <h2>Privacy First. Always.</h2>
+    <p>
+      Your health data is yours. My Calcium is a "local-first" app, meaning all data is stored directly on your device.
+      The optional sync feature uses end-to-end encryption, so not even the server can read your data. No analytics,
+      no tracking, no accounts needed. Your nutrition data never leaves your device unless you choose to sync or export it.
+    </p>
+  </div>
+</section>
+
+<section>
+  <h2>Open & Transparent</h2>
+  <p>
+    My Calcium is free and open-source software built with modern, privacy-respecting technology. This app is and always
+    will be free, with no ads or tracking. It's a personal project shared in the hope that it helps others maintain
+    optimal calcium intake and bone health.
+  </p>
+</section>
+
+<footer>
+  <p>Built by Nathan A. Eaton Jr. &copy; 2025 | Licensed under GPLv3</p>
+  <p style="margin-top: 0.5rem;">
+    <a href="https://github.com/NateEaton/Ca-pwa" target="_blank">GitHub Repository</a> •
+    <a href="https://github.com/NateEaton/Ca-pwa/issues" target="_blank">Report Issues</a>
+  </p>
+  <p style="margin-top: 1rem; font-size: 0.85rem;">Made with care for better bone health</p>
+</footer>
+</body>
 </html>
