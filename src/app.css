@@ -141,6 +141,9 @@ html {
   --secondary-color: #ffb300;
 }
 
+/* Color Scheme Support - these colors can be dynamically overridden via JavaScript */
+/* Blue is the default color scheme (already defined in :root) */
+
 /* Development environment color scheme */
 [data-env="development"] {
   /* Orange color scheme for dev environment - impossible to miss */

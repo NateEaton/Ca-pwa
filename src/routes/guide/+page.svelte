@@ -25,6 +25,37 @@
 </svelte:head>
 
 <div class="guide-container">
+  <details class="guide-section" open>
+    <summary>
+      <span class="material-icons">rocket_launch</span>
+      Getting Started
+    </summary>
+    <div class="section-content">
+      <h4>Welcome to My Calcium!</h4>
+      <p>
+        My Calcium helps you track your daily calcium intake to support bone health and meet
+        nutritional goals. All your data stays private on your device, and you can use the app
+        offline.
+      </p>
+
+      <h4>First Steps</h4>
+      <ol class="steps-list">
+        <li>
+          <strong>Find Your Foods:</strong> Search the database, scan barcodes, or add custom
+          foods with calcium content
+        </li>
+        <li>
+          <strong>Log Your Intake:</strong> Add foods throughout the day with automatic serving
+          size memory and favorites
+        </li>
+        <li>
+          <strong>Track Progress:</strong> View daily totals, weekly trends, and long-term
+          statistics to meet your goals
+        </li>
+      </ol>
+    </div>
+  </details>
+
   <details class="guide-section">
     <summary>
       <span class="material-icons">track_changes</span>
@@ -185,7 +216,8 @@
       </p>
       <p>
         <strong>Settings Page:</strong> Adjust your <span class="material-icons inline-icon">flag</span> daily goal,
-        change the <span class="material-icons inline-icon">palette</span> app theme,
+        change the <span class="material-icons inline-icon">brightness_6</span> app theme and
+        <span class="material-icons inline-icon">palette</span> color,
         and manage data {#if FEATURES.SYNC_ENABLED}sync, {/if}exports, and backups.
       </p>
     </div>
@@ -303,12 +335,12 @@
       <p>
         Go to <strong>Settings > App > Check for Updates</strong> to manually check
         for new versions. If an update is available, the button will change to
-        "Install Update" and be highlighted.
+        "Update App" and be highlighted.
       </p>
 
       <h4>Installing Updates</h4>
       <p>
-        When you're ready to update, tap <strong>Install Update</strong>. The app
+        When you're ready to update, tap <strong>Update App</strong>. The app
         will reload with the new version. All your journal entries, custom foods,
         favorites, and settings are safely preserved during the update process.
       </p>

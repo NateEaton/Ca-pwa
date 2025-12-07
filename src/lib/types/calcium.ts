@@ -75,6 +75,7 @@ export interface CalciumSettings {
   sortBy: 'time' | 'name' | 'calcium';
   sortOrder: 'asc' | 'desc';
   theme?: 'auto' | 'light' | 'dark';
+  colorScheme?: 'blue' | 'purple' | 'green' | 'orange' | 'red' | 'teal';
 }
 
 export interface BackupData {
