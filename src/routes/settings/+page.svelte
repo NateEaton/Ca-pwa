@@ -28,6 +28,7 @@
 
   let dailyGoal = 1000;
   let selectedTheme = "auto";
+  let selectedColorScheme = "blue";
   let isLoading = true;
   let showBackupModal = false;
   let showExportModal = false;
@@ -47,6 +48,10 @@
       const settings = await calciumService.getSettings();
       dailyGoal = settings.dailyGoal;
       selectedTheme = settings.theme || "auto";
+      selectedColorScheme = settings.colorScheme || "blue";
+
+      // Apply the color scheme on mount
+      applyColorScheme(selectedColorScheme);
     } catch (error) {
       console.error("Error loading settings:", error);
       showToast("Error loading settings", "error");
@@ -103,6 +108,69 @@
     } catch (error) {
       console.error("Error saving theme:", error);
       showToast("Error saving theme", "error");
+    }
+  }
+
+  // Apply color scheme to document
+  function applyColorScheme(scheme) {
+    const colorMap = {
+      blue: { primary: '#1976d2', dark: '#1565c0' },
+      purple: { primary: '#7b1fa2', dark: '#6a1b9a' },
+      green: { primary: '#388e3c', dark: '#2e7d32' },
+      orange: { primary: '#f57c00', dark: '#ef6c00' },
+      red: { primary: '#d32f2f', dark: '#c62828' },
+      teal: { primary: '#00796b', dark: '#00695c' }
+    };
+
+    const colors = colorMap[scheme];
+    if (colors) {
+      document.documentElement.style.setProperty('--primary-color', colors.primary);
+      document.documentElement.style.setProperty('--primary-color-dark', colors.dark);
+
+      // Update alpha variants
+      const rgb = hexToRgb(colors.primary);
+      if (rgb) {
+        document.documentElement.style.setProperty('--primary-alpha-5', `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.05)`);
+        document.documentElement.style.setProperty('--primary-alpha-10', `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.1)`);
+        document.documentElement.style.setProperty('--error-alpha-10', `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.1)`);
+      }
+
+      // Update theme-color meta tag for Android system bar
+      const metaThemeColor = document.querySelector('meta[name="theme-color"]');
+      if (metaThemeColor) {
+        metaThemeColor.setAttribute('content', colors.primary);
+      }
+
+      // Also update success-color to match primary
+      document.documentElement.style.setProperty('--success-color', colors.primary);
+    }
+  }
+
+  // Helper function to convert hex to RGB
+  function hexToRgb(hex) {
+    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    return result ? {
+      r: parseInt(result[1], 16),
+      g: parseInt(result[2], 16),
+      b: parseInt(result[3], 16)
+    } : null;
+  }
+
+  // Update color scheme setting
+  async function updateColorScheme(newScheme) {
+    if (!calciumService) return;
+
+    try {
+      await calciumService.updateSettings({ colorScheme: newScheme });
+      selectedColorScheme = newScheme;
+
+      // Apply the color scheme immediately
+      applyColorScheme(newScheme);
+
+      showToast("Color scheme updated", "success");
+    } catch (error) {
+      console.error("Error updating color scheme:", error);
+      showToast("Error saving color scheme", "error");
     }
   }
 
@@ -202,10 +270,10 @@
       <h3 class="section-title">Appearance</h3>
 
       <div class="setting-item inline">
-        <span class="material-icons setting-icon">palette</span>
+        <span class="material-icons setting-icon">brightness_6</span>
         <div class="setting-info">
           <span class="setting-title">Theme</span>
-          <span class="setting-subtitle">Choose your preferred appearance</span>
+          <span class="setting-subtitle">Light, dark, or auto mode</span>
         </div>
         <div class="setting-control">
           <select
@@ -217,6 +285,84 @@
             <option value="light">Light</option>
             <option value="dark">Dark</option>
           </select>
+        </div>
+      </div>
+
+      <div class="setting-item inline">
+        <span class="material-icons setting-icon">palette</span>
+        <div class="setting-info">
+          <span class="setting-title">Color</span>
+          <span class="setting-subtitle">Choose your accent color</span>
+        </div>
+        <div class="setting-control">
+          <div class="color-scheme-selector">
+            <button
+              class="color-swatch"
+              class:active={selectedColorScheme === 'blue'}
+              style="--swatch-color: #1976d2;"
+              on:click={() => updateColorScheme('blue')}
+              aria-label="Blue color scheme"
+            >
+              {#if selectedColorScheme === 'blue'}
+                <span class="material-icons">check</span>
+              {/if}
+            </button>
+            <button
+              class="color-swatch"
+              class:active={selectedColorScheme === 'purple'}
+              style="--swatch-color: #7b1fa2;"
+              on:click={() => updateColorScheme('purple')}
+              aria-label="Purple color scheme"
+            >
+              {#if selectedColorScheme === 'purple'}
+                <span class="material-icons">check</span>
+              {/if}
+            </button>
+            <button
+              class="color-swatch"
+              class:active={selectedColorScheme === 'green'}
+              style="--swatch-color: #388e3c;"
+              on:click={() => updateColorScheme('green')}
+              aria-label="Green color scheme"
+            >
+              {#if selectedColorScheme === 'green'}
+                <span class="material-icons">check</span>
+              {/if}
+            </button>
+            <button
+              class="color-swatch"
+              class:active={selectedColorScheme === 'orange'}
+              style="--swatch-color: #f57c00;"
+              on:click={() => updateColorScheme('orange')}
+              aria-label="Orange color scheme"
+            >
+              {#if selectedColorScheme === 'orange'}
+                <span class="material-icons">check</span>
+              {/if}
+            </button>
+            <button
+              class="color-swatch"
+              class:active={selectedColorScheme === 'red'}
+              style="--swatch-color: #d32f2f;"
+              on:click={() => updateColorScheme('red')}
+              aria-label="Red color scheme"
+            >
+              {#if selectedColorScheme === 'red'}
+                <span class="material-icons">check</span>
+              {/if}
+            </button>
+            <button
+              class="color-swatch"
+              class:active={selectedColorScheme === 'teal'}
+              style="--swatch-color: #00796b;"
+              on:click={() => updateColorScheme('teal')}
+              aria-label="Teal color scheme"
+            >
+              {#if selectedColorScheme === 'teal'}
+                <span class="material-icons">check</span>
+              {/if}
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -276,10 +422,10 @@
       >
         <span class="material-icons setting-icon">{$pwaUpdateAvailable ? 'system_update' : 'refresh'}</span>
         <div class="setting-info">
-          <span class="setting-title">{$pwaUpdateAvailable ? 'Install Update' : 'Check for Updates'}</span>
+          <span class="setting-title">{$pwaUpdateAvailable ? 'Update App' : 'Check for Updates'}</span>
           <span class="setting-subtitle">
             {#if $pwaUpdateAvailable}
-              New version available - tap to install
+              New version available - tap to update
             {:else}
               Manually check for app updates
             {/if}
@@ -484,6 +630,53 @@
     box-shadow: 0 0 0 2px var(--primary-alpha-10);
   }
 
+  /* Color Scheme Selector */
+  .color-scheme-selector {
+    display: flex;
+    gap: var(--spacing-sm);
+    flex-wrap: wrap;
+  }
+
+  .color-swatch {
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 50%;
+    border: 2px solid var(--divider);
+    background-color: var(--swatch-color);
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+  }
+
+  .color-swatch:hover {
+    transform: scale(1.1);
+    border-color: var(--text-secondary);
+  }
+
+  .color-swatch.active {
+    border-color: var(--swatch-color);
+    border-width: 3px;
+    box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--swatch-color);
+  }
+
+  .color-swatch .material-icons {
+    font-size: 1.25rem;
+    color: white;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  }
+
+  .color-swatch:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--text-secondary);
+  }
+
+  .color-swatch.active:focus {
+    box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--swatch-color), 0 0 0 6px var(--text-secondary);
+  }
+
   /* Mobile responsive */
   @media (max-width: 480px) {
     .settings-container {
@@ -523,6 +716,16 @@
 
     .input-suffix {
       font-size: var(--font-size-xs);
+    }
+
+    /* Smaller color swatches on mobile */
+    .color-swatch {
+      width: 2rem;
+      height: 2rem;
+    }
+
+    .color-swatch .material-icons {
+      font-size: 1rem;
     }
   }
 </style>

@@ -49,6 +49,7 @@
     }
 
     initializeTheme();
+    initializeColorScheme();
     initializeEnvironment();
 
     if (typeof window !== "undefined") {
@@ -146,6 +147,60 @@
     } else {
       document.documentElement.setAttribute("data-theme", theme);
     }
+  }
+
+  async function initializeColorScheme() {
+    try {
+      const settings = await calciumService.getSettings();
+      const colorScheme = settings.colorScheme || (__APP_ENV__ === 'development' ? 'orange' : 'blue');
+      applyColorScheme(colorScheme);
+    } catch (error) {
+      console.error("Error loading color scheme:", error);
+      // Apply default based on environment
+      applyColorScheme(__APP_ENV__ === 'development' ? 'orange' : 'blue');
+    }
+  }
+
+  function applyColorScheme(scheme) {
+    const colorMap = {
+      blue: { primary: '#1976d2', dark: '#1565c0' },
+      purple: { primary: '#7b1fa2', dark: '#6a1b9a' },
+      green: { primary: '#388e3c', dark: '#2e7d32' },
+      orange: { primary: '#f57c00', dark: '#ef6c00' },
+      red: { primary: '#d32f2f', dark: '#c62828' },
+      teal: { primary: '#00796b', dark: '#00695c' }
+    };
+
+    const colors = colorMap[scheme];
+    if (colors) {
+      document.documentElement.style.setProperty('--primary-color', colors.primary);
+      document.documentElement.style.setProperty('--primary-color-dark', colors.dark);
+
+      // Update alpha variants
+      const rgb = hexToRgb(colors.primary);
+      if (rgb) {
+        document.documentElement.style.setProperty('--primary-alpha-5', `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.05)`);
+        document.documentElement.style.setProperty('--primary-alpha-10', `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.1)`);
+      }
+
+      // Update theme-color meta tag for Android system bar
+      const metaThemeColor = document.querySelector('meta[name="theme-color"]');
+      if (metaThemeColor) {
+        metaThemeColor.setAttribute('content', colors.primary);
+      }
+
+      // Update success-color to match primary
+      document.documentElement.style.setProperty('--success-color', colors.primary);
+    }
+  }
+
+  function hexToRgb(hex) {
+    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    return result ? {
+      r: parseInt(result[1], 16),
+      g: parseInt(result[2], 16),
+      b: parseInt(result[3], 16)
+    } : null;
   }
 
   function initializeEnvironment() {
