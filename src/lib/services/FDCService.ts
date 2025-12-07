@@ -19,6 +19,7 @@
 // USDA FoodData Central API Service for UPC lookup
 import { FDC_CONFIG } from '$lib/config/fdc.js';
 import { HouseholdMeasureService } from './HouseholdMeasureService';
+import { logger } from '$lib/utils/logger';
 
 interface FDCProduct {
   fdcId: number;
@@ -84,7 +85,7 @@ export class FDCService {
    * @returns Product data or null if not found
    */
   async searchByUPC(upcCode: string): Promise<ParsedProduct | null> {
-    console.log('FDC: Starting UPC lookup for:', upcCode);
+    logger.debug('FDC', 'Starting UPC lookup for:', upcCode);
 
     try {
       // Validate UPC code
@@ -95,16 +96,16 @@ export class FDCService {
       // Clean UPC code (remove spaces and non-digits, standardize format)
       const originalUPC = upcCode;
       const cleanUPC = upcCode.replace(/\D/g, '');
-      console.log(`FDC: UPC format - original: "${originalUPC}" → cleaned: "${cleanUPC}"`);
+      logger.debug('FDC', `UPC format - original: "${originalUPC}" → cleaned: "${cleanUPC}"`);
 
       if (cleanUPC.length < 8 || cleanUPC.length > 14) {
         throw new Error(`UPC code must be between 8-14 digits. Got ${cleanUPC.length} digits: "${cleanUPC}"`);
       }
 
       // Validate API key
-      console.log('FDC: Current API key:', this.apiKey ? `${this.apiKey.substring(0, 8)}...` : 'undefined');
+      logger.debug('FDC', 'Current API key:', this.apiKey ? `${this.apiKey.substring(0, 8)}...` : 'undefined');
       if (!this.apiKey || this.apiKey === 'DEMO_KEY') {
-        console.warn('FDC: Using DEMO_KEY with rate limits. Configure VITE_FDC_API_KEY for production.');
+        logger.debug('FDC', 'Using DEMO_KEY with rate limits. Configure VITE_FDC_API_KEY for production.');
       }
 
       const searchParams = {
@@ -114,8 +115,8 @@ export class FDCService {
       };
 
       const url = `${this.baseUrl}${this.searchEndpoint}?api_key=${this.apiKey}`;
-      console.log('FDC: Making API request to:', url.replace(this.apiKey, 'HIDDEN_KEY'));
-      console.log('FDC: Request payload:', JSON.stringify(searchParams, null, 2));
+      logger.debug('FDC', 'Making API request to:', url.replace(this.apiKey, 'HIDDEN_KEY'));
+      logger.debug('FDC', 'Request payload:', JSON.stringify(searchParams, null, 2));
 
       const response = await fetch(url, {
         method: 'POST',
@@ -125,27 +126,27 @@ export class FDCService {
         body: JSON.stringify(searchParams)
       });
 
-      console.log('FDC: API response status:', response.status);
+      logger.debug('FDC', 'API response status:', response.status);
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('FDC: API error response:', errorText);
+        logger.debug('FDC', 'API error response:', errorText);
         throw new Error(`FDC API error: ${response.status} - ${response.statusText}`);
       }
 
       const result = await response.json();
-      console.log('FDC: API response data:', result);
+      logger.debug('FDC', 'API response data:', result);
 
       // Check if we got results
       if (!result.foods || result.foods.length === 0) {
-        console.log('FDC: No products found for UPC:', cleanUPC);
+        logger.debug('FDC', 'No products found for UPC:', cleanUPC);
         return null;
       }
 
       // Handle multiple records - select the one with most recent publishedDate
       let product;
       if (result.foods.length > 1) {
-        console.log(`FDC: Found ${result.foods.length} records for UPC ${cleanUPC}, selecting most recent`);
+        logger.debug('FDC', `Found ${result.foods.length} records for UPC ${cleanUPC}, selecting most recent`);
 
         // Sort by publishedDate (most recent first)
         const sortedFoods = result.foods.sort((a, b) => {
@@ -155,16 +156,16 @@ export class FDCService {
         });
 
         product = sortedFoods[0];
-        console.log(`FDC: Selected record with publishedDate: ${product.publishedDate}`);
+        logger.debug('FDC', `Selected record with publishedDate: ${product.publishedDate}`);
       } else {
         product = result.foods[0];
-        console.log(`FDC: Single record found for UPC ${cleanUPC}`);
+        logger.debug('FDC', `Single record found for UPC ${cleanUPC}`);
       }
 
       return this.parseProductData(product, cleanUPC);
 
     } catch (error) {
-      console.error('FDC lookup failed:', error);
+      logger.debug('FDC', 'lookup failed:', error);
 
       // Provide more helpful error messages
       if (error.message.includes('Failed to fetch')) {
@@ -186,7 +187,7 @@ export class FDCService {
    * @returns Parsed product data
    */
   parseProductData(product: FDCProduct, upcCode: string): ParsedProduct {
-    console.log('FDC: Parsing product data...');
+    logger.debug('FDC', 'Parsing product data...');
 
     try {
       // Extract basic product info
@@ -226,8 +227,8 @@ export class FDCService {
           }
         }
 
-        console.log('FDC: Smart serving size result:', smartServingResult);
-        console.log(`FDC: Unit standardization: "${product.servingSizeUnit}" → "${servingUnit}"`);
+        logger.debug('FDC', 'Smart serving size result:', smartServingResult);
+        logger.debug('FDC', `Unit standardization: "${product.servingSizeUnit}" → "${servingUnit}"`);
 
       } else if (product.householdServingFullText) {
         servingSize = product.householdServingFullText;
@@ -239,8 +240,8 @@ export class FDCService {
         }
       }
 
-      console.log('FDC: Serving info - count:', servingCount, 'unit:', servingUnit, 'full:', servingSize);
-      console.log('FDC: Raw serving data from API:', {
+      logger.debug('FDC', 'Serving info - count:', servingCount, 'unit:', servingUnit, 'full:', servingSize);
+      logger.debug('FDC', 'Raw serving data from API:', {
         servingSize: product.servingSize,
         servingSizeUnit: product.servingSizeUnit,
         householdServingFullText: product.householdServingFullText
@@ -250,7 +251,7 @@ export class FDCService {
       let calcium = '';
       let calciumValue = null;
 
-      console.log('FDC: Raw product data for calcium analysis:', {
+      logger.debug('FDC', 'Raw product data for calcium analysis:', {
         labelNutrients: product.labelNutrients,
         foodNutrients: product.foodNutrients ? product.foodNutrients.filter(n => n.nutrientName && n.nutrientName.toLowerCase().includes('calcium')) : null,
         servingSize: product.servingSize,
@@ -262,7 +263,7 @@ export class FDCService {
         calciumValue = product.labelNutrients.calcium.value;
         if (calciumValue !== null && calciumValue !== undefined) {
           calcium = `${calciumValue} mg`;
-          console.log('FDC: Found calcium in labelNutrients:', calcium);
+          logger.debug('FDC', 'Found calcium in labelNutrients:', calcium);
         }
       }
 
@@ -277,7 +278,7 @@ export class FDCService {
         if (calciumNutrient && calciumNutrient.value) {
           calciumValue = calciumNutrient.value;
           calcium = `${calciumValue} mg`;
-          console.log('FDC: Found calcium in foodNutrients:', calcium);
+          logger.debug('FDC', 'Found calcium in foodNutrients:', calcium);
         }
       }
 
@@ -299,26 +300,26 @@ export class FDCService {
 
       // Calculate per-serving calcium from API calcium (per 100g) and serving size
       let calciumPerServing = null;
-      console.log('FDC: Per-serving calcium calculation check:');
-      console.log(`  - calciumValue: ${calciumValue} (type: ${typeof calciumValue})`);
-      console.log(`  - servingCount: ${servingCount} (type: ${typeof servingCount})`);
-      console.log(`  - servingUnit: "${servingUnit}" (type: ${typeof servingUnit})`);
-      console.log(`  - isVolumeOrMassUnit: ${this.householdMeasureService.isVolumeOrMassUnit(servingUnit)}`);
+      logger.debug('FDC', 'Per-serving calcium calculation check:');
+      logger.debug('FDC', `  - calciumValue: ${calciumValue} (type: ${typeof calciumValue})`);
+      logger.debug('FDC', `  - servingCount: ${servingCount} (type: ${typeof servingCount})`);
+      logger.debug('FDC', `  - servingUnit: "${servingUnit}" (type: ${typeof servingUnit})`);
+      logger.debug('FDC', `  - isVolumeOrMassUnit: ${this.householdMeasureService.isVolumeOrMassUnit(servingUnit)}`);
 
       if (calciumValue && servingCount && this.householdMeasureService.isVolumeOrMassUnit(servingUnit)) {
         // API calcium is per 100g, calculate for actual serving size
         // Treating grams and milliliters as equivalent (1:1 density)
         calciumPerServing = Math.round((calciumValue * servingCount) / 100);
-        console.log(`FDC: ✅ Calculated per-serving calcium: ${calciumValue}mg/100g × ${servingCount}${servingUnit} / 100 = ${calciumPerServing}mg`);
+        logger.debug('FDC', `✅ Calculated per-serving calcium: ${calciumValue}mg/100g × ${servingCount}${servingUnit} / 100 = ${calciumPerServing}mg`);
       } else {
-        console.log('FDC: ❌ Cannot calculate per-serving calcium - missing required data');
-        if (!calciumValue) console.log('    Missing calciumValue');
-        if (!servingCount) console.log('    Missing servingCount');
-        if (!this.householdMeasureService.isVolumeOrMassUnit(servingUnit)) console.log(`    Invalid servingUnit: "${servingUnit}"`);
+        logger.debug('FDC', '❌ Cannot calculate per-serving calcium - missing required data');
+        if (!calciumValue) logger.debug('FDC', '    Missing calciumValue');
+        if (!servingCount) logger.debug('FDC', '    Missing servingCount');
+        if (!this.householdMeasureService.isVolumeOrMassUnit(servingUnit)) logger.debug('FDC', `    Invalid servingUnit: "${servingUnit}"`);
 
         // If we can't calculate per-serving, use the raw value as fallback
         if (calciumValue) {
-          console.log(`FDC: Using raw calciumValue as fallback: ${calciumValue}mg`);
+          logger.debug('FDC', `Using raw calciumValue as fallback: ${calciumValue}mg`);
         }
       }
 
@@ -331,9 +332,9 @@ export class FDCService {
       let servingDisplayText: string;
       let servingSource: 'enhanced' | 'standard';
 
-      console.log('FDC: Making centralized serving decision...');
-      console.log(`  - smartServingResult.isEnhanced: ${smartServingResult?.isEnhanced}`);
-      console.log(`  - smartServingResult.householdAmount: ${smartServingResult?.householdAmount}`);
+      logger.debug('FDC', 'Making centralized serving decision...');
+      logger.debug('FDC', `  - smartServingResult.isEnhanced: ${smartServingResult?.isEnhanced}`);
+      logger.debug('FDC', `  - smartServingResult.householdAmount: ${smartServingResult?.householdAmount}`);
 
       if (smartServingResult && smartServingResult.isEnhanced) {
         // ENHANCED: Use household measure format
@@ -348,7 +349,7 @@ export class FDCService {
         servingDisplayText = smartServingResult.text; // e.g., "2 tbsp (11g)"
         servingSource = 'enhanced';
 
-        console.log(`FDC: ✅ Enhanced serving - quantity: ${finalServingQuantity}, unit: "${finalServingUnit}"`);
+        logger.debug('FDC', `✅ Enhanced serving - quantity: ${finalServingQuantity}, unit: "${finalServingUnit}"`);
       } else {
         // STANDARD: Use raw API serving format
         // Example: "170 g" → quantity=170, unit="g"
@@ -357,14 +358,14 @@ export class FDCService {
         servingDisplayText = servingSize; // Already formatted above
         servingSource = 'standard';
 
-        console.log(`FDC: ⚡ Standard serving - quantity: ${finalServingQuantity}, unit: "${finalServingUnit}"`);
+        logger.debug('FDC', `⚡ Standard serving - quantity: ${finalServingQuantity}, unit: "${finalServingUnit}"`);
       }
 
-      console.log('FDC: Final serving decision:');
-      console.log(`  - finalServingQuantity: ${finalServingQuantity}`);
-      console.log(`  - finalServingUnit: "${finalServingUnit}"`);
-      console.log(`  - servingDisplayText: "${servingDisplayText}"`);
-      console.log(`  - servingSource: "${servingSource}"`);
+      logger.debug('FDC', 'Final serving decision:');
+      logger.debug('FDC', `  - finalServingQuantity: ${finalServingQuantity}`);
+      logger.debug('FDC', `  - finalServingUnit: "${finalServingUnit}"`);
+      logger.debug('FDC', `  - servingDisplayText: "${servingDisplayText}"`);
+      logger.debug('FDC', `  - servingSource: "${servingSource}"`);
 
       const result = {
         source: 'USDA FDC',
@@ -397,11 +398,11 @@ export class FDCService {
         rawData: product // Include raw data for debugging
       };
 
-      console.log('FDC: Parse result:', result);
+      logger.debug('FDC', 'Parse result:', result);
       return result;
 
     } catch (error) {
-      console.error('FDC: Error parsing product data:', error);
+      logger.debug('FDC', 'Error parsing product data:', error);
       throw new Error('Failed to parse product data from USDA database');
     }
   }

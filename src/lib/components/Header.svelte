@@ -24,6 +24,7 @@
   import { FEATURES } from "$lib/utils/featureFlags";
   import { syncIcon, syncState, setSyncStatus } from "$lib/stores/sync";
   import { SyncService } from "$lib/services/SyncService";
+  import { logger } from "$lib/utils/logger";
 
   export let pageTitle = "Tracking";
   export let showInfoIcon = false;
@@ -67,7 +68,7 @@
         }
       } catch (error) {
         // Silently handle preload errors to avoid disrupting UX
-        console.debug('Preload failed for:', path, error);
+        logger.debug('PRELOAD', 'Preload failed for:', path, error);
       }
     }, 100); // 100ms delay to avoid excessive preloading
   }
@@ -104,8 +105,8 @@
       await syncService.performBidirectionalSync();
       // Success toast is removed for a silent experience
     } catch (error) {
-      console.log("A manual sync operation failed.");
       // Error toast is handled by the service
+      logger.debug('HEADER', 'Manual sync operation failed', error);
     }
   }
 </script>

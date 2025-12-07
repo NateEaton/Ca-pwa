@@ -29,6 +29,7 @@
   import { FDC_CONFIG } from '$lib/config/fdc.js';
   import { OCR_CONFIG } from '$lib/config/ocr.js';
   import { FEATURES } from '$lib/utils/featureFlags';
+  import { logger } from '$lib/utils/logger';
   import TestDataCollector from './TestDataCollector.svelte';
 
   export let show = false;
@@ -103,6 +104,9 @@
 
     // Initialize test mode
     isTestMode = import.meta.env.DEV || window.location.search.includes('testmode=1');
+    if (isTestMode) {
+      logger.debug('SMART SCAN', 'Test mode enabled');
+    }
   });
 
   onDestroy(() => {
@@ -141,6 +145,7 @@
 
     const previousTab = activeTab;
     activeTab = tab;
+    logger.debug('SMART SCAN', 'Switching tab from', previousTab, 'to', tab);
     localStorage.setItem('scan-default-tab', tab);
     error = null;
     showManualUPCEntry = false;
@@ -195,10 +200,11 @@
       focusSupported = capabilities.focusMode && capabilities.focusMode.length > 0;
       currentFocusMode = settings.focusMode || 'unknown';
 
-      console.log('Camera capabilities:', {
-        focusModes: capabilities.focusMode,
-        currentFocusMode: currentFocusMode,
-        focusDistance: capabilities.focusDistance
+      logger.debug('SCAN', 'Camera initialized with capabilities:', {
+        hasTorch: torchSupported,
+        hasFocus: focusSupported,
+        focusMode: currentFocusMode,
+        hasZoom: capabilities.zoom !== undefined
       });
 
       assignStreamToVideo();
@@ -237,6 +243,8 @@
       stopBarcodeScanners(); // Ensure clean state
 
       codeReader = new BrowserMultiFormatReader();
+
+      logger.debug('SCAN', 'Starting barcode scanning');
 
       // Use our existing video stream instead of letting ZXing manage its own
       scanningActive = true;
@@ -288,6 +296,8 @@
 
   // Mode-specific camera activation
   async function activateCameraForMode(mode) {
+    logger.debug('SCAN', 'Activating camera for mode:', mode);
+
     stopBarcodeScanners(); // Stop any active barcode detection
 
     await initializeCamera(); // Unified camera init
@@ -296,7 +306,7 @@
       await startBarcodeScanning();
     } else if (mode === 'ocr') {
       // OCR mode just shows camera preview, no auto-scanning
-      console.log('Camera ready for OCR capture');
+      logger.debug('SCAN', 'Camera ready for OCR mode');
     }
   }
 
@@ -310,7 +320,7 @@
       });
       torchEnabled = !torchEnabled;
     } catch (error) {
-      console.error('Failed to toggle torch:', error);
+      logger.error('Failed to toggle torch:', error);
     }
   }
 
@@ -344,7 +354,7 @@
       }, 800);
 
     } catch (error) {
-      console.warn('Tap-to-focus failed:', error);
+      logger.warn('Tap-to-focus failed:', error);
       focusIndicatorPosition = null;
     }
   }
@@ -352,6 +362,8 @@
   async function handleBarcodeDetected(code) {
     if (isProcessingBarcode) return;
     if (!FDCService.isValidUPCFormat(code)) return;
+
+    logger.debug('SCAN', 'Barcode detected:', code);
 
     isProcessingBarcode = true;
     stopScanning();
@@ -384,11 +396,11 @@
           });
 
           // In test mode, don't close the modal - let user continue to OCR scan
-          console.log('SmartScanModal: Test mode - keeping modal open for OCR scan');
         } else {
           // Normal mode - dispatch and close
-          console.log('SmartScanModal: Dispatching scanComplete event with data:', { ...productResult, method: 'UPC' });
-          dispatch('scanComplete', { ...productResult, method: 'UPC' });
+          const scanData = { ...productResult, method: 'UPC' };
+          logger.debug('SCAN', 'Dispatching scanComplete event with data:', scanData);
+          dispatch('scanComplete', scanData);
           // Add small delay to ensure event is processed before modal closes
           setTimeout(() => closeModal(true), 100);
         }
@@ -423,7 +435,6 @@
       }
 
       if (productResult) {
-        console.log('SmartScanModal: Dispatching scanComplete event (Manual UPC) with data:', { ...productResult, method: 'Manual UPC' });
         dispatch('scanComplete', { ...productResult, method: 'Manual UPC' });
         // Add small delay to ensure event is processed before modal closes
         setTimeout(() => closeModal(true), 100);
@@ -440,6 +451,8 @@
   // --- Nutrition Label (OCR) Functions ---
   async function captureOCRImage() {
     if (!videoElement || !cameraStream) return;
+
+    logger.debug('SCAN', 'Camera ready for OCR capture');
 
     // Clean up previous preview if exists
     if (imagePreview) {
@@ -503,6 +516,8 @@
     const scanType = activeTab === 'ocr' ? 'file' : 'camera';
     const fileName = file ? file.name : null;
 
+    logger.debug('SCAN', 'Processing OCR image:', { scanType, fileName });
+
     try {
       const result = await ocrService.processImage(file, isTestMode);
       if (result) {
@@ -553,7 +568,6 @@
           });
 
           // In test mode, don't close the modal - let user download test data
-          console.log('SmartScanModal: Test mode - keeping modal open for test data download');
         } else if (!debugMode) {
           // Normal mode (not debug, not test) - dispatch and close
           const ocrData = {
@@ -563,7 +577,11 @@
             servingSize: servingSize, // Formatted string for display
             fileName: debugData.fileName || null, // Include file name for metadata
           };
-          console.log('SmartScanModal: Dispatching scanComplete event (OCR) with data:', ocrData);
+          logger.debug('SCAN', 'Dispatching scanComplete event with OCR data:', {
+            calcium: ocrData.calciumValue,
+            servingSize: ocrData.servingSize,
+            confidence: result.confidence
+          });
           dispatch('scanComplete', ocrData);
           // Add small delay to ensure event is processed before modal closes
           setTimeout(() => closeModal(true), 100);
@@ -602,11 +620,11 @@
     longPressTimer = setTimeout(() => {
       if (isLongPressing) {
         debugMode = !debugMode;
+        logger.debug('SMART SCAN', 'Debug mode toggled:', debugMode);
         // Provide haptic feedback if available
         if (navigator.vibrate) {
           navigator.vibrate(50);
         }
-        console.log('Debug mode:', debugMode ? 'enabled' : 'disabled');
       }
     }, 1000); // 1 second long press
   }
@@ -622,6 +640,7 @@
   // Toggle debug panel
   function toggleDebugPanel() {
     debugMode = !debugMode;
+    logger.debug('SMART SCAN', 'Debug panel toggled:', debugMode);
   }
 
   // --- Event Handlers ---
@@ -657,7 +676,6 @@
         servingSize: servingSize,
         fileName: debugData.fileName || null, // Include file name for metadata
       };
-      console.log('SmartScanModal: Dispatching scanComplete event (Debug OCR) with data:', debugOcrData);
       dispatch('scanComplete', debugOcrData);
       // Add small delay to ensure event is processed before modal closes
       setTimeout(() => closeModal(true), 100);
@@ -687,9 +705,8 @@
       if (navigator.vibrate) {
         navigator.vibrate(50);
       }
-      console.log('Debug data copied to clipboard');
     } catch (err) {
-      console.error('Failed to copy to clipboard:', err);
+      logger.error('Failed to copy to clipboard:', err);
       // Fallback: create temporary textarea
       const textarea = document.createElement('textarea');
       textarea.value = JSON.stringify(debugJson, null, 2);

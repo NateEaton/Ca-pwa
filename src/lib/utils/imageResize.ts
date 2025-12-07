@@ -18,6 +18,8 @@
 
 // ImageResizer utility with TypeScript type safety
 
+import { logger } from '$lib/utils/logger';
+
 interface ResizeCalculation {
   width: number;
   height: number;
@@ -37,11 +39,12 @@ export class ImageResizer {
   static async resizeForOCR(file: File, maxSizeBytes: number = 1024 * 1024): Promise<File> {
     // If file is already under limit, return as-is
     if (file.size <= maxSizeBytes) {
-      console.log('Image already under size limit:', file.size, 'bytes');
+      logger.debug('IMAGE', `Image already under size limit: ${file.size} bytes`);
       return file;
     }
 
-    console.log('Resizing image from', file.size, 'bytes to under', maxSizeBytes, 'bytes');
+    logger.debug('IMAGE', `Resizing image from ${file.size} bytes to target ${maxSizeBytes} bytes`);
+
 
     return new Promise<File>((resolve, reject) => {
       const img = new Image();
@@ -73,7 +76,7 @@ export class ImageResizer {
         canvas.toBlob(
           (blob) => {
             if (blob) {
-              console.log('Resized image to', blob.size, 'bytes');
+              logger.debug('IMAGE', `Resized to ${width}x${height} at quality ${quality}, new size: ${blob.size} bytes`);
 
               // Create new File object with same name and type
               const resizedFile = new File(
@@ -130,16 +133,14 @@ export class ImageResizer {
 
     if (compressionNeeded < 2) {
       quality = 0.9; // Light compression
+      logger.debug('IMAGE', `Using light compression (${quality}) - ratio: ${compressionNeeded.toFixed(2)}`);
     } else if (compressionNeeded < 5) {
       quality = 0.8; // Medium compression
+      logger.debug('IMAGE', `Using medium compression (${quality}) - ratio: ${compressionNeeded.toFixed(2)}`);
     } else {
       quality = 0.7; // Heavy compression
+      logger.debug('IMAGE', `Using heavy compression (${quality}) - ratio: ${compressionNeeded.toFixed(2)}`);
     }
-
-    console.log('Resize calculation:', {
-      original: { width: originalWidth, height: originalHeight, size: originalSize },
-      target: { width, height, quality, targetSize }
-    });
 
     return { width, height, quality };
   }
@@ -154,7 +155,7 @@ export class ImageResizer {
 
     while (currentFile.size > maxSizeBytes && attempt < maxAttempts) {
       attempt++;
-      console.log(`Compression attempt ${attempt}/${maxAttempts}`);
+      logger.debug('IMAGE', `Compression attempt ${attempt}/${maxAttempts}`);
 
       // Reduce target size for each attempt
       const targetSize = maxSizeBytes * (0.8 ** attempt);
@@ -162,7 +163,7 @@ export class ImageResizer {
     }
 
     if (currentFile.size > maxSizeBytes) {
-      console.warn('Could not compress image below size limit after', maxAttempts, 'attempts');
+      logger.warn('Could not compress image below size limit after', maxAttempts, 'attempts');
       // Return the most compressed version we achieved
     }
 
@@ -215,12 +216,16 @@ export class ImageResizer {
     if (analysis.hasLowContrast) {
       analysis.reasons.push('Low contrast detected');
       analysis.needsPreprocessing = true;
+      logger.debug('IMAGE', `Low contrast detected (brightness: ${avgBrightness.toFixed(1)})`);
     }
 
     if (analysis.estimatedDPI < 150) {
       analysis.reasons.push('Low resolution detected');
       analysis.needsPreprocessing = true;
+      logger.debug('IMAGE', `Low resolution detected (estimated DPI: ${analysis.estimatedDPI})`);
     }
+
+    logger.debug('IMAGE', `Image analysis complete - DPI: ${analysis.estimatedDPI}, preprocessing needed: ${analysis.needsPreprocessing}`);
 
     return analysis;
   }
@@ -240,11 +245,11 @@ export class ImageResizer {
 
   static async enhanceContrastIfNeeded(file: File, analysis: ImageAnalysis): Promise<File> {
     if (!analysis.hasLowContrast) {
-      console.log('Image has good contrast, skipping enhancement');
       return file;
     }
 
-    console.log('Applying contrast enhancement...');
+    logger.debug('IMAGE', 'Enhancing image contrast');
+
 
     return new Promise((resolve, reject) => {
       const img = new Image();
@@ -267,7 +272,6 @@ export class ImageResizer {
               type: file.type,
               lastModified: Date.now()
             });
-            console.log('Contrast enhancement complete');
             resolve(enhancedFile);
           } else {
             reject(new Error('Failed to enhance contrast'));
@@ -286,7 +290,8 @@ export class ImageResizer {
       return file;
     }
 
-    console.log('Applying binarization for text clarity...');
+    logger.debug('IMAGE', 'Binarizing image for better OCR');
+
 
     return new Promise((resolve, reject) => {
       const img = new Image();
@@ -380,7 +385,8 @@ export class ImageResizer {
       return file;
     }
 
-    console.log('Applying deskew correction...');
+    logger.debug('IMAGE', 'Deskewing image');
+
 
     return new Promise((resolve, reject) => {
       const img = new Image();
@@ -423,7 +429,8 @@ export class ImageResizer {
       return file;
     }
 
-    console.log('Applying noise reduction...');
+    logger.debug('IMAGE', 'Reducing image noise');
+
 
     return new Promise((resolve, reject) => {
       const img = new Image();
@@ -459,20 +466,14 @@ export class ImageResizer {
   }
 
   static async preprocessForOCR(file: File): Promise<File> {
-    console.log('Starting intelligent image preprocessing...');
+    logger.debug('IMAGE', `Starting OCR preprocessing for ${file.name}`);
 
     // Step 1: Analyze image quality (fast)
     const analysis = await this.analyzeImageQuality(file);
 
-    console.log('Image analysis results:', {
-      needsPreprocessing: analysis.needsPreprocessing,
-      estimatedDPI: analysis.estimatedDPI,
-      reasons: analysis.reasons
-    });
-
     // Early bailout for high-quality images
     if (!analysis.needsPreprocessing) {
-      console.log('Image quality is good, skipping preprocessing');
+      logger.debug('IMAGE', 'Image quality sufficient, no preprocessing needed');
       return file;
     }
 
@@ -492,11 +493,10 @@ export class ImageResizer {
       // Deskew if needed (slower, only for clearly skewed images)
       processedFile = await this.deskewIfNeeded(processedFile, analysis);
 
-      console.log('Preprocessing completed successfully');
       return processedFile;
 
     } catch (error) {
-      console.warn('Preprocessing failed, using original image:', error);
+      logger.warn('Preprocessing failed, using original image:', error);
       return file; // Fallback to original
     }
   }

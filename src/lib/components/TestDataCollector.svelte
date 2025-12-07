@@ -3,6 +3,7 @@
 
 <script>
   import { onMount } from 'svelte';
+  import { logger } from '$lib/utils/logger';
 
   // Only show in dev mode or with special URL flag
   let isTestMode = false;
@@ -34,7 +35,7 @@
     };
 
     status = 'waiting-ocr';
-    console.log('TestDataCollector: UPC captured!', upcScanResult.product_name);
+    logger.debug('TEST DATA', 'TestDataCollector: UPC captured!', upcScanResult.product_name);
   }
 
   // Expose methods to parent component
@@ -59,7 +60,7 @@
     }
 
     status = 'complete';
-    console.log('TestDataCollector: OCR captured!', ocrScanResult.words.length, 'words');
+    logger.debug('TEST DATA', 'TestDataCollector: OCR captured!', ocrScanResult.words.length, 'words');
   }
 
   // Step 3: Download test data package

@@ -20,6 +20,7 @@ import { SyncService } from '$lib/services/SyncService';
 import { syncState } from '$lib/stores/sync';
 import { get } from 'svelte/store';
 import { getMonthKey } from '$lib/types/sync';
+import { logger } from '$lib/utils/logger';
 
 /**
  * Utility class for triggering automatic sync operations when data changes.
@@ -52,6 +53,7 @@ export class SyncTrigger {
 
     if (changeType === 'all') {
       if (this.allDebounceTimer) clearTimeout(this.allDebounceTimer);
+      logger.debug('SYNC TRIGGER', 'Triggering full sync (debounced)');
       timer = window.setTimeout(async () => {
         this.allDebounceTimer = null;
         await this.executeSync('all');
@@ -59,6 +61,7 @@ export class SyncTrigger {
       this.allDebounceTimer = timer;
     } else if (changeType === 'persistent') {
       if (this.persistentDebounceTimer) clearTimeout(this.persistentDebounceTimer);
+      logger.debug('SYNC TRIGGER', 'Triggering persistent data sync (debounced)');
       timer = window.setTimeout(async () => {
         this.persistentDebounceTimer = null;
         await this.executeSync('persistent');
@@ -67,6 +70,7 @@ export class SyncTrigger {
     } else if (changeType === 'journal' && dateString) {
       if (this.journalDebounceTimer) clearTimeout(this.journalDebounceTimer);
       const monthKey = getMonthKey(dateString);
+      logger.debug('SYNC TRIGGER', `Triggering month sync for ${monthKey} (debounced)`);
       timer = window.setTimeout(async () => {
         this.journalDebounceTimer = null;
         await this.executeSync('journal', monthKey);
@@ -74,7 +78,7 @@ export class SyncTrigger {
       this.journalDebounceTimer = timer;
     } else {
       // Invalid parameters, fallback to full sync
-      console.warn('[SYNC TRIGGER] Invalid parameters, falling back to full sync');
+      logger.warn('[SYNC TRIGGER] Invalid parameters, falling back to full sync');
       if (this.allDebounceTimer) clearTimeout(this.allDebounceTimer);
       timer = window.setTimeout(async () => {
         this.allDebounceTimer = null;
@@ -101,19 +105,16 @@ export class SyncTrigger {
       // Smart routing based on change type
       if (changeType === 'all') {
         // Full sync
-        console.log('[SYNC TRIGGER] Full bidirectional sync triggered');
         await syncService.performBidirectionalSync();
       } else if (changeType === 'persistent') {
         // Only sync persistent data (settings, custom foods, favorites)
-        console.log('[SYNC TRIGGER] Persistent data sync triggered');
         await syncService.syncPersistentData();
       } else if (changeType === 'journal' && monthKey) {
         // Only sync affected month
-        console.log('[SYNC TRIGGER] Month sync triggered for', monthKey);
         await syncService.syncMonth(monthKey);
       }
     } catch (error) {
-      console.warn('Automatic data change sync failed:', error);
+      logger.warn('Automatic data change sync failed:', error);
     }
   }
 

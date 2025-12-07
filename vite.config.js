@@ -59,14 +59,42 @@ export default defineConfig(({ mode }) => {
       VitePWA({
         registerType: "prompt",
         workbox: {
-          maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5MB (increased from default 2MB)
-          // REMOVED wasm from globPatterns
+          cleanupOutdatedCaches: true,
+          maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
           globPatterns: ["**/*.{js,css,html,ico,png,svg,woff,woff2}"],
-          additionalManifestEntries: [{ url: "index.html", revision: null }],
-          // Enable navigation fallback for offline SPA routing
+
+          // Correct offline SPA fallback
           navigateFallback: (base_path === "/" ? "" : base_path) + "index.html",
-          // Use build ID for cache versioning
-          cacheId: `calcium-cache-${createBuildId()}`,
+
+          // Runtime caching rules (required for correct update flow)
+          runtimeCaching: [
+            // Navigation requests (HTML): must be NetworkFirst
+            {
+              urlPattern: ({ request }) => request.mode === "navigate",
+              handler: "NetworkFirst",
+              options: {
+                cacheName: "html-pages",
+                networkTimeoutSeconds: 3,
+                expiration: {
+                  maxEntries: 20,
+                  maxAgeSeconds: 60 * 60 * 24, // 1 day
+                },
+              },
+            },
+
+            // Build assets (hashed): safe for StaleWhileRevalidate
+            {
+              urlPattern: /.*\.(js|css|woff2?)$/,
+              handler: "StaleWhileRevalidate",
+              options: {
+                cacheName: "static-assets",
+                expiration: {
+                  maxEntries: 200,
+                  maxAgeSeconds: 60 * 60 * 24 * 30,
+                },
+              },
+            },
+          ],
         },
         includeAssets: ["favicon.ico", "index.html"],
         manifest: {

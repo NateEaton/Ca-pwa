@@ -1,16 +1,26 @@
 import { writable } from 'svelte/store';
+import { browser } from '$app/environment';
 
-/**
- * Store to track if a PWA update is available
- */
+// Stores for UI bindings
 export const pwaUpdateAvailable = writable<boolean>(false);
-
-/**
- * Store to hold the update function provided by the service worker
- */
 export const pwaUpdateFunction = writable<(() => Promise<void>) | null>(null);
-
-/**
- * Store to track if the app is ready for offline use
- */
 export const pwaOfflineReady = writable<boolean>(false);
+
+// Only run in browser
+if (browser) {
+  // Lazy-import because virtual:pwa-register must not run on server
+  import('virtual:pwa-register').then(({ registerSW }) => {
+    const updateSW = registerSW({
+      immediate: false,         // REQUIRED for "prompt" mode
+      onNeedRefresh() {
+        pwaUpdateAvailable.set(true);
+      },
+      onOfflineReady() {
+        pwaOfflineReady.set(true);
+      }
+    });
+
+    // Expose `updateSW()` so the Settings page can apply updates
+    pwaUpdateFunction.set(() => updateSW());
+  });
+}

@@ -16,6 +16,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
+import { logger } from '$lib/utils/logger';
+
 // Household Measure Service for smart UPC serving size validation
 // Helps validate household measures against weight/volume and generate smart serving sizes
 
@@ -369,7 +371,7 @@ export class HouseholdMeasureService {
    * @returns {Object} {text: string, isEnhanced: boolean, validation: Object}
    */
   generateSmartServingSize(servingCount, servingUnit, householdText, productName) {
-    console.log('UnitConversion: Generating smart serving size:', {
+    logger.debug('UnitConversion', 'Generating smart serving size:', {
       servingCount,
       servingUnit,
       householdText,
@@ -389,7 +391,7 @@ export class HouseholdMeasureService {
 
     const parsedMeasure = this.parseHouseholdMeasure(householdText);
     if (!parsedMeasure) {
-      console.log('UnitConversion: Could not parse household measure:', householdText);
+      logger.debug('UnitConversion', 'Could not parse household measure:', householdText);
       return {
         text: fallbackText,
         isEnhanced: false,
@@ -398,15 +400,15 @@ export class HouseholdMeasureService {
     }
 
     const validation = this.validateHouseholdMeasure(servingCount, parsedMeasure, productName);
-    console.log('UnitConversion: Validation result:', validation);
+    logger.debug('UnitConversion', 'Validation result:', validation);
 
     // Only use household measure if validation passes
     if (validation.isValid && validation.confidence !== 'very-low') {
       // Include full household measure for display, store amount separately for separation
       const enhancedText = `${parsedMeasure.original} (${servingCount}${servingUnit || 'g'})`;
 
-      console.log('UnitConversion: Using enhanced text:', enhancedText);
-      console.log(`UnitConversion: Household amount: ${parsedMeasure.amount}, unit: ${parsedMeasure.unit}`);
+      logger.debug('UnitConversion', 'Using enhanced text:', enhancedText);
+      logger.debug('UnitConversion', `Household amount: ${parsedMeasure.amount}, unit: ${parsedMeasure.unit}`);
 
       return {
         text: enhancedText,
@@ -415,7 +417,7 @@ export class HouseholdMeasureService {
         validation
       };
     } else {
-      console.log('UnitConversion: Validation failed, using fallback:', validation.reason);
+      logger.debug('UnitConversion', 'Validation failed, using fallback:', validation.reason);
       return {
         text: fallbackText,
         isEnhanced: false,

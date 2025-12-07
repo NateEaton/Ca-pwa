@@ -98,21 +98,27 @@
             <h4>Features</h4>
             <ul class="features-list">
               <li>
-                Track calcium intake based on a curated list of foods from
-                official sources
+                Track calcium intake from 3,876+ curated USDA foods
               </li>
+              <li>Smart Scan: Add foods via UPC barcode scanning</li>
+              {#if FEATURES.OCR_ENABLED}
+                <li>OCR: Extract calcium from nutrition label photos</li>
+              {/if}
               <li>Add custom foods with your own calcium values</li>
-              <li>Set personalized daily calcium goals</li>
-              <li>View historical data and food database</li>
+              <li>Favorites and serving memory for faster tracking</li>
+              <li>Interactive statistics with daily, weekly, monthly charts</li>
+              <li>Generate printable reports for healthcare providers</li>
+              <li>CSV export and backup/restore functionality</li>
               {#if FEATURES.SYNC_ENABLED}
                 <li>Cross-device sync with end-to-end encryption</li>
               {/if}
+              <li>Set personalized daily calcium goals</li>
               {#if FEATURES.SYNC_ENABLED}
                 <li>Your data stays private with encryption</li>
               {:else}
                 <li>Your data stays private on your device</li>
               {/if}
-              <li>Can run in browser or installed locally</li>
+              <li>Works offline and can be installed as an app</li>
             </ul>
           </div>
 

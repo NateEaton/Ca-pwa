@@ -21,6 +21,8 @@
  * Handles volume, weight, and count-based measurements with USDA measure parsing.
  */
 
+import { logger } from '$lib/utils/logger';
+
 export type UnitType = 'volume' | 'weight' | 'count' | 'unknown';
 
 export interface ParsedMeasure {
@@ -216,19 +218,12 @@ export class UnitConverter {
       const containerType = compoundMatch[1]; // "package"
       const innerMeasure = compoundMatch[2]; // "10 oz"
 
+      logger.debug('UNIT CONVERTER', `Detected compound measure: ${containerType} (${innerMeasure})`);
+
       // If the inner measure has a convertible unit, use that instead
       const innerParsed = this.parseSimpleMeasure(innerMeasure);
       if (innerParsed.unitType !== "unknown") {
-        console.log('🔧 UnitConverter.parseUSDAMeasure() - COMPOUND CONVERTIBLE:', {
-          input: measureString,
-          quantity,
-          unitPortion,
-          containerType,
-          innerMeasure,
-          innerParsed,
-          cleanedUnit: innerParsed.detectedUnit
-        });
-
+        logger.debug('UNIT CONVERTER', `Parsed compound measure to: ${innerParsed.detectedUnit} (${innerParsed.unitType})`);
         return {
           originalQuantity: quantity,
           originalUnit: unitPortion,
@@ -241,17 +236,8 @@ export class UnitConverter {
         };
       }
 
+      logger.debug('UNIT CONVERTER', `Inner measure not convertible, using original: ${unitPortion}`);
       // If inner measure isn't convertible, fall back to no conversion
-      console.log('🔧 UnitConverter.parseUSDAMeasure() - COMPOUND FALLBACK:', {
-        input: measureString,
-        quantity,
-        unitPortion,
-        containerType,
-        innerMeasure,
-        cleanedUnit: unitPortion,  // Show what we're setting
-        note: 'Inner measure not convertible, using full unitPortion'
-      });
-
       return {
         originalQuantity: quantity,
         originalUnit: unitPortion,
@@ -262,13 +248,8 @@ export class UnitConverter {
       };
     }
 
-    // Check if this is a non-convertible measure 
+    // Check if this is a non-convertible measure
     if (this.isNonConvertible(cleaned)) {
-      console.log('🔧 UnitConverter.parseUSDAMeasure() - NON-CONVERTIBLE:', {
-        input: measureString,
-        note: 'Descriptive measure, no parsing needed'
-      });
-      
       return {
         originalQuantity: 1,
         originalUnit: measureString,
@@ -280,13 +261,6 @@ export class UnitConverter {
 
     // Handle simple measurements
     const simpleParsed = this.parseSimpleMeasure(unitPortion);
-    console.log('🔧 UnitConverter.parseUSDAMeasure() - SIMPLE:', {
-      input: measureString,
-      quantity,
-      unitPortion,
-      simpleParsed,
-      cleanedUnit: simpleParsed.detectedUnit
-    });
 
     return {
       originalQuantity: quantity,
@@ -592,7 +566,7 @@ export class UnitConverter {
 
       return parseFloat((originalCalcium * ratio).toFixed(2));
     } catch (error) {
-      console.error('Calcium calculation error:', error);
+      logger.error('Calcium calculation error:', error);
       // Fallback: return original calcium unchanged
       return originalCalcium;
     }
